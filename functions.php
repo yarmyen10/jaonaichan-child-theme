@@ -30,3 +30,27 @@ function add_defer_to_alpine($tag, $handle) {
     return $tag;
 }
 add_filter('script_loader_tag', 'add_defer_to_alpine', 10, 2);
+
+
+
+// Step 1: Register the status
+function register_custom_order_status() {
+    register_post_status( 'wc-waiting-transfer', array(
+        'label'                     => 'รอโอนเงิน',
+        'public'                    => true,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop(
+            'รอโอนเงิน <span class="count">(%s)</span>',
+            'รอโอนเงิน <span class="count">(%s)</span>'
+        ),
+    ));
+}
+add_action( 'init', 'register_custom_order_status' );
+
+// Step 2: Add to the dropdown list
+function add_custom_status_to_dropdown( $order_statuses ) {
+    $order_statuses['wc-waiting-transfer'] = 'รอโอนเงิน';
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'add_custom_status_to_dropdown' );
