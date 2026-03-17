@@ -8,6 +8,24 @@
  * @since 1.0.0
  */
 
+// Auth / Login
+// require_once get_stylesheet_directory() . '/src/inc/auth/*.php';
+
+
+$inc_folders = [
+    '/inc/auth/',
+    // '/inc/woocommerce/',
+    // '/inc/i18n/',
+    // '/inc/enqueue/',
+    // '/inc/helpers/',
+];
+
+foreach ( $inc_folders as $folder ) {
+    foreach ( glob( get_stylesheet_directory() . $folder . '*.php' ) as $file ) {
+        require_once $file;
+    }
+}
+
 /**
  * Define Constants
  */
