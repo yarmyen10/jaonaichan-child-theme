@@ -40,18 +40,31 @@ foreach ( $inc_folders as $folder ) {
     }
 }
 
-
 add_action('init', function() {
-    do_action('qm/info', '=== i18n Debug ===');
-    do_action('qm/info', 'textdomain : ' . $_ENV['TEXTDOMAIN_NAME']);
-    do_action('qm/info', 'site lang  : ' . get_option('WPLANG'));
-    do_action('qm/info', 'locale     : ' . get_locale());
-
-    // เช็คไฟล์ .mo มีจริงไหม
+    do_action('qm/info', 'locale: ' . get_locale());
+    do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
+    
+    // เช็คว่า .mo อ่านได้จริงไหม
+    $mo = new MO();
     $mo_file = get_stylesheet_directory() . '/src/inc/i18n/languages/' 
                . $_ENV['TEXTDOMAIN_NAME'] . '-' . get_locale() . '.mo';
+    $loaded = $mo->import_from_file( $mo_file );
     
-    do_action('qm/info', 'mo file   : ' . $mo_file);
-    do_action('qm/info', 'mo exists : ' . ( file_exists($mo_file) ? 'YES' : 'NO' ));
-    do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
-});
+    do_action('qm/info', 'MO import: ' . ( $loaded ? 'YES' : 'NO' ));
+    do_action('qm/info', 'MO entries: ' . print_r( $mo->entries, true ));
+}, 99);
+
+// add_action('init', function() {
+//     do_action('qm/info', '=== i18n Debug ===');
+//     do_action('qm/info', 'textdomain : ' . $_ENV['TEXTDOMAIN_NAME']);
+//     do_action('qm/info', 'site lang  : ' . get_option('WPLANG'));
+//     do_action('qm/info', 'locale     : ' . get_locale());
+
+//     // เช็คไฟล์ .mo มีจริงไหม
+//     $mo_file = get_stylesheet_directory() . '/src/inc/i18n/languages/' 
+//                . $_ENV['TEXTDOMAIN_NAME'] . '-' . get_locale() . '.mo';
+    
+//     do_action('qm/info', 'mo file   : ' . $mo_file);
+//     do_action('qm/info', 'mo exists : ' . ( file_exists($mo_file) ? 'YES' : 'NO' ));
+//     do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
+// });
