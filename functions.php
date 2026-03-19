@@ -13,7 +13,7 @@
  */
 define( 'CHILD_THEME_JAO_NAI_CHAN_VERSION', '1.0.0' );
 
-// require_once get_stylesheet_directory() . '/vendor/autoload.php';
+require_once get_stylesheet_directory() . '/vendor/autoload.php';
 
 // $dotenv = Dotenv\Dotenv::createImmutable(get_stylesheet_directory());
 // $dotenv->load();
@@ -21,8 +21,8 @@ define( 'CHILD_THEME_JAO_NAI_CHAN_VERSION', '1.0.0' );
 $inc_folders = [
     '/src/inc/enqueue/',
     '/src/inc/auth/',
-    // '/src/inc/woocommerce/',
-    // '/src/inc/i18n/',
+    '/src/inc/woocommerce/',
+    '/src/inc/i18n/',
     // '/src/inc/helpers/',
 ];
 
