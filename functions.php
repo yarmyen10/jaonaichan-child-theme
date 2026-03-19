@@ -41,18 +41,14 @@ foreach ( $inc_folders as $folder ) {
 }
 
 add_action('init', function() {
-    do_action('qm/info', 'locale: ' . get_locale());
+    // โหลด textdomain ใหม่อีกครั้งตรงนี้
+    load_child_theme_textdomain(
+        $_ENV['TEXTDOMAIN_NAME'],
+        get_stylesheet_directory() . '/src/inc/i18n/languages'
+    );
+    
     do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
-    
-    // เช็คว่า .mo อ่านได้จริงไหม
-    $mo = new MO();
-    $mo_file = get_stylesheet_directory() . '/src/inc/i18n/languages/' 
-               . $_ENV['TEXTDOMAIN_NAME'] . '-' . get_locale() . '.mo';
-    $loaded = $mo->import_from_file( $mo_file );
-    
-    do_action('qm/info', 'MO import: ' . ( $loaded ? 'YES' : 'NO' ));
-    do_action('qm/info', 'MO entries: ' . print_r( $mo->entries, true ));
-}, 99);
+}, 1);
 
 // add_action('init', function() {
 //     do_action('qm/info', '=== i18n Debug ===');
