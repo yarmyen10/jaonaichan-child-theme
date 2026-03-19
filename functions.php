@@ -40,15 +40,19 @@ foreach ( $inc_folders as $folder ) {
     }
 }
 
-add_action('init', function() {
-    // โหลด textdomain ใหม่อีกครั้งตรงนี้
-    load_child_theme_textdomain(
-        $_ENV['TEXTDOMAIN_NAME'],
-        get_stylesheet_directory() . '/src/inc/i18n/languages'
-    );
+function register_custom_order_status() {
+    $label = __( 'รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME'] );
     
-    do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
-}, 1);
+    // Debug ตรงนี้เลย
+    do_action('qm/info', 'order status label: ' . $label);
+    do_action('qm/info', 'order status textdomain: ' . $_ENV['TEXTDOMAIN_NAME']);
+    
+    register_post_status( 'wc-waiting-transfer', array(
+        'label' => $label,
+        // ...
+    ));
+}
+add_action( 'init', 'register_custom_order_status', 5 );
 
 // add_action('init', function() {
 //     do_action('qm/info', '=== i18n Debug ===');
