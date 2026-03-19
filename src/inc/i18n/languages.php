@@ -8,12 +8,14 @@
  * ไฟล์ .mo จะอยู่ที่ /src/inc/i18n/languages/
  */
 function theme_load_textdomain() {
-    load_child_theme_textdomain(
+    $loaded = load_child_theme_textdomain(
         $_ENV['TEXTDOMAIN_NAME'],                                          // textdomain
         get_stylesheet_directory() . '/src/inc/i18n/languages'     // path ไฟล์ภาษา
     );
+
+    do_action('qm/info', 'textdomain loaded: ' . ( $loaded ? 'YES' : 'NO' ));
 }
-add_action( 'after_setup_theme', 'theme_load_textdomain' );
+add_action( 'after_setup_theme', 'theme_load_textdomain', 99 );
 
 
 /**
