@@ -14,7 +14,8 @@ function register_custom_order_status() {
         ),
     ));
 }
-add_action( 'init', 'register_custom_order_status' );
+// ✅ เปลี่ยน priority เป็น 5 → รันหลัง textdomain โหลด (priority 1)
+add_action( 'init', 'register_custom_order_status', 5 );
 
 function add_custom_status_to_dropdown( $order_statuses ) {
     $order_statuses['wc-waiting-transfer'] = __( 'รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME'] );
