@@ -8,14 +8,14 @@
  * ไฟล์ .mo จะอยู่ที่ /src/inc/i18n/languages/
  */
 function theme_load_textdomain() {
-    $loaded = load_child_theme_textdomain(
-        $_ENV['TEXTDOMAIN_NAME'],                                          // textdomain
-        get_stylesheet_directory() . '/src/inc/i18n/languages'     // path ไฟล์ภาษา
+    // โหลดตรงๆ ไม่ง้อ WPLANG
+    load_textdomain(
+        $_ENV['TEXTDOMAIN_NAME'],
+        get_stylesheet_directory() . '/src/inc/i18n/languages/' 
+            . $_ENV['TEXTDOMAIN_NAME'] . '-' . get_locale() . '.mo'
     );
-
-    do_action('qm/info', 'textdomain loaded: ' . ( $loaded ? 'YES' : 'NO' ));
 }
-add_action( 'after_setup_theme', 'theme_load_textdomain', 99 );
+add_action( 'init', 'theme_load_textdomain', 1 );
 
 
 /**
