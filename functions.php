@@ -41,13 +41,10 @@ foreach ( $inc_folders as $folder ) {
 }
 
 add_action('init', function() {
-    // โหลด textdomain ใหม่อีกครั้งตรงนี้
-     $label = __( 'รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME'] );
-    
-    // Debug ตรงนี้เลย
-    do_action('qm/info', 'order status label: ' . $label);
-    do_action('qm/info', 'order status textdomain: ' . $_ENV['TEXTDOMAIN_NAME']);
-}, 1);
+    do_action('qm/info', 'locale: ' . get_locale());
+    do_action('qm/info', 'WPLANG: ' . get_option('WPLANG'));
+    do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
+}, 10);
 
 // add_action('init', function() {
 //     do_action('qm/info', '=== i18n Debug ===');
