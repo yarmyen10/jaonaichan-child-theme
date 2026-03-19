@@ -1,6 +1,6 @@
 <?php
 /**
- * Template Name: Thank You
+ * Template Name: Thank You Yen
  */
 get_header();
 ?>
