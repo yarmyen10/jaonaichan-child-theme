@@ -4,7 +4,7 @@
  */
 function register_custom_order_status() {
     register_post_status( 'wc-waiting-transfer', array(
-        'label'                     => __( 'รอโอนเงิน', 'your-textdomain' ),
+        'label'                     => __( 'รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME'] ),
         'public'                    => true,
         'show_in_admin_all_list'    => true,
         'show_in_admin_status_list' => true,
@@ -17,7 +17,7 @@ function register_custom_order_status() {
 add_action( 'init', 'register_custom_order_status' );
 
 function add_custom_status_to_dropdown( $order_statuses ) {
-    $order_statuses['wc-waiting-transfer'] = __( 'รอโอนเงิน', 'your-textdomain' );
+    $order_statuses['wc-waiting-transfer'] = __( 'รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME'] );
     return $order_statuses;
 }
 add_filter( 'wc_order_statuses', 'add_custom_status_to_dropdown' );

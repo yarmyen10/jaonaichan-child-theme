@@ -9,7 +9,7 @@
  */
 function theme_load_textdomain() {
     load_child_theme_textdomain(
-        'astra-child',                                          // textdomain
+        $_ENV['TEXTDOMAIN_NAME'],                                          // textdomain
         get_stylesheet_directory() . '/inc/i18n/languages'     // path ไฟล์ภาษา
     );
 }
