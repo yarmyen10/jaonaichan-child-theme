@@ -21,7 +21,7 @@ $dotenv->load();
 $inc_folders = [
     '/src/inc/enqueue/',
     '/src/inc/auth/',
-    '/src/inc/woocommerce/',
+    // '/src/inc/woocommerce/',
     '/src/inc/i18n/',
     // '/src/inc/helpers/',
 ];
