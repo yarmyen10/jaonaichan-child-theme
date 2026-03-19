@@ -42,17 +42,16 @@ foreach ( $inc_folders as $folder ) {
 
 
 add_action('init', function() {
-    error_log('=== i18n Debug ===');
-    error_log('textdomain : ' . $_ENV['TEXTDOMAIN_NAME']);
-    error_log('site lang  : ' . get_option('WPLANG'));
-    error_log('locale     : ' . get_locale());
-    error_log('lang path  : ' . get_stylesheet_directory() . '/src/inc/i18n/languages');
+    do_action('qm/info', '=== i18n Debug ===');
+    do_action('qm/info', 'textdomain : ' . $_ENV['TEXTDOMAIN_NAME']);
+    do_action('qm/info', 'site lang  : ' . get_option('WPLANG'));
+    do_action('qm/info', 'locale     : ' . get_locale());
+
+    // เช็คไฟล์ .mo มีจริงไหม
+    $mo_file = get_stylesheet_directory() . '/src/inc/i18n/languages/' 
+               . $_ENV['TEXTDOMAIN_NAME'] . '-' . get_locale() . '.mo';
     
-    // เช็คว่าไฟล์ .mo มีจริงไหม
-    $mo_file = get_stylesheet_directory() . '/src/inc/i18n/languages/' . $_ENV['TEXTDOMAIN_NAME'] . '-' . get_locale() . '.mo';
-    error_log('mo file    : ' . $mo_file);
-    error_log('mo exists  : ' . ( file_exists($mo_file) ? 'YES ✅' : 'NO ❌' ));
-    
-    // เช็คว่าแปลได้ไหม
-    error_log('translated : ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
+    do_action('qm/info', 'mo file   : ' . $mo_file);
+    do_action('qm/info', 'mo exists : ' . ( file_exists($mo_file) ? 'YES' : 'NO' ));
+    do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
 });
