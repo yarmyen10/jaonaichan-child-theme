@@ -5,12 +5,12 @@
 
 /**
  * โหลดไฟล์ภาษาของ Theme
- * ไฟล์ .mo จะอยู่ที่ /inc/i18n/languages/
+ * ไฟล์ .mo จะอยู่ที่ /src/inc/i18n/languages/
  */
 function theme_load_textdomain() {
     load_child_theme_textdomain(
         $_ENV['TEXTDOMAIN_NAME'],                                          // textdomain
-        get_stylesheet_directory() . '/inc/i18n/languages'     // path ไฟล์ภาษา
+        get_stylesheet_directory() . '/src/inc/i18n/languages'     // path ไฟล์ภาษา
     );
 }
 add_action( 'after_setup_theme', 'theme_load_textdomain' );
