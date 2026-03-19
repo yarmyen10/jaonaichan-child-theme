@@ -44,7 +44,7 @@ add_action('init', function() {
     do_action('qm/info', 'locale: ' . get_locale());
     do_action('qm/info', 'WPLANG: ' . get_option('WPLANG'));
     do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
-}, 10);
+}, 1);
 
 // add_action('init', function() {
 //     do_action('qm/info', '=== i18n Debug ===');
