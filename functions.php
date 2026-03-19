@@ -46,8 +46,13 @@ function register_custom_order_status() {
     // Debug ตรงนี้เลย
     do_action('qm/info', 'order status label: ' . $label);
     do_action('qm/info', 'order status textdomain: ' . $_ENV['TEXTDOMAIN_NAME']);
+    
+    register_post_status( 'wc-waiting-transfer', array(
+        'label' => $label,
+        // ...
+    ));
 }
-add_action( 'init', 'register_custom_order_status', 5 );
+add_action( 'init', 'register_custom_order_status', 1 );
 
 // add_action('init', function() {
 //     do_action('qm/info', '=== i18n Debug ===');
