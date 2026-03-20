@@ -41,6 +41,7 @@ foreach ( $inc_folders as $folder ) {
 }
 
 add_action('init', function() {
+    do_action('qm/info', '__DIR__: ' . __DIR__);
     do_action('qm/info', 'locale: ' . get_locale());
     do_action('qm/info', 'WPLANG: ' . get_option('WPLANG'));
     do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
