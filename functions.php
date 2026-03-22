@@ -25,7 +25,7 @@ $inc_folders = [
     '/src/inc/auth',
     '/src/inc/woocommerce',
     '/src/inc/helpers',
-    '/src/templates',
+    '/src/templates/dashboard',
 ];
 
 foreach ( $inc_folders as $folder ) {
