@@ -81,7 +81,7 @@ get_header();
               </svg> -->
             </div>
             <span class="text-lg font-medium text-gray-900">฿<?= number_format($amount, 2) ?></span>
-            <span class="text-xs text-gray-400">PromptPay QR</span>
+            <span class="text-xs text-gray-400">PromptPay QR : <?= $phone ?></span>
           </div>
 
           {{-- Upload Bill 1 --}}
