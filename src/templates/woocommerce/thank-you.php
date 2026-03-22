@@ -69,14 +69,12 @@ get_header();
           {{-- QR --}}
           <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
             <?php
-              $gateway  = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
-              $phone    = $gateway ? $gateway->get_option('phone') : '';
-              $amount   = $order ? $order->get_total() : 0; // หรือดึงจาก order
-              $qr_url   = PromptPay_QR_Generator::generate($phone, $amount);
-              // เพิ่มชั่วคราวเพื่อ debug
-              $raw = get_option('woocommerce_promptpay_qr_settings');
-              echo '<pre>' . json_encode($raw, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . '</pre>';
+              $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
+              $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
+              $amount = $order ? $order->get_total() : 0; // หรือดึงจาก order
+              $qr_url = PromptPay_QR_Generator::generate($phone, $amount);
             ?>
+            <pre><?php echo json_encode($gateway, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE); ?></pre>
             <div class="w-32 h-32 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
               <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
               <!-- <svg class="w-16 h-16 text-gray-300" viewBox="0 0 24 24" fill="currentColor">
