@@ -4,46 +4,45 @@
  */
 class Theme_Page_Templates {
 
-    private string $templates_path;
-    private array  $templates = [];
+    private array $templates_paths;
+    private array $templates = [];
 
     public function __construct() {
-        $this->templates_path = get_stylesheet_directory() . '/src/templates';
+        // ✅ กำหนดได้หลาย Path
+        $this->templates_paths = [
+            get_stylesheet_directory() . '/src/templates',
+            get_stylesheet_directory() . '/src/pages',
+            get_stylesheet_directory() . '/src/views',
+        ];
 
-        add_filter( 'theme_page_templates',  [ $this, 'register' ] );
-        add_filter( 'template_include',      [ $this, 'load' ] );
+        add_filter( 'theme_page_templates', [ $this, 'register' ] );
+        add_filter( 'template_include',     [ $this, 'load' ] );
     }
 
-    /**
-     * สแกนหาไฟล์ PHP ใน /src/templates/ แล้ว Register อัตโนมัติ
-     */
     public function register( array $templates ): array {
-        if ( ! is_dir( $this->templates_path ) ) return $templates;
+        foreach ( $this->templates_paths as $path ) {
+            if ( ! is_dir( $path ) ) continue;
 
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator( $this->templates_path, RecursiveDirectoryIterator::SKIP_DOTS )
-        );
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator( $path, RecursiveDirectoryIterator::SKIP_DOTS )
+            );
 
-        foreach ( $files as $file ) {
-            if ( $file->getExtension() !== 'php' ) continue;
+            foreach ( $files as $file ) {
+                if ( $file->getExtension() !== 'php' ) continue;
 
-            // อ่าน Template Name จาก comment
-            $headers = get_file_data( $file->getPathname(), [ 'Template Name' => 'Template Name' ] );
+                $headers = get_file_data( $file->getPathname(), [ 'Template Name' => 'Template Name' ] );
 
-            if ( ! empty( $headers['Template Name'] ) ) {
-                // เก็บ relative path
-                $relative = str_replace( get_stylesheet_directory() . '/', '', $file->getPathname() );
-                $this->templates[ $relative ] = $headers['Template Name'];
-                $templates[ $relative ]       = $headers['Template Name'];
+                if ( ! empty( $headers['Template Name'] ) ) {
+                    $relative = str_replace( get_stylesheet_directory() . '/', '', $file->getPathname() );
+                    $this->templates[ $relative ] = $headers['Template Name'];
+                    $templates[ $relative ]       = $headers['Template Name'];
+                }
             }
         }
 
         return $templates;
     }
 
-    /**
-     * โหลด Template ที่ถูกเลือก
-     */
     public function load( string $template ): string {
         if ( ! is_page() ) return $template;
 
