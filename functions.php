@@ -24,7 +24,8 @@ $inc_folders = [
     '/src/inc/enqueue',
     '/src/inc/auth',
     '/src/inc/woocommerce',
-    // '/src/inc/helpers',
+    '/src/inc/helpers',
+    '/src/templates',
 ];
 
 foreach ( $inc_folders as $folder ) {
