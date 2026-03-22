@@ -10,7 +10,7 @@ class Theme_Redirect {
     private static array $rules = [
         [
             'match'    => '/step/thank-you',     // URI ที่ต้องการ match
-            'target'   => '/thank-you/',        // redirect ไปที่ไหน
+            'target'   => '/thank-you-slave/',        // redirect ไปที่ไหน
             'pass_params' => ['wcf-order'],        // Query params ที่ต้องการส่งต่อ
             'status'   => 301,
         ],
