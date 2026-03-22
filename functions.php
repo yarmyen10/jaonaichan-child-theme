@@ -25,7 +25,6 @@ $inc_folders = [
     '/src/inc/auth',
     '/src/inc/woocommerce',
     '/src/inc/helpers',
-    '/src/templates/dashboard',
 ];
 
 foreach ( $inc_folders as $folder ) {
@@ -38,9 +37,9 @@ foreach ( $inc_folders as $folder ) {
     );
 
     foreach ( $files as $file ) {
-        do_action('qm/info', '📁 $file: ' . $file);
-        do_action('qm/info', '$file->isFile() && $file->getExtension() === \'php\': ' . $file->isFile() && $file->getExtension() === 'php');
-        do_action('qm/info', '$file->getPathname(): ' . $file->getPathname());
+        // do_action('qm/info', '📁 $file: ' . $file);
+        // do_action('qm/info', '$file->isFile() && $file->getExtension() === \'php\': ' . $file->isFile() && $file->getExtension() === 'php');
+        // do_action('qm/info', '$file->getPathname(): ' . $file->getPathname());
         if ( $file->isFile() && $file->getExtension() === 'php' ) {
             require_once $file->getPathname();
         }
