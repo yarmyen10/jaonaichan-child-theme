@@ -10,9 +10,14 @@ get_header();
   <div class="text-center mb-8">
     <h2 class="text-2xl font-medium text-gray-900">ขอบคุณสำหรับคำสั่งซื้อ</h2>
     <p class="text-sm text-gray-500 mt-1">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
+    <?php
+      $order_id = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
+      $order    = $order_id ? wc_get_order($order_id) : null;
+    ?>
     <span class="inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
-      Order #10042
+      Order #<?= $order ? $order->get_order_number() : $order_id ?>
     </span>
+    <pre><?php echo json_encode($order->get_data(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE); ?></pre>
   </div>
 
   <div x-data="billTabs()">
@@ -65,7 +70,8 @@ get_header();
           {{-- QR --}}
           <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
             <?php
-              $phone  = get_option('promptpay_phone');
+              $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
+              $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
               $amount = 1500; // หรือดึงจาก order
               $qr_url = PromptPay_QR_Generator::generate($phone, $amount);
             ?>
