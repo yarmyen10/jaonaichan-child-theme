@@ -38,6 +38,7 @@ foreach ( $inc_folders as $folder ) {
     );
 
     foreach ( $files as $file ) {
+        do_action('qm/info', '📁 $file: ' . $file);
         if ( $file->isFile() && $file->getExtension() === 'php' ) {
             require_once $file->getPathname();
         }
