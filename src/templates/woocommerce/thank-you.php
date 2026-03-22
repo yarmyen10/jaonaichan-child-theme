@@ -71,7 +71,7 @@ get_header();
             <?php
               $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
               $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
-              $amount = $order ? $order->total() : 0; // หรือดึงจาก order
+              $amount = $order ? $order->get_total() : 0; // หรือดึงจาก order
               $qr_url = PromptPay_QR_Generator::generate($phone, $amount);
             ?>
             <div class="w-32 h-32 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
