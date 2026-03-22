@@ -17,7 +17,6 @@ get_header();
     <span class="inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
       Order #<?= $order ? $order->get_order_number() : $order_id ?>
     </span>
-    <pre><?php echo json_encode($order->get_data(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE); ?></pre>
   </div>
 
   <div x-data="billTabs()">
@@ -72,7 +71,7 @@ get_header();
             <?php
               $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
               $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
-              $amount = 1500; // หรือดึงจาก order
+              $amount = $order ? $order->total() : 0; // หรือดึงจาก order
               $qr_url = PromptPay_QR_Generator::generate($phone, $amount);
             ?>
             <div class="w-32 h-32 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
