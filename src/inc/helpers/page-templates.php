@@ -11,8 +11,8 @@ class Theme_Page_Templates {
         // ✅ กำหนดได้หลาย Path
         $this->templates_paths = [
             get_stylesheet_directory() . '/src/templates',
-            get_stylesheet_directory() . '/src/pages',
-            get_stylesheet_directory() . '/src/views',
+            // get_stylesheet_directory() . '/src/pages',
+            // get_stylesheet_directory() . '/src/views',
         ];
 
         add_filter( 'theme_page_templates', [ $this, 'register' ] );

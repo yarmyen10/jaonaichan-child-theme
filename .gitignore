@@ -3,7 +3,8 @@ node_modules/
 npm-debug.log*
 
 # Tailwind build output (generated file)
-assets/css/tailwind.css
+# assets/css/tailwind.css
+# assets/js/bundle.js
 
 # OS
 .DS_Store
