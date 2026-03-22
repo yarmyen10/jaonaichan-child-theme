@@ -15,28 +15,31 @@ define( 'CHILD_THEME_JAO_NAI_CHAN_VERSION', '1.0.0' );
 
 require_once get_stylesheet_directory() . '/vendor/autoload.php';
 
-$dotenv = Dotenv\Dotenv::createImmutable(get_stylesheet_directory());
+$dotenv = Dotenv\Dotenv::createImmutable( get_stylesheet_directory() );
 $dotenv->load();
 
+// Autoload ทุกไฟล์ใน /src/inc/ ตามลำดับ
 $inc_folders = [
-    '/src/inc/i18n/',
-    '/src/inc/enqueue/',
-    '/src/inc/auth/',
-    '/src/inc/woocommerce/',
-    // '/src/inc/helpers/',
+    '/src/inc/i18n',
+    '/src/inc/enqueue',
+    '/src/inc/auth',
+    '/src/inc/woocommerce',
+    // '/src/inc/helpers',
 ];
 
 foreach ( $inc_folders as $folder ) {
-    $files = glob( get_stylesheet_directory() . $folder . '*.php' );
+    $path = get_stylesheet_directory() . $folder;
 
-    if ( ! $files ) {
-        // Debug — บอกว่าหาไฟล์ไม่เจอตรงไหน
-        error_log( 'No files found in: ' . get_stylesheet_directory() . $folder );
-        continue;
-    }
+    if ( ! is_dir( $path ) ) continue;
+
+    $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator( $path, RecursiveDirectoryIterator::SKIP_DOTS )
+    );
 
     foreach ( $files as $file ) {
-        require_once $file;
+        if ( $file->isFile() && $file->getExtension() === 'php' ) {
+            require_once $file->getPathname();
+        }
     }
 }
 
