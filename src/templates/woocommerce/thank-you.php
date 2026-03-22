@@ -74,6 +74,7 @@ get_header();
               $amount = $order ? $order->get_total() : 0; // หรือดึงจาก order
               $qr_url = PromptPay_QR_Generator::generate($phone, $amount);
             ?>
+            <pre><?php echo json_encode($gateway, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE); ?></pre>
             <div class="w-32 h-32 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
               <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
               <!-- <svg class="w-16 h-16 text-gray-300" viewBox="0 0 24 24" fill="currentColor">
