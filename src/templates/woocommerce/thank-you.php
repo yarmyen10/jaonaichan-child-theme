@@ -239,10 +239,25 @@ function billTabs() {
       };
       reader.readAsDataURL(file);
     },
-    payBill1() {
-      if (!this.preview1) return;
-      this.bill1Paid = true;
-      this.activeTab = 2;
+    async payBill1() {
+      console.log(this.preview1)
+      // if (!this.preview1) return;
+
+      // const formData = new FormData();
+      // formData.append('action',   'promptpay_verify_slip');
+      // formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
+      // formData.append('order_id', '<?= $order_id ?>');
+      // formData.append('slip',     this.$refs.file1.files[0]);
+
+      // const res  = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
+      // const data = await res.json();
+
+      // if (data.success) {
+      //     this.bill1Paid = true;
+      //     this.activeTab = 2;
+      // } else {
+      //     alert(data.data.message); // หรือแสดง error ใน UI
+      // }
     },
     payBill2() {
       if (!this.preview2) return;
