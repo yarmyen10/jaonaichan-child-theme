@@ -65,48 +65,46 @@ get_header();
         <p class="text-sm text-gray-400 mt-1 mb-6">ชำระครึ่งหนึ่งของยอดรวม</p>
 
         <div class="grid grid-cols-2 gap-6">
-
-          {{-- QR --}}
-          <div class="flex flex-col gap-4">
-
-              {{-- รายการสินค้า --}}
-              <div class="bg-gray-50 rounded-lg p-4">
-                  <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
-                  <?php if ( $order ) : ?>
-                      <div class="flex flex-col gap-3">
-                          <?php foreach ( $order->get_items() as $item ) :
-                              $product = $item->get_product();
-                              $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
-                          ?>
-                          <div class="flex items-center gap-3">
-                              <?php if ( $img_url ) : ?>
-                                  <img src="<?= esc_url($img_url) ?>"
-                                      class="w-12 h-12 object-cover rounded-lg border border-gray-200" />
-                              <?php endif; ?>
-                              <div class="flex-1">
-                                  <p class="text-sm font-medium text-gray-900">
-                                      <?= esc_html( $item->get_name() ) ?>
-                                  </p>
-                                  <p class="text-xs text-gray-400">
-                                      x<?= $item->get_quantity() ?>
-                                  </p>
-                              </div>
+          <!-- {{-- รายการสินค้า --}} -->
+          <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
+              <?php if ( $order ) : ?>
+                  <div class="flex flex-col gap-3">
+                      <?php foreach ( $order->get_items() as $item ) :
+                          $product = $item->get_product();
+                          $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
+                      ?>
+                      <div class="flex items-center gap-3">
+                          <?php if ( $img_url ) : ?>
+                              <img src="<?= esc_url($img_url) ?>"
+                                  class="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                          <?php endif; ?>
+                          <div class="flex-1">
                               <p class="text-sm font-medium text-gray-900">
-                                  ฿<?= number_format( $item->get_total(), 2 ) ?>
+                                  <?= esc_html( $item->get_name() ) ?>
+                              </p>
+                              <p class="text-xs text-gray-400">
+                                  x<?= $item->get_quantity() ?>
                               </p>
                           </div>
-                          <?php endforeach; ?>
+                          <p class="text-sm font-medium text-gray-900">
+                              ฿<?= number_format( $item->get_total(), 2 ) ?>
+                          </p>
                       </div>
+                      <?php endforeach; ?>
+                  </div>
 
-                      <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
-                          <span class="text-sm text-gray-500">รวมทั้งหมด</span>
-                          <span class="text-sm font-semibold text-gray-900">
-                              ฿<?= number_format( $order->get_total(), 2 ) ?>
-                          </span>
-                      </div>
-                  <?php endif; ?>
-              </div>
-
+                  <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
+                      <span class="text-sm text-gray-500">รวมทั้งหมด</span>
+                      <span class="text-sm font-semibold text-gray-900">
+                          ฿<?= number_format( $order->get_total(), 2 ) ?>
+                      </span>
+                  </div>
+              <?php endif; ?>
+          </div>
+          
+          <!-- {{-- QR --}} -->
+          <div class="flex flex-col gap-4">
               {{-- QR Code --}}
               <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
                   <?php
