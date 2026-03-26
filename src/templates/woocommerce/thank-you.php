@@ -19,7 +19,7 @@ get_header();
     </span>
   </div>
 
-  <div x-data="billTabs()" x-init="init()">
+  <div x-data="billTabs()">
     {{-- Tabs --}}
     <div class="flex border-b border-gray-200 mb-6">
       <div
