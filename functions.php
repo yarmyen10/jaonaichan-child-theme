@@ -47,6 +47,7 @@ foreach ( $inc_folders as $folder ) {
 }
 
 add_action('init', function() {
+    add_image_size( 'custom-100', 100, 100, true );
     do_action('qm/info', '__DIR__: ' . __DIR__);
     do_action('qm/info', '__DIR__ <2: ' . dirname(__DIR__, 2));
     do_action('qm/info', 'get_stylesheet_directory_uri: ' . get_stylesheet_directory_uri());
