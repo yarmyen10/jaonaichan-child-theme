@@ -67,21 +67,65 @@ get_header();
         <div class="grid grid-cols-2 gap-6">
 
           {{-- QR --}}
-          <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
-            <?php
-              $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
-              $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
-              $amount = $order ? $order->get_total() : 0; // หรือดึงจาก order
-              $qr_url = PromptPay_QR_Generator::generate($phone, $amount);
-            ?>
-            <div class="w-40 h-40 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-              <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
-              <!-- <svg class="w-16 h-16 text-gray-300" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 12h7v7H3v-7zm2 2v3h3v-3H5zm10 0h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm4-4h2v2h-2v-2zm-4-2h2v2h-2v-2z"/>
-              </svg> -->
-            </div>
-            <span class="text-lg font-medium text-gray-900">฿<?= number_format($amount, 2) ?></span>
-            <span class="text-xs text-gray-400">PromptPay QR : <?= $phone ?></span>
+          <div class="flex flex-col gap-4">
+
+              {{-- รายการสินค้า --}}
+              <div class="bg-gray-50 rounded-lg p-4">
+                  <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
+                  <?php if ( $order ) : ?>
+                      <div class="flex flex-col gap-3">
+                          <?php foreach ( $order->get_items() as $item ) :
+                              $product = $item->get_product();
+                              $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                          ?>
+                          <div class="flex items-center gap-3">
+                              <?php if ( $img_url ) : ?>
+                                  <img src="<?= esc_url($img_url) ?>"
+                                      class="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                              <?php endif; ?>
+                              <div class="flex-1">
+                                  <p class="text-sm font-medium text-gray-900">
+                                      <?= esc_html( $item->get_name() ) ?>
+                                  </p>
+                                  <p class="text-xs text-gray-400">
+                                      x<?= $item->get_quantity() ?>
+                                  </p>
+                              </div>
+                              <p class="text-sm font-medium text-gray-900">
+                                  ฿<?= number_format( $item->get_total(), 2 ) ?>
+                              </p>
+                          </div>
+                          <?php endforeach; ?>
+                      </div>
+
+                      <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
+                          <span class="text-sm text-gray-500">รวมทั้งหมด</span>
+                          <span class="text-sm font-semibold text-gray-900">
+                              ฿<?= number_format( $order->get_total(), 2 ) ?>
+                          </span>
+                      </div>
+                  <?php endif; ?>
+              </div>
+
+              {{-- QR Code --}}
+              <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
+                  <?php
+                      $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
+                      $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
+                      $amount  = $order ? $order->get_total() : 0;
+                      $qr_url  = PromptPay_QR_Generator::generate($phone, $amount);
+                  ?>
+                  <div class="w-40 h-40 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
+                      <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
+                  </div>
+                  <span class="text-lg font-medium text-gray-900">
+                      ฿<?= number_format($amount, 2) ?>
+                  </span>
+                  <span class="text-xs text-gray-400">
+                      PromptPay QR : <?= esc_html($phone) ?>
+                  </span>
+              </div>
+
           </div>
 
           {{-- Upload Bill 1 --}}
