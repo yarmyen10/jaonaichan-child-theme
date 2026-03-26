@@ -20,7 +20,7 @@ get_header();
   </div>
 
   <div x-data="billTabs()">
-    {{-- Tabs --}}
+    <!-- {{-- Tabs --}} -->
     <div class="flex border-b border-gray-200 mb-6">
       <div
         @click="switchTab(1)"
@@ -48,7 +48,7 @@ get_header();
       </div>
     </div>
 
-    {{-- Bill 1 --}}
+    <!-- {{-- Bill 1 --}} -->
     <div x-show="activeTab === 1">
 
       <div x-show="!bill1Paid" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
@@ -339,6 +339,7 @@ function billTabs() {
 
       const formData = new FormData();
       formData.append('action',   'promptpay_verify_slip');
+      formData.append('bill', '1');
       formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
       formData.append('order_id', '<?= $order_id ?>');
       formData.append('slip',     this.$refs.file1.files[0]);
