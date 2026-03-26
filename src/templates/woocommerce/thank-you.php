@@ -83,13 +83,13 @@ get_header();
                   <div class="flex items-center gap-3">
                     <?php if ( $img_url ) : ?>
                         <img src="<?= esc_url($img_url) ?>"
-                            class="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                            class="object-cover rounded-lg border border-gray-200" />
                     <?php endif; ?>
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-900 !mb-3">
+                        <p class="text-sm font-medium text-gray-900">
                             <?= esc_html( $item->get_name() ) ?>
                         </p>
-                        <p class="text-xs text-gray-400 !mb-3">
+                        <p class="text-xs text-gray-400">
                             x<?= $item->get_quantity() ?>
                         </p>
                     </div>
@@ -137,7 +137,7 @@ get_header();
 
                 <div
                   @click="$refs.file1.click()"
-                  class="relative border border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
+                  class="relative border-[2.5px] border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
                   style="height: 140px;"
                 >
                   <template x-if="!preview1">
