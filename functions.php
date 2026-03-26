@@ -20,8 +20,8 @@ $dotenv->load();
 
 // Autoload ทุกไฟล์ใน /src/inc/ ตามลำดับ
 $inc_folders = [
-    '/src/inc/helpers',
     '/src/inc/i18n',
+    '/src/inc/helpers',
     '/src/inc/enqueue',
     '/src/inc/auth',
     '/src/inc/woocommerce',
@@ -55,6 +55,8 @@ add_action('init', function() {
     do_action('qm/info', 'locale: ' . get_locale());
     do_action('qm/info', 'WPLANG: ' . get_option('WPLANG'));
     do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
+    $sizes = get_intermediate_image_sizes();
+    do_action('qm/info', 'image sizes: ' . print_r($sizes, true));
     
 }, 1);
 
