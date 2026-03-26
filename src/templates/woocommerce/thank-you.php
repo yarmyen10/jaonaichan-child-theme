@@ -72,12 +72,18 @@ get_header();
                   <div class="flex flex-col gap-3">
                       <?php foreach ( $order->get_items() as $item ) :
                           $product = $item->get_product();
+                          // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
                           $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
+
+                          // Fallback ถ้าไม่มี
+                          if ( ! $img_url ) {
+                              $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                          }
                       ?>
                       <div class="flex items-center gap-3">
                           <?php if ( $img_url ) : ?>
                               <img src="<?= esc_url($img_url) ?>"
-                                  class="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                                  class="w-[100px] h-[100px] object-cover rounded-lg border border-gray-200" />
                           <?php endif; ?>
                           <div class="flex-1">
                               <p class="text-sm font-medium text-gray-900">
