@@ -19,7 +19,7 @@ get_header();
     </span>
   </div>
 
-  <div x-data="billTabs()">
+  <div x-data="billTabs()" x-init="init()">
     {{-- Tabs --}}
     <div class="flex border-b border-gray-200 mb-6">
       <div
@@ -83,7 +83,7 @@ get_header();
                       <div class="flex items-center gap-3">
                           <?php if ( $img_url ) : ?>
                               <img src="<?= esc_url($img_url) ?>"
-                                  class="w-[100px] h-[100px] object-cover rounded-lg border border-gray-200" />
+                                  class="w-12 h-12 object-cover rounded-lg border border-gray-200" />
                           <?php endif; ?>
                           <div class="flex-1">
                               <p class="text-sm font-medium text-gray-900">
@@ -273,6 +273,11 @@ function billTabs() {
     bill2Paid: false,
     preview1: null,
     preview2: null,
+
+    init() {
+      console.log('🚧 billTabs init');
+    },
+
     switchTab(n) {
       if (n === 2 && !this.bill1Paid) return;
       this.activeTab = n;
