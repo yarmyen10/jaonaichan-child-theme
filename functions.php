@@ -20,11 +20,11 @@ $dotenv->load();
 
 // Autoload ทุกไฟล์ใน /src/inc/ ตามลำดับ
 $inc_folders = [
+    '/src/inc/helpers',
     '/src/inc/i18n',
     '/src/inc/enqueue',
     '/src/inc/auth',
     '/src/inc/woocommerce',
-    '/src/inc/helpers',
 ];
 
 foreach ( $inc_folders as $folder ) {
