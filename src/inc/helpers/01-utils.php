@@ -4,8 +4,12 @@
  */
 class Utils {
     public static function init(): void {
-        // เรียกตรงๆ ได้เลย ไม่ต้องใช้ Hook
         add_image_size( 'custom-100', 100, 100, true );
+        
+        do_action('qm/info', 'Utils::init() called');
+        do_action('qm/info', 'custom-100 registered: ' . 
+            ( in_array('custom-100', get_intermediate_image_sizes()) ? 'YES' : 'NO' )
+        );
     }
 }
 

@@ -111,7 +111,7 @@ get_header();
           
           <!-- {{-- QR --}} -->
           <div class="flex flex-col gap-4">
-              {{-- QR Code --}}
+              <!-- {{-- QR Code --}} -->
               <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
                   <?php
                       $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
