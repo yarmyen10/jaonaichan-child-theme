@@ -1,15 +1,12 @@
 <?php
 /**
- * Register Page Templates จาก /src/templates/
+ * Utils
  */
 class Utils {
     public static function init(): void {
-        // ลงทะเบียน Custom Size
-        add_action( 'after_setup_theme', function() {
-            add_image_size( 'custom-100', 100, 100, true ); // true = crop
-        });
+        // เรียกตรงๆ ได้เลย ไม่ต้องใช้ Hook
+        add_image_size( 'custom-100', 100, 100, true );
     }
 }
 
-// เริ่มต้นใช้งาน
 Utils::init();
