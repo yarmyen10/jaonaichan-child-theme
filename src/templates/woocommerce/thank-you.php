@@ -86,10 +86,10 @@ get_header();
                             class="w-12 h-12 object-cover rounded-lg border border-gray-200" />
                     <?php endif; ?>
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-900">
+                        <p class="text-sm font-medium text-gray-900 !mb-3">
                             <?= esc_html( $item->get_name() ) ?>
                         </p>
-                        <p class="text-xs text-gray-400">
+                        <p class="text-xs text-gray-400 !mb-3">
                             x<?= $item->get_quantity() ?>
                         </p>
                     </div>
