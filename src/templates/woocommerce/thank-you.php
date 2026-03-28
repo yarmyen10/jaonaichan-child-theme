@@ -5,6 +5,12 @@
 get_header();
 ?>
 
+<div x-if="loading" class="flex gap-2">
+  <span class="size-3 animate-ping rounded-full bg-indigo-600 dark:bg-indigo-300"></span>
+  <span class="size-3 animate-ping rounded-full bg-indigo-600 [animation-delay:0.2s] dark:bg-indigo-300"></span>
+  <span class="size-3 animate-ping rounded-full bg-indigo-600 [animation-delay:0.4s] dark:bg-indigo-300"></span>
+</div>
+
 <div class="w-full mx-auto px-12 py-12 my-12 bg-[#ffffff]">
 
   <div class="text-center mb-8">
@@ -174,47 +180,6 @@ get_header();
 
           </div>
 
-          <!-- {{-- Upload Bill 1 --}}
-          <div class="flex flex-col gap-3">
-
-            <input type="file" class="hidden" accept="image/*" x-ref="file1" @change="handleFile($event, 1)">
-
-            <div
-              @click="$refs.file1.click()"
-              class="relative border border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
-              style="height: 140px;"
-            >
-              <template x-if="!preview1">
-                <div class="flex flex-col items-center justify-center h-full gap-2">
-                  <svg class="w-6 h-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
-                  </svg>
-                  <p class="text-sm text-gray-400">แนบสลิปโอนเงิน</p>
-                </div>
-              </template>
-              <template x-if="preview1">
-                <img :src="preview1" class="w-full h-full object-cover">
-              </template>
-            </div>
-
-            <button
-              @click="$refs.file1.click()"
-              class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700"
-            >
-              <span x-text="preview1 ? 'เปลี่ยนรูป' : 'เลือกไฟล์'"></span>
-            </button>
-
-            <button
-              x-show="!bill1Paid"
-              @click="payBill1()"
-              :disabled="!preview1"
-              :class="preview1 ? '!bg-gray-900 !text-white' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
-              class="w-full py-2.5 text-sm font-medium rounded-lg transition-colors"
-            >
-              ยืนยันการชำระเงิน
-            </button>
-
-          </div> -->
         </div>
       </div>
     </div>
@@ -310,25 +275,40 @@ get_header();
 <script>
 function billTabs() {
   return {
+    loading: false,
     activeTab: 1,
     bill1Paid: false,
     bill2Paid: false,
     preview1: null,
     preview2: null,
+    viewBill1: null,
+    viewBill2: null,
 
     init() {
-      console.log('🚧 billTabs init');
-      let slips = <?= json_encode([
-        'bill1' => get_post_meta( $order_id, '_promptpay_slip_bill1', true ),
-        'bill2' => get_post_meta( $order_id, '_promptpay_slip_bill2', true ),
-      ]) ?>;
-      console.log('📁 slips=', slips);
+      try {
+        this.loading = true;
+        console.log('🚧 billTabs init');
+        this.viewBill1 = await this.loadSlip(1);
+        // this.loadSlip(2).then(url => { this.viewBill2 = url; });
 
-      fetch(`/wp-json/promptpay/v1/slip/${<?= $order_id ?>}/1`, {
-          headers: { 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' }
-      })
-      .then(r => r.blob())
-      .then(blob => { this.preview1 = URL.createObjectURL(blob); });
+        this.loadBill1();
+      } catch (error) {
+        
+      } finally {
+        this.loading = false;
+      }
+      
+    },
+
+    loadSlip(bill) {
+        return fetch(`/wp-json/promptpay/v1/slip/<?= $order_id ?>/${bill}`, {
+            headers: { 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' }
+        })
+        .then(r => {
+            if (!r.ok) return null; // ถ้าไม่มีไฟล์ → null
+            return r.blob();
+        })
+        .then(blob => blob ? URL.createObjectURL(blob) : null);
     },
 
     switchTab(n) {
