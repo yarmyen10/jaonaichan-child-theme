@@ -2,15 +2,13 @@
 /**
  * Template Name: Thank You
  */
+
+$show  = 'loading';
+$color = 'bg-indigo-600 dark:bg-indigo-300';
+include get_stylesheet_directory() . '/src/inc/templates/spinner.php';
+
 get_header();
 ?>
-
-<div x-if="loading" class="flex gap-2">
-  <span class="size-3 animate-ping rounded-full bg-indigo-600 dark:bg-indigo-300"></span>
-  <span class="size-3 animate-ping rounded-full bg-indigo-600 [animation-delay:0.2s] dark:bg-indigo-300"></span>
-  <span class="size-3 animate-ping rounded-full bg-indigo-600 [animation-delay:0.4s] dark:bg-indigo-300"></span>
-</div>
-
 <div class="w-full mx-auto px-12 py-12 my-12 bg-[#ffffff]">
 
   <div class="text-center mb-8">
