@@ -7,16 +7,16 @@
  * @param string $class     class เพิ่มเติม
  */
 $show  = $show  ?? false;
-$size  = $size  ?? 'size-3';
-$color = $color ?? 'bg-indigo-600 dark:bg-indigo-300';
+$size  = $size  ?? '!size-3';
+$color = $color ?? '!bg-indigo-600 dark:!bg-indigo-300';
 $class = $class ?? '';
 ?>
 
 <div
     x-show="<?= esc_attr($show) ?>"
-    class="flex gap-2 <?= esc_attr($class) ?>"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm <?= esc_attr($class) ?>"
 >
-    <span class="<?= esc_attr($size) ?> animate-ping rounded-full <?= esc_attr($color) ?>"></span>
-    <span class="<?= esc_attr($size) ?> animate-ping rounded-full <?= esc_attr($color) ?> [animation-delay:0.2s]"></span>
-    <span class="<?= esc_attr($size) ?> animate-ping rounded-full <?= esc_attr($color) ?> [animation-delay:0.4s]"></span>
+    <span class="<?= esc_attr($size) ?> !animate-ping !rounded-full <?= esc_attr($color) ?>"></span>
+    <span class="<?= esc_attr($size) ?> !animate-ping !rounded-full <?= esc_attr($color) ?> ![animation-delay:0.2s]"></span>
+    <span class="<?= esc_attr($size) ?> !animate-ping !rounded-full <?= esc_attr($color) ?> ![animation-delay:0.4s]"></span>
 </div>

@@ -182,7 +182,7 @@ get_header();
       </div>
     </div>
 
-    {{-- Bill 2 --}}
+    <!-- {{-- Bill 2 --}} -->
     <div x-show="activeTab === 2">
 
       <div x-show="!bill1Paid" class="flex flex-col items-center justify-center py-16 text-gray-400">
@@ -291,7 +291,7 @@ function billTabs() {
       } catch (error) {
         
       } finally {
-        this.loading = false;
+        // this.loading = false;
       }
       
     },
