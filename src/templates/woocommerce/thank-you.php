@@ -323,7 +323,12 @@ function billTabs() {
         'bill2' => get_post_meta( $order_id, '_promptpay_slip_bill2', true ),
       ]) ?>;
       console.log('📁 slips=', slips);
-      
+
+      fetch(`/wp-json/promptpay/v1/slip/${<?= $order_id ?>}/1`, {
+          headers: { 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' }
+      })
+      .then(r => r.blob())
+      .then(blob => { this.preview1 = URL.createObjectURL(blob); });
     },
 
     switchTab(n) {
