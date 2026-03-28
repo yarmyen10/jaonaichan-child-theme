@@ -288,8 +288,6 @@ function billTabs() {
         console.log('🚧 billTabs init');
         this.viewBill1 = await this.loadSlip(1);
         // this.loadSlip(2).then(url => { this.viewBill2 = url; });
-
-        this.loadBill1();
       } catch (error) {
         
       } finally {
