@@ -318,6 +318,12 @@ function billTabs() {
 
     init() {
       console.log('🚧 billTabs init');
+      let slips = <?= json_encode([
+        'bill1' => get_post_meta( $order_id, '_promptpay_slip_bill1', true ),
+        'bill2' => get_post_meta( $order_id, '_promptpay_slip_bill2', true ),
+      ]) ?>;
+      console.log('📁 slips=', slips);
+      
     },
 
     switchTab(n) {
