@@ -282,7 +282,7 @@ function billTabs() {
     viewBill1: null,
     viewBill2: null,
 
-    init() {
+    async init() {
       try {
         this.loading = true;
         console.log('🚧 billTabs init');
