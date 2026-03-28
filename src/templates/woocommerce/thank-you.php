@@ -5,7 +5,7 @@
 
 $show  = 'loading';
 $color = 'bg-indigo-600 dark:bg-indigo-300';
-include get_stylesheet_directory() . '/src/inc/templates/spinner.php';
+include get_stylesheet_directory() . '/src/templates/spinner.php';
 
 get_header();
 ?>
