@@ -140,7 +140,7 @@ get_header();
                     class="absolute inset-0 flex items-center justify-center"
                     style="background: rgba(255,255,255,0.75);"
                 >
-                    <div class="rotate-[20deg] border-5 border-emerald-500 rounded-lg px-4 py-2 text-center">
+                    <div class="rotate-[-20deg] border-5 border-emerald-500 rounded-lg px-4 py-2 text-center">
                         <p class="text-emerald-600 !font-bold !text-3xl tracking-widest !mb-0 !mt-[1.75em]">ชำระแล้ว</p>
                         <p class="text-emerald-500 !font-bold !text-xl">PAID</p>
                     </div>
@@ -160,11 +160,11 @@ get_header();
               <input type="file" class="hidden" accept="image/*" x-ref="file1" @change="handleFile($event, 1)">
 
               <div
-                @click="$refs.file1.click()"
+                @click="bill1Paid && viewBill1 ? openSlip(viewBill1) : $refs.file1.click()"
                 class="relative border-[2.5px] border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
                 style="height: 140px;"
               >
-                <template x-if="!preview1">
+                <template x-if="!preview1 && !viewBill1">
                   <div class="flex flex-col items-center justify-center h-full gap-2">
                     <svg class="w-6 h-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
@@ -174,6 +174,22 @@ get_header();
                 </template>
                 <template x-if="preview1">
                   <img :src="preview1" class="w-full h-full object-cover">
+                </template>
+
+                <template x-if="!preview1 && viewBill1">
+                  <div class="relative w-full h-full">
+                    <img :src="viewBill1" class="w-full h-full object-cover" />
+                    <!-- Badge ชำระแล้ว -->
+                    <div class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
+                      ✓ ชำระแล้ว
+                    </div>
+                    <!-- คลิกเพื่อขยาย -->
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
+                      <svg class="w-8 h-8 text-white opacity-0 hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                      </svg>
+                    </div>
+                  </div>
                 </template>
               </div>
 
@@ -321,6 +337,7 @@ function billTabs() {
         console.log('🚧 billTabs init');
         this.viewBill1 = await this.loadSlip(1);
         if (this.viewBill1) {
+          this.preview1 = null;
           this.bill1Paid = true;
           this.activeTab = 2;
         }
