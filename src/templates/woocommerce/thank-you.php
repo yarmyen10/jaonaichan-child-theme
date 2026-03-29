@@ -122,7 +122,7 @@ get_header();
           <div class="flex flex-col gap-4">
             <!-- {{-- QR Code --}} -->
             <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
-              <div class="relative w-50 h-50">
+              <div class="relative w-60 h-full">
                 <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                 <?php
                     $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;

@@ -344,6 +344,15 @@
   .w-50 {
     width: calc(var(--spacing) * 50);
   }
+  .w-60 {
+    width: calc(var(--spacing) * 60);
+  }
+  .w-70 {
+    width: calc(var(--spacing) * 70);
+  }
+  .w-80 {
+    width: calc(var(--spacing) * 80);
+  }
   .w-full {
     width: 100%;
   }
@@ -488,6 +497,9 @@
   }
   .bg-amber-400 {
     background-color: var(--color-amber-400);
+  }
+  .bg-black {
+    background-color: var(--color-black);
   }
   .bg-black\/60 {
     background-color: color-mix(in srgb, #000 60%, transparent);
