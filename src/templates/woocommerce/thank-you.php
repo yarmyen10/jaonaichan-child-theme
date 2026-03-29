@@ -80,14 +80,14 @@ get_header();
             <?php if ( $order ) : ?>
               <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
                 <?php foreach ( $order->get_items() as $item ) :
-                    $product = $item->get_product();
-                    // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
-                    $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
+                  $product = $item->get_product();
+                  // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
+                  $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
 
-                    // Fallback ถ้าไม่มี
-                    if ( ! $img_url ) {
-                        $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
-                    }
+                  // Fallback ถ้าไม่มี
+                  if ( ! $img_url ) {
+                      $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                  }
                 ?>
                   <div class="flex items-center gap-3">
                     <?php if ( $img_url ) : ?>
@@ -122,22 +122,36 @@ get_header();
           <div class="flex flex-col gap-4">
             <!-- {{-- QR Code --}} -->
             <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
-                <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="w-full h-full object-cover">
+              <div class="relative w-50 h-50">
+                <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                 <?php
                     $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
                     $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
                     $amount  = $order ? $order->get_total() : 0;
                     $qr_url  = PromptPay_QR_Generator::generate($phone, $amount);
                 ?>
-                <div class="w-50 h-50 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
+                <div class="bg-white border border-gray-200 rounded-lg flex items-center justify-center">
                     <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
                 </div>
-                <span class="text-lg font-medium text-gray-900">
-                    ฿<?= number_format($amount, 2) ?>
-                </span>
-                <span class="text-xs text-gray-400">
-                    PromptPay QR : <?= esc_html($phone) ?>
-                </span>
+
+                <!-- Watermark ชำระแล้ว -->
+                <div
+                    x-show="bill1Paid"
+                    class="absolute inset-0 flex items-center justify-center rounded-lg"
+                    style="background: rgba(255,255,255,0.75);"
+                >
+                    <div class="rotate-[-20deg] border-4 border-emerald-500 rounded-lg px-4 py-2 text-center">
+                        <p class="text-emerald-600 font-bold text-xl tracking-widest">ชำระแล้ว</p>
+                        <p class="text-emerald-500 text-xs">PAID</p>
+                    </div>
+                </div>
+              </div>
+              <span class="text-lg font-medium text-gray-900">
+                  ฿<?= number_format($amount, 2) ?>
+              </span>
+              <span class="text-xs text-gray-400">
+                  PromptPay QR : <?= esc_html($phone) ?>
+              </span>
             </div>
 
             <!-- {{-- Upload Bill 1 --}} -->
@@ -274,6 +288,17 @@ get_header();
     </div>
 
   </div>
+
+  <!-- Modal ดูสลิป -->
+  <div
+      x-show="slipModal"
+      x-transition
+      @click="slipModal = false"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 cursor-pointer"
+  >
+      <img :src="slipModalUrl" class="max-w-sm max-h-[80vh] rounded-xl shadow-xl object-contain" @click.stop>
+  </div>
+
 </main>
 <script>
 function billTabs() {
@@ -286,6 +311,9 @@ function billTabs() {
     preview2: null,
     viewBill1: null,
     viewBill2: null,
+
+    slipModal: false,
+    slipModalUrl: null,
 
     async init() {
       try {
@@ -359,7 +387,12 @@ function billTabs() {
     payBill2() {
       if (!this.preview2) return;
       this.bill2Paid = true;
-    }
+    },
+
+    openSlip(url) {
+      this.slipModalUrl = url;
+      this.slipModal    = true;
+    },
   }
 }
 </script>
