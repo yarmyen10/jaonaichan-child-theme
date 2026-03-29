@@ -140,9 +140,9 @@ get_header();
                     class="absolute inset-0 flex items-center justify-center"
                     style="background: rgba(255,255,255,0.75);"
                 >
-                    <div class="rotate-[20deg] border-4 border-emerald-500 rounded-lg px-4 py-2 text-center">
-                        <p class="text-emerald-600 font-bold !text-3xl tracking-widest">ชำระแล้ว</p>
-                        <p class="text-emerald-500 !text-xl">PAID</p>
+                    <div class="rotate-[20deg] border-5 border-emerald-500 rounded-lg px-4 py-2 text-center">
+                        <p class="text-emerald-600 !font-bold !text-3xl tracking-widest !mb-0 !mt-[1.75em]">ชำระแล้ว</p>
+                        <p class="text-emerald-500 !font-bold !text-xl">PAID</p>
                     </div>
                 </div>
               </div>

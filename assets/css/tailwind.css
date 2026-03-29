@@ -246,6 +246,15 @@
   .my-12 {
     margin-block: calc(var(--spacing) * 12);
   }
+  .\!mt-1 {
+    margin-top: calc(var(--spacing) * 1) !important;
+  }
+  .\!mt-\[1\.75em\] {
+    margin-top: 1.75em !important;
+  }
+  .\!mt-\[1\.75rem\] {
+    margin-top: 1.75rem !important;
+  }
   .mt-1 {
     margin-top: calc(var(--spacing) * 1);
   }
@@ -453,6 +462,10 @@
     border-style: var(--tw-border-style);
     border-width: 4px;
   }
+  .border-5 {
+    border-style: var(--tw-border-style);
+    border-width: 5px;
+  }
   .border-\[2\.5px\] {
     border-style: var(--tw-border-style);
     border-width: 2.5px;
@@ -625,6 +638,10 @@
   .text-xs {
     font-size: var(--text-xs);
     line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+  .\!font-bold {
+    --tw-font-weight: var(--font-weight-bold) !important;
+    font-weight: var(--font-weight-bold) !important;
   }
   .font-bold {
     --tw-font-weight: var(--font-weight-bold);
