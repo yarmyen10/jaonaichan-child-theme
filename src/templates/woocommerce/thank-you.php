@@ -12,7 +12,7 @@ get_header();
 <main x-data="billTabs()" class="w-full mx-auto px-12 py-12 my-12 bg-[#ffffff]">
 
   <?php
-    $color = '#4f46e5';
+    $color = '#FB5FAB';
     include get_stylesheet_directory() . '/src/templates/spinner.php';
   ?>
 
