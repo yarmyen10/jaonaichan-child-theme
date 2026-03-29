@@ -12,7 +12,7 @@ get_header();
 <main x-data="billTabs()" class="w-full mx-auto px-12 py-12 my-12 bg-[#ffffff]">
 
   <?php
-    $color = 'indigo-600';
+    $color = '#4f46e5';
     include get_stylesheet_directory() . '/src/templates/spinner.php';
   ?>
 
@@ -128,7 +128,7 @@ get_header();
                       $amount  = $order ? $order->get_total() : 0;
                       $qr_url  = PromptPay_QR_Generator::generate($phone, $amount);
                   ?>
-                  <div class="w-40 h-40 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
+                  <div class="w-50 h-50 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
                       <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
                   </div>
                   <span class="text-lg font-medium text-gray-900">
