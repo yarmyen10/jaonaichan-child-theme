@@ -193,22 +193,31 @@ get_header();
                 </template>
               </div>
 
-              <button
-                @click="$refs.file1.click()"
-                class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700"
-              >
-                <span x-text="preview1 ? 'เปลี่ยนรูป' : 'เลือกไฟล์'"></span>
-              </button>
+              <!-- ปุ่ม -->
+              <template x-if="!bill1Paid">
+                  <div class="flex flex-col gap-2">
+                      <button @click="$refs.file1.click()"
+                              class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700">
+                          <span x-text="preview1 ? 'เปลี่ยนรูป' : 'เลือกไฟล์'"></span>
+                      </button>
+                      <button
+                          @click="payBill1()"
+                          :disabled="!preview1"
+                          :class="preview1 ? '!bg-gray-900 !text-white' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
+                          class="w-full py-2.5 text-sm font-medium rounded-lg transition-colors"
+                      >
+                          ยืนยันการชำระเงิน
+                      </button>
+                  </div>
+              </template>
 
-              <button
-                x-show="!bill1Paid"
-                @click="payBill1()"
-                :disabled="!preview1"
-                :class="preview1 ? '!bg-gray-900 !text-white' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
-                class="w-full py-2.5 text-sm font-medium rounded-lg transition-colors"
-              >
-                ยืนยันการชำระเงิน
-              </button>
+              <!-- ชำระแล้ว — ดูสลิปได้ -->
+              <template x-if="bill1Paid">
+                  <button @click="viewBill1 && openSlip(viewBill1)"
+                          class="w-full py-2 text-sm bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700">
+                      🧾 ดูสลิปที่แนบ
+                  </button>
+              </template>
 
             </div>
 
@@ -310,7 +319,7 @@ get_header();
       x-show="slipModal"
       x-transition
       @click="slipModal = false"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 cursor-pointer"
+      class="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 cursor-pointer"
   >
       <img :src="slipModalUrl" class="max-w-sm max-h-[80vh] rounded-xl shadow-xl object-contain" @click.stop>
   </div>
