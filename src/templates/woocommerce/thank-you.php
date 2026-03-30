@@ -255,7 +255,51 @@ get_header();
 
           <div class="grid grid-cols-2 gap-6">
 
-            {{-- QR --}}
+          <!-- {{-- รายการสินค้า --}} -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
+            <?php if ( $order ) : ?>
+              <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
+                <?php foreach ( $order->get_items() as $item ) :
+                  $product = $item->get_product();
+                  // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
+                  $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
+
+                  // Fallback ถ้าไม่มี
+                  if ( ! $img_url ) {
+                      $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                  }
+                ?>
+                  <div class="flex items-center gap-3">
+                    <?php if ( $img_url ) : ?>
+                        <img src="<?= esc_url($img_url) ?>"
+                            class="object-cover rounded-lg border border-gray-200" />
+                    <?php endif; ?>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-900">
+                            <?= esc_html( $item->get_name() ) ?>
+                        </p>
+                        <p class="text-xs text-gray-400">
+                            x<?= $item->get_quantity() ?>
+                        </p>
+                    </div>
+                    <p class="text-sm font-medium text-gray-900">
+                        ฿<?= number_format( $item->get_total(), 2 ) ?>
+                    </p>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+
+              <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
+                <span class="text-sm text-gray-500">รวมทั้งหมด</span>
+                <span class="text-sm font-semibold text-gray-900">
+                    ฿<?= number_format( $order->get_total(), 2 ) ?>
+                </span>
+              </div>
+            <?php endif; ?>
+          </div>
+
+            <!-- {{-- QR --}} -->
             <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
               <div class="w-32 h-32 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
                 <svg class="w-16 h-16 text-gray-300" viewBox="0 0 24 24" fill="currentColor">
@@ -266,7 +310,7 @@ get_header();
               <span class="text-xs text-gray-400">PromptPay QR</span>
             </div>
 
-            {{-- Upload Bill 2 --}}
+            <!-- {{-- Upload Bill 2 --}} -->
             <div class="flex flex-col gap-3">
 
               <input type="file" class="hidden" accept="image/*" x-ref="file2" @change="handleFile($event, 2)">
