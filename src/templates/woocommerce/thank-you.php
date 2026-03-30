@@ -255,102 +255,155 @@ get_header();
 
           <div class="grid grid-cols-2 gap-6">
 
-          <!-- {{-- รายการสินค้า --}} -->
-          <div class="bg-gray-50 rounded-lg p-4">
-            <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
-            <?php if ( $order ) : ?>
-              <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
-                <?php foreach ( $order->get_items() as $item ) :
-                  $product = $item->get_product();
-                  // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
-                  $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
+            <!-- {{-- รายการสินค้า --}} -->
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
+              <?php if ( $order ) : ?>
+                <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
+                  <?php foreach ( $order->get_items() as $item ) :
+                    $product = $item->get_product();
+                    // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
+                    $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
 
-                  // Fallback ถ้าไม่มี
-                  if ( ! $img_url ) {
-                      $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
-                  }
-                ?>
-                  <div class="flex items-center gap-3">
-                    <?php if ( $img_url ) : ?>
-                        <img src="<?= esc_url($img_url) ?>"
-                            class="object-cover rounded-lg border border-gray-200" />
-                    <?php endif; ?>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-900">
-                            <?= esc_html( $item->get_name() ) ?>
-                        </p>
-                        <p class="text-xs text-gray-400">
-                            x<?= $item->get_quantity() ?>
-                        </p>
+                    // Fallback ถ้าไม่มี
+                    if ( ! $img_url ) {
+                        $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                    }
+                  ?>
+                    <div class="flex items-center gap-3">
+                      <?php if ( $img_url ) : ?>
+                          <img src="<?= esc_url($img_url) ?>"
+                              class="object-cover rounded-lg border border-gray-200" />
+                      <?php endif; ?>
+                      <div class="flex-1">
+                          <p class="text-sm font-medium text-gray-900">
+                              <?= esc_html( $item->get_name() ) ?>
+                          </p>
+                          <p class="text-xs text-gray-400">
+                              x<?= $item->get_quantity() ?>
+                          </p>
+                      </div>
+                      <p class="text-sm font-medium text-gray-900">
+                          ฿<?= number_format( $item->get_total(), 2 ) ?>
+                      </p>
                     </div>
-                    <p class="text-sm font-medium text-gray-900">
-                        ฿<?= number_format( $item->get_total(), 2 ) ?>
-                    </p>
-                  </div>
-                <?php endforeach; ?>
-              </div>
+                  <?php endforeach; ?>
+                </div>
 
-              <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
-                <span class="text-sm text-gray-500">รวมทั้งหมด</span>
-                <span class="text-sm font-semibold text-gray-900">
-                    ฿<?= number_format( $order->get_total(), 2 ) ?>
-                </span>
-              </div>
-            <?php endif; ?>
-          </div>
+                <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
+                  <span class="text-sm text-gray-500">รวมทั้งหมด</span>
+                  <span class="text-sm font-semibold text-gray-900">
+                      ฿<?= number_format( $order->get_total(), 2 ) ?>
+                  </span>
+                </div>
+              <?php endif; ?>
+            </div>
 
             <!-- {{-- QR --}} -->
-            <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
-              <div class="w-32 h-32 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-                <svg class="w-16 h-16 text-gray-300" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 12h7v7H3v-7zm2 2v3h3v-3H5zm10 0h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm4-4h2v2h-2v-2zm-4-2h2v2h-2v-2z"/>
-                </svg>
-              </div>
-              <span class="text-lg font-medium text-gray-900">฿1,500</span>
-              <span class="text-xs text-gray-400">PromptPay QR</span>
-            </div>
-
-            <!-- {{-- Upload Bill 2 --}} -->
-            <div class="flex flex-col gap-3">
-
-              <input type="file" class="hidden" accept="image/*" x-ref="file2" @change="handleFile($event, 2)">
-
-              <div
-                @click="$refs.file2.click()"
-                class="relative border border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
-                style="height: 140px;"
-              >
-                <template x-if="!preview2">
-                  <div class="flex flex-col items-center justify-center h-full gap-2">
-                    <svg class="w-6 h-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
-                    </svg>
-                    <p class="text-sm text-gray-400">แนบสลิปโอนเงิน</p>
+            <div class="flex flex-col gap-4">
+              <!-- {{-- QR Code --}} -->
+              <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
+                <div class="relative w-60 h-full">
+                  <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
+                  <?php
+                      $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
+                      $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
+                      $amount  = $order ? $order->get_total() : 0;
+                      $qr_url  = PromptPay_QR_Generator::generate($phone, $amount);
+                  ?>
+                  <div class="bg-white border border-gray-200 rounded-lg flex items-center justify-center">
+                      <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
                   </div>
-                </template>
-                <template x-if="preview2">
-                  <img :src="preview2" class="w-full h-full object-cover">
-                </template>
+
+                  <!-- Watermark ชำระแล้ว -->
+                  <div
+                      x-show="bill2Paid"
+                      class="absolute inset-0 flex items-center justify-center"
+                      style="background: rgba(255,255,255,0.75);"
+                  >
+                      <div class="rotate-[-20deg] border-5 border-emerald-500 rounded-lg px-4 py-2 text-center">
+                          <p class="text-emerald-600 !font-bold !text-3xl tracking-widest !mb-0 !mt-[1.75em]">ชำระแล้ว</p>
+                          <p class="text-emerald-500 !font-bold !text-xl">PAID</p>
+                      </div>
+                  </div>
+                </div>
+                <span class="text-lg font-medium text-gray-900">
+                    ฿<?= number_format($amount, 2) ?>
+                </span>
+                <span class="text-xs text-gray-400">
+                    PromptPay QR : <?= esc_html($phone) ?>
+                </span>
               </div>
 
-              <button
-                @click="$refs.file2.click()"
-                class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700"
-              >
-                <span x-text="preview2 ? 'เปลี่ยนรูป' : 'เลือกไฟล์'"></span>
-              </button>
+              <!-- {{-- Upload Bill 2 --}} -->
+              <div class="flex flex-col gap-3">
 
-              <button
-                x-show="!bill2Paid"
-                @click="payBill2()"
-                :disabled="!preview2"
-                :class="preview2 ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
-                class="w-full py-2.5 text-sm font-medium rounded-lg transition-colors"
-              >
-                ยืนยันการชำระเงิน
-              </button>
+                <input type="file" class="hidden" accept="image/*" x-ref="file2" @change="handleFile($event, 2)">
+
+                <div
+                  @click="bill2Paid && viewBill2 ? openSlip(viewBill2) : $refs.file2.click()"
+                  class="relative border-[2.5px] border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
+                  style="height: 140px;"
+                >
+                  <template x-if="!preview2 && !viewBill2">
+                    <div class="flex flex-col items-center justify-center h-full gap-2">
+                      <svg class="w-6 h-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                      </svg>
+                      <p class="text-sm text-gray-400">แนบสลิปโอนเงิน</p>
+                    </div>
+                  </template>
+                  <template x-if="preview2">
+                    <img :src="preview2" class="w-full h-full object-cover">
+                  </template>
+
+                  <template x-if="!preview2 && viewBill2">
+                    <div class="relative w-full h-full">
+                      <img :src="viewBill2" class="w-full h-full object-cover" />
+                      <!-- Badge ชำระแล้ว -->
+                      <div class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
+                        ✓ ชำระแล้ว
+                      </div>
+                      <!-- คลิกเพื่อขยาย -->
+                      <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
+                        <svg class="w-8 h-8 text-white opacity-0 hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- ปุ่ม -->
+                <template x-if="!bill2Paid">
+                    <div class="flex flex-col gap-2">
+                        <button @click="$refs.file2.click()"
+                                class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700">
+                            <span x-text="preview2 ? 'เปลี่ยนรูป' : 'เลือกไฟล์'"></span>
+                        </button>
+                        <button
+                            @click="payBill2()"
+                            :disabled="!preview2"
+                            :class="preview2 ? '!bg-gray-900 !text-white' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
+                            class="w-full py-2.5 text-sm font-medium rounded-lg transition-colors"
+                        >
+                            ยืนยันการชำระเงิน
+                        </button>
+                    </div>
+                </template>
+
+                <!-- ชำระแล้ว — ดูสลิปได้ -->
+                <template x-if="bill2Paid">
+                    <button @click="viewBill2 && openSlip(viewBill2)"
+                            class="w-full py-2 text-sm bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700">
+                        🧾 ดูสลิปที่แนบ
+                    </button>
+                </template>
+
+              </div>
 
             </div>
+
           </div>
         </div>
       </div>
@@ -365,7 +418,7 @@ get_header();
       @click="slipModal = false"
       class="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 cursor-pointer"
   >
-      <img :src="slipModalUrl" class="max-w-sm max-h-[80vh] rounded-xl shadow-xl object-contain" @click.stop>
+    <img :src="slipModalUrl" class="max-w-sm max-h-[80vh] rounded-xl shadow-xl object-contain" @click.stop>
   </div>
 
 </main>
