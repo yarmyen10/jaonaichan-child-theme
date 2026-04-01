@@ -9,6 +9,14 @@ class Auth_API {
     }
 
     public static function register_routes(): void {
+        register_rest_route('bigboss-auth/v1', '/ping', [
+            'methods'  => 'GET',
+            'callback' => function () {
+                return ['ok' => true];
+            },
+            'permission_callback' => '__return_true',
+        ]);
+        
         register_rest_route( 'bigboss-auth/v1', '/signin', [
             'methods'             => 'POST',
             'callback'            => [ self::class, 'signin' ],
