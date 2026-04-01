@@ -9,7 +9,7 @@ class Auth_API {
     }
 
     public static function register_routes(): void {
-        register_rest_route( 'auth/v1', '/signin', [
+        register_rest_route( 'bigboss-auth/v1', '/signin', [
             'methods'             => 'POST',
             'callback'            => [ self::class, 'signin' ],
             'permission_callback' => '__return_true',
@@ -17,7 +17,7 @@ class Auth_API {
     }
 
     /**
-     * POST /wp-json/auth/v1/signin
+     * POST /wp-json/bigboss-auth/v1/signin
      * Body: { "username": "...", "password": "..." }
      */
     public static function signin( WP_REST_Request $request ): WP_REST_Response {

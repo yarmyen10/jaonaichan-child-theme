@@ -20,6 +20,7 @@ $dotenv->load();
 
 // Autoload ทุกไฟล์ใน /src/inc/ ตามลำดับ
 $inc_folders = [
+    '/src/api',
     '/src/inc/i18n',
     '/src/inc/helpers',
     '/src/inc/enqueue',
