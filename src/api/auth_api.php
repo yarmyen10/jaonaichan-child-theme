@@ -13,6 +13,8 @@ class Auth_API {
             $public_routes = [
                 '/bigboss-auth/v1/ping',
                 '/bigboss-auth/v1/signin',
+                'jwt-auth/v1/token',
+                'jwt-auth/v1/token/validate',
             ];
 
             foreach ($public_routes as $public_route) {
