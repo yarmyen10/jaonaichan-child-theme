@@ -5,7 +5,27 @@
 class Auth_API {
 
     public static function init(): void {
-        add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
+        add_action( 'rest_api_init', [ self::class, 'register_routes' ], 10 );
+        add_filter( 'rest_authentication_errors', function ($result) {
+            $route = $_GET['rest_route'] ?? '';
+            $uri   = $_SERVER['REQUEST_URI'] ?? '';
+
+            $public_routes = [
+                '/bigboss-auth/v1/ping',
+                '/bigboss-auth/v1/signin',
+            ];
+
+            foreach ($public_routes as $public_route) {
+                if (
+                    str_contains($route, $public_route) ||
+                    str_contains($uri, '/wp-json' . $public_route)
+                ) {
+                    return null; // bypass auth error ก่อนหน้า
+                }
+            }
+
+            return $result;
+        }, 20 );
     }
 
     public static function register_routes(): void {
@@ -16,7 +36,7 @@ class Auth_API {
             },
             'permission_callback' => '__return_true',
         ]);
-        
+
         register_rest_route( 'bigboss-auth/v1', '/signin', [
             'methods'             => 'POST',
             'callback'            => [ self::class, 'signin' ],
