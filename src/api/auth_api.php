@@ -25,7 +25,7 @@ class Auth_API {
             }
 
             return $result;
-        }, 20 );
+        }, 9999 );
     }
 
     public static function register_routes(): void {
