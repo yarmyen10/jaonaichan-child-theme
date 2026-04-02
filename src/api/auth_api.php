@@ -6,6 +6,12 @@ class Auth_API {
 
     public static function init(): void {
         add_action( 'rest_api_init', [ self::class, 'register_routes' ], 10 );
+        add_filter('jwt_auth_token_before_dispatch', function ($data, $user) {
+            $data['roles'] = $user->roles;                 // เช่น ['administrator']
+            $data['role']  = $user->roles[0] ?? null;     // role แรก
+
+            return $data;
+        }, 10, 2);
         add_filter( 'rest_authentication_errors', function ($result) {
             $route = $_GET['rest_route'] ?? '';
             $uri   = $_SERVER['REQUEST_URI'] ?? '';
