@@ -18,6 +18,8 @@ require_once get_stylesheet_directory() . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable( get_stylesheet_directory() );
 $dotenv->load();
 
+require_once get_stylesheet_directory() . '/src/inc/cors.php';
+
 // Autoload ทุกไฟล์ใน /src/inc/ ตามลำดับ
 $inc_folders = [
     '/src/api',
