@@ -75,7 +75,7 @@ add_filter( 'qm/user_can_view', function( $user_can, $user ) {
     }
 
     return $user_can;
-}, 10, 2 );
+}, 9999, 2 );
 
 /**
  * ลบ Role เมื่อ Theme ถูก Deactivate
