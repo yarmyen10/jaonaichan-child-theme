@@ -109,3 +109,21 @@ function add_custom_status_to_dropdown( $order_statuses ) {
     return $order_statuses;
 }
 add_filter( 'wc_order_statuses', 'add_custom_status_to_dropdown' );
+
+
+// // เพิ่มสีให้กับสถานะ
+// add_filter( 'wc_order_status_classes', 'add_custom_status_color', 10, 2 );
+// function add_custom_status_color( $classes, $status ) {
+//     if ( 'wc-waiting-transfer' === $status ) {
+//         $classes[] = 'status-waiting-transfer'; // เพิ่มคลาสที่เราจะใช้ในการใส่สี
+//     }
+//     return $classes;
+// }
+
+// // ใส่ CSS เพื่อเปลี่ยนสี
+// add_action( 'admin_head', 'custom_admin_status_color' );
+// function custom_admin_status_color() {
+//     echo '<style>
+//         .status-waiting-transfer { background-color: #ffcc00; color: #fff; } /* ใส่สีที่คุณต้องการ */
+//     </style>';
+// }
