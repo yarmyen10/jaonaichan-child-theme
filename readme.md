@@ -1,4 +1,6 @@
 ```bash
+node -v # version 24.14.1
+
 npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/tailwind.css --watch
 
 #
