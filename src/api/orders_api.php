@@ -23,11 +23,270 @@ class Orders_API {
             'callback'            => [ self::class, 'get_order_detail' ],
             'permission_callback' => [ self::class, 'check_permission' ],
         ]);
+
+        // GET /wp-json/jaonaichan/v1/orders/{id}/products
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/products', [
+            'methods'             => 'GET',
+            'callback'            => [ self::class, 'get_order_products' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);
+
+        // -----------------------------------------------------------------------
+        // GET /wp-json/jaonaichan/v1/orders/products
+        //   ?status=processing          (required)
+        //   &format=grouped|flat        (default: grouped)
+        //   &page=1&per_page=10
+        // -----------------------------------------------------------------------
+        register_rest_route( 'jaonaichan/v1', '/orders/products', [
+            'methods'             => 'GET',
+            'callback'            => [ self::class, 'get_products_by_order_status' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'status'   => [
+                    'required'          => true,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => [ self::class, 'validate_order_status' ],
+                ],
+                'format'   => [
+                    'required' => false,
+                    'type'     => 'string',
+                    'default'  => 'grouped',
+                    'enum'     => [ 'grouped', 'flat' ],
+                ],
+                'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
+                'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 10 ],
+            ],
+        ]);
+
+        // PATCH /wp-json/jaonaichan/v1/orders/{id}/status
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/status', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'update_order_status' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'status' => [
+                    'required'          => true,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => [ self::class, 'validate_order_status' ],
+                ],
+            ],
+        ]);
+
+        // PATCH /wp-json/jaonaichan/v1/orders/{id}/note
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/note', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'update_order_note' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'note'             => [ 'required' => true,  'type' => 'string' ],
+                'is_customer_note' => [ 'required' => false, 'type' => 'boolean', 'default' => false ],
+            ],
+        ]);
+
+        // PATCH /wp-json/jaonaichan/v1/orders/{id}/customer
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/customer', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'update_order_customer' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);
+
+        // PATCH /wp-json/jaonaichan/v1/orders/{id}/bill/{bill_number}
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/bill/(?P<bill_number>[12])', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'update_order_bill' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'status'  => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => [ self::class, 'validate_bill_status' ],
+                ],
+                'amount'  => [ 'required' => false, 'type' => 'number' ],
+                'paid_at' => [ 'required' => false, 'type' => 'string' ],
+            ],
+        ]);
     }
 
-    /**
-     * GET Orders — พร้อม Paging
-     */
+    // =========================================================================
+    // GET /orders/products?status=...&format=grouped|flat
+    // =========================================================================
+
+    public static function get_products_by_order_status( WP_REST_Request $request ): WP_REST_Response {
+        $status   = $request->get_param('status');
+        $format   = $request->get_param('format');   // 'grouped' | 'flat'
+        $page     = max( 1, (int) $request->get_param('page') );
+        $per_page = min( 50, (int) $request->get_param('per_page') );
+
+        // ดึง orders ตาม status + paging
+        $orders = wc_get_orders([
+            'status'  => $status,
+            'limit'   => $per_page,
+            'offset'  => ( $page - 1 ) * $per_page,
+            'orderby' => 'date',
+            'order'   => 'DESC',
+        ]);
+
+        $total_orders = wc_get_orders([
+            'status' => $status,
+            'limit'  => -1,
+            'return' => 'ids',
+        ]);
+
+        $data = $format === 'flat'
+            ? self::build_flat( $orders )
+            : self::build_grouped( $orders );
+
+        return new WP_REST_Response([
+            'format'     => $format,
+            'status'     => $status,
+            'data'       => $data,
+            'pagination' => [
+                'page'        => $page,
+                'per_page'    => $per_page,
+                'total'       => count( $total_orders ),
+                'total_pages' => ceil( count( $total_orders ) / $per_page ),
+            ],
+        ], 200);
+    }
+
+    // -------------------------------------------------------------------------
+    // grouped: แต่ละ order มี items ของตัวเอง
+    // -------------------------------------------------------------------------
+    // Response:
+    // [
+    //   {
+    //     "order_id": 101, "order_number": "#101", "status": "processing",
+    //     "order_total": 5000, "bill1": {...}, "bill2": {...},
+    //     "customer": { "name": "...", "email": "..." },
+    //     "items": [ { item + product }, ... ]
+    //   },
+    //   ...
+    // ]
+    // -------------------------------------------------------------------------
+
+    private static function build_grouped( array $orders ): array {
+        return array_map( function( WC_Order $order ) {
+            $order_id = $order->get_id();
+            return [
+                'order_id'     => $order_id,
+                'order_number' => $order->get_order_number(),
+                'status'       => $order->get_status(),
+                'order_total'  => (float) $order->get_total(),
+                'date'         => $order->get_date_created()?->date('Y-m-d H:i:s'),
+                'customer'     => [
+                    'id'    => $order->get_customer_id(),
+                    'name'  => $order->get_formatted_billing_full_name(),
+                    'email' => $order->get_billing_email(),
+                    'phone' => $order->get_billing_phone(),
+                ],
+                'bill1' => [
+                    'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                    'amount'  => (float) get_post_meta( $order_id, '_bill1_amount', true ),
+                    'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
+                ],
+                'bill2' => [
+                    'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                    'amount'  => (float) get_post_meta( $order_id, '_bill2_amount', true ),
+                    'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
+                ],
+                'items' => array_values( array_filter(
+                    array_map( fn( $item ) => self::format_order_item( $item ), $order->get_items() )
+                )),
+            ];
+        }, $orders );
+    }
+
+    // -------------------------------------------------------------------------
+    // flat: รวม products ทุก order เป็น list เดียว พร้อมอ้างอิง order_id
+    // -------------------------------------------------------------------------
+    // Response:
+    // [
+    //   {
+    //     "order_id": 101, "order_number": "#101", "order_status": "processing",
+    //     "item_id": 55, "name": "สินค้า A", "quantity": 2, "total": 2000,
+    //     "bill1_status": "paid", "bill2_status": "pending",
+    //     "product": { ... }
+    //   },
+    //   ...
+    // ]
+    // -------------------------------------------------------------------------
+
+    private static function build_flat( array $orders ): array {
+        $flat = [];
+
+        foreach ( $orders as $order ) {
+            $order_id     = $order->get_id();
+            $bill1_status = get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending';
+            $bill2_status = get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending';
+
+            foreach ( $order->get_items() as $item ) {
+                $formatted = self::format_order_item( $item );
+                if ( ! $formatted ) continue;
+
+                $flat[] = array_merge(
+                    [
+                        'order_id'     => $order_id,
+                        'order_number' => $order->get_order_number(),
+                        'order_status' => $order->get_status(),
+                        'order_date'   => $order->get_date_created()?->date('Y-m-d H:i:s'),
+                        'bill1_status' => $bill1_status,
+                        'bill2_status' => $bill2_status,
+                    ],
+                    $formatted
+                );
+            }
+        }
+
+        return $flat;
+    }
+
+    // =========================================================================
+    // GET /orders/{id}/products
+    // =========================================================================
+
+    public static function get_order_products( WP_REST_Request $request ): WP_REST_Response {
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
+
+        $order_id     = $order->get_id();
+        $bill1_amount = (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 );
+        $order_total  = (float) $order->get_total();
+
+        $items = array_values( array_filter(
+            array_map( fn( $item ) => self::format_order_item( $item ), $order->get_items() )
+        ));
+
+        return new WP_REST_Response([
+            'order_id'     => $order_id,
+            'order_total'  => $order_total,
+            'bill1_amount' => $bill1_amount,
+            'bill2_amount' => round( $order_total - $bill1_amount, 2 ),
+            'bill1'        => [
+                'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                'amount'  => $bill1_amount,
+                'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
+            ],
+            'bill2'        => [
+                'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                'amount'  => get_post_meta( $order_id, '_bill2_amount', true ),
+                'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
+            ],
+            'items_summary' => [
+                'count'     => count( $items ),
+                'subtotal'  => array_sum( array_column( $items, 'subtotal' ) ),
+                'total_qty' => array_sum( array_column( $items, 'quantity' ) ),
+            ],
+            'items'        => $items,
+        ], 200);
+    }
+
+    // =========================================================================
+    // GET /orders & /orders/{id}
+    // =========================================================================
+
     public static function get_orders( WP_REST_Request $request ): WP_REST_Response {
         $page     = max( 1, (int) $request->get_param('page')     ?: 1 );
         $per_page = min( 50, (int) $request->get_param('per_page') ?: 10 );
@@ -41,59 +300,198 @@ class Orders_API {
             'status'  => $status,
         ]);
 
-        // นับจำนวนทั้งหมด
         $total = wc_get_orders([
             'limit'  => -1,
             'status' => $status,
             'return' => 'ids',
         ]);
 
-        $data = array_map( fn($order) => self::format_order( $order ), $orders );
-
         return new WP_REST_Response([
-            'data'       => $data,
+            'data'       => array_map( fn( $o ) => self::format_order( $o ), $orders ),
             'pagination' => [
                 'page'        => $page,
                 'per_page'    => $per_page,
-                'total'       => count($total),
-                'total_pages' => ceil( count($total) / $per_page ),
+                'total'       => count( $total ),
+                'total_pages' => ceil( count( $total ) / $per_page ),
             ],
         ], 200);
     }
 
-    /**
-     * GET Order Detail — พร้อมรูปสินค้า
-     */
     public static function get_order_detail( WP_REST_Request $request ): WP_REST_Response {
-        $order_id = absint( $request['id'] );
-        $order    = wc_get_order( $order_id );
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
 
-        if ( ! $order ) {
-            return new WP_REST_Response([
-                'success' => false,
-                'message' => 'ไม่พบ Order',
-            ], 404);
-        }
-
-        return new WP_REST_Response(
-            self::format_order( $order, true ), // true = include items
-            200
-        );
+        return new WP_REST_Response( self::format_order( $order, true ), 200 );
     }
 
-    /**
-     * Format Order Data
-     */
+    // =========================================================================
+    // PATCH handlers
+    // =========================================================================
+
+    public static function update_order_status( WP_REST_Request $request ): WP_REST_Response {
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
+
+        $new_status = $request->get_param('status');
+        $order->update_status( $new_status, '', true );
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => "อัปเดต status เป็น {$new_status} แล้ว",
+            'data'    => self::format_order( $order ),
+        ], 200);
+    }
+
+    public static function update_order_note( WP_REST_Request $request ): WP_REST_Response {
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
+
+        $note             = sanitize_textarea_field( $request->get_param('note') );
+        $is_customer_note = (bool) $request->get_param('is_customer_note');
+        $note_id          = $order->add_order_note( $note, $is_customer_note, true );
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'เพิ่ม Note แล้ว',
+            'note_id' => $note_id,
+        ], 200);
+    }
+
+    public static function update_order_customer( WP_REST_Request $request ): WP_REST_Response {
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
+
+        $allowed = [
+            'first_name', 'last_name', 'email', 'phone',
+            'address_1', 'address_2', 'city', 'state', 'postcode', 'country',
+        ];
+
+        $updated = [];
+        foreach ( $allowed as $field ) {
+            $value = $request->get_param( $field );
+            if ( ! is_null( $value ) ) {
+                $setter = "set_billing_{$field}";
+                if ( method_exists( $order, $setter ) ) {
+                    $order->$setter( sanitize_text_field( $value ) );
+                    $updated[] = $field;
+                }
+            }
+        }
+
+        if ( empty( $updated ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่มี field ที่ส่งมา' ], 400);
+        }
+
+        $order->save();
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'อัปเดตข้อมูลลูกค้าแล้ว',
+            'updated' => $updated,
+            'data'    => self::format_order( $order ),
+        ], 200);
+    }
+
+    public static function update_order_bill( WP_REST_Request $request ): WP_REST_Response {
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
+
+        $bill_number = $request['bill_number'];
+        $order_id    = $order->get_id();
+        $updated     = [];
+
+        $field_map = [
+            'status'  => "_bill{$bill_number}_status",
+            'amount'  => "_bill{$bill_number}_amount",
+            'paid_at' => "_bill{$bill_number}_paid_at",
+        ];
+
+        foreach ( $field_map as $param => $meta_key ) {
+            $value = $request->get_param( $param );
+            if ( ! is_null( $value ) ) {
+                update_post_meta( $order_id, $meta_key, sanitize_text_field( $value ) );
+                $updated[ $param ] = $value;
+            }
+        }
+
+        if ( empty( $updated ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่มี field ที่ส่งมา' ], 400);
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => "อัปเดต Bill {$bill_number} แล้ว",
+            'updated' => $updated,
+        ], 200);
+    }
+
+    // =========================================================================
+    // Format helpers
+    // =========================================================================
+
+    private static function format_order_item( WC_Order_Item $item ): ?array {
+        /** @var WC_Order_Item_Product $item */
+        $product = $item->get_product();
+        if ( ! $product ) return null;
+
+        $image_id   = $product->get_image_id();
+        $qty        = $item->get_quantity();
+        $subtotal   = (float) $item->get_subtotal();
+        $total      = (float) $item->get_total();
+        $unit_price = $qty > 0 ? round( $total / $qty, 4 ) : 0;
+
+        $variation_data = [];
+        if ( $item instanceof WC_Order_Item_Product ) {
+            $variation_data = array_map( fn( $meta ) => [
+                'key'   => $meta->display_key,
+                'value' => $meta->display_value,
+            ], $item->get_formatted_meta_data('') );
+        }
+
+        return [
+            'item_id'    => $item->get_id(),
+            'name'       => $item->get_name(),
+            'quantity'   => $qty,
+            'unit_price' => $unit_price,
+            'subtotal'   => $subtotal,
+            'total'      => $total,
+            'discount'   => round( $subtotal - $total, 2 ),
+            'variation'  => array_values( $variation_data ),
+            'product'    => [
+                'id'            => $product->get_id(),
+                'type'          => $product->get_type(),
+                'name'          => $product->get_name(),
+                'sku'           => $product->get_sku(),
+                'price'         => (float) $product->get_price(),
+                'regular_price' => (float) $product->get_regular_price(),
+                'sale_price'    => (float) $product->get_sale_price(),
+                'stock'         => $product->get_stock_quantity(),
+                'stock_status'  => $product->get_stock_status(),
+                'categories'    => wp_get_post_terms( $product->get_id(), 'product_cat', ['fields' => 'names'] ),
+                'tags'          => wp_get_post_terms( $product->get_id(), 'product_tag', ['fields' => 'names'] ),
+                'attributes'    => self::get_product_attributes( $product ),
+                'permalink'     => get_permalink( $product->get_id() ),
+                'image'         => [
+                    'thumbnail' => wp_get_attachment_image_url( $image_id, 'thumbnail' ),
+                    'medium'    => wp_get_attachment_image_url( $image_id, 'medium' ),
+                    'full'      => wp_get_attachment_image_url( $image_id, 'full' ),
+                ],
+            ],
+        ];
+    }
+
     private static function format_order( WC_Order $order, bool $with_items = false ): array {
+        $order_id = $order->get_id();
+
         $data = [
-            'id'         => $order->get_id(),
-            'number'     => $order->get_order_number(),
-            'status'     => $order->get_status(),
-            'total'      => (float) $order->get_total(),
-            'currency'   => $order->get_currency(),
-            'date'       => $order->get_date_created()?->date('Y-m-d H:i:s'),
+            'id'             => $order_id,
+            'number'         => $order->get_order_number(),
+            'status'         => $order->get_status(),
+            'total'          => (float) $order->get_total(),
+            'currency'       => $order->get_currency(),
+            'date'           => $order->get_date_created()?->date('Y-m-d H:i:s'),
             'payment_method' => $order->get_payment_method(),
-            'customer'   => [
+            'customer'       => [
                 'id'    => $order->get_customer_id(),
                 'name'  => $order->get_formatted_billing_full_name(),
                 'email' => $order->get_billing_email(),
@@ -103,43 +501,59 @@ class Orders_API {
                 'address' => $order->get_formatted_billing_address(),
             ],
             'bill1' => [
-                'status'   => get_post_meta( $order->get_id(), '_bill1_status', true ) ?: 'pending',
-                'amount'   => get_post_meta( $order->get_id(), '_bill1_amount', true ),
-                'paid_at'  => get_post_meta( $order->get_id(), '_bill1_paid_at', true ),
+                'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                'amount'  => get_post_meta( $order_id, '_bill1_amount', true ),
+                'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
             ],
             'bill2' => [
-                'status'   => get_post_meta( $order->get_id(), '_bill2_status', true ) ?: 'pending',
-                'amount'   => get_post_meta( $order->get_id(), '_bill2_amount', true ),
-                'paid_at'  => get_post_meta( $order->get_id(), '_bill2_paid_at', true ),
+                'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                'amount'  => get_post_meta( $order_id, '_bill2_amount', true ),
+                'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
             ],
         ];
 
-        // เพิ่ม Items เฉพาะ Detail Page
         if ( $with_items ) {
-            $data['items'] = array_map( function( $item ) {
-                $product  = $item->get_product();
-                $image_id = $product?->get_image_id();
-
-                return [
-                    'id'       => $item->get_id(),
-                    'name'     => $item->get_name(),
-                    'quantity' => $item->get_quantity(),
-                    'total'    => (float) $item->get_total(),
-                    'product'  => [
-                        'id'    => $product?->get_id(),
-                        'sku'   => $product?->get_sku(),
-                        'stock' => $product?->get_stock_quantity(),
-                        'image' => [
-                            'thumbnail' => wp_get_attachment_image_url( $image_id, 'thumbnail' ),
-                            'medium'    => wp_get_attachment_image_url( $image_id, 'medium' ),
-                            'full'      => wp_get_attachment_image_url( $image_id, 'full' ),
-                        ],
-                    ],
-                ];
-            }, array_values( $order->get_items() ) );
+            $data['items'] = array_values( array_filter(
+                array_map( fn( $item ) => self::format_order_item( $item ), $order->get_items() )
+            ));
         }
 
         return $data;
+    }
+
+    private static function get_product_attributes( WC_Product $product ): array {
+        $attributes = [];
+        foreach ( $product->get_attributes() as $key => $attribute ) {
+            $attributes[] = [
+                'name'   => wc_attribute_label( $key ),
+                'values' => is_array( $attribute->get_options() )
+                    ? $attribute->get_options()
+                    : [ $attribute->get_options() ],
+            ];
+        }
+        return $attributes;
+    }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    private static function get_order_or_fail( $id ): WC_Order|WP_REST_Response {
+        $order = wc_get_order( absint( $id ) );
+        if ( ! $order ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบ Order' ], 404);
+        }
+        return $order;
+    }
+
+    public static function validate_order_status( string $status ): bool {
+        $valid = array_keys( wc_get_order_statuses() );
+        return in_array( $status, $valid, true )
+            || in_array( 'wc-' . $status, $valid, true );
+    }
+
+    public static function validate_bill_status( string $status ): bool {
+        return in_array( $status, [ 'pending', 'paid', 'cancelled' ], true );
     }
 
     public static function check_permission(): bool {
