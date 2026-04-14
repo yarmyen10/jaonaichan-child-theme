@@ -59,6 +59,26 @@ class Orders_API {
             ],
         ]);
 
+        // GET /wp-json/jaonaichan/v1/orders/products/bulk
+        //   ?statuses=processing,completed,on-hold   (คั่นด้วย comma)
+        //   ?statuses=all                             (ทุก status)
+        //   &page=1&per_page=20
+        register_rest_route( 'jaonaichan/v1', '/orders/products/bulk', [
+            'methods'             => 'GET',
+            'callback'            => [ self::class, 'get_products_bulk' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'statuses' => [
+                    'required'          => true,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'description'       => 'comma-separated statuses หรือ "all"',
+                ],
+                'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
+                'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20 ],
+            ],
+        ]);
+
         // PATCH /wp-json/jaonaichan/v1/orders/{id}/status
         register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/status', [
             'methods'             => 'PATCH',
@@ -148,6 +168,117 @@ class Orders_API {
                 'per_page'    => $per_page,
                 'total'       => count( $total_orders ),
                 'total_pages' => ceil( count( $total_orders ) / $per_page ),
+            ],
+        ], 200);
+    }
+
+    // =========================================================================
+    // GET /orders/products/bulk?statuses=processing,completed&page=1
+    // =========================================================================
+
+    public static function get_products_bulk( WP_REST_Request $request ): WP_REST_Response {
+        $page     = max( 1, (int) $request->get_param('page') );
+        $per_page = min( 50, (int) $request->get_param('per_page') );
+        $raw      = $request->get_param('statuses');
+
+        // แปลง statuses
+        if ( $raw === 'all' ) {
+            $statuses = 'any';
+        } else {
+            // รองรับทั้ง "processing" และ "wc-processing"
+            $statuses = array_filter(
+                array_map( 'trim', explode( ',', $raw ) )
+            );
+
+            // validate แต่ละ status
+            $invalid = array_filter( $statuses, fn( $s ) => ! self::validate_order_status( $s ) );
+            if ( ! empty( $invalid ) ) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'message' => 'status ไม่ถูกต้อง: ' . implode( ', ', $invalid ),
+                    'valid_statuses' => array_keys( wc_get_order_statuses() ),
+                ], 400);
+            }
+        }
+
+        // ดึง orders
+        $orders = wc_get_orders([
+            'status'  => $statuses,
+            'limit'   => $per_page,
+            'offset'  => ( $page - 1 ) * $per_page,
+            'orderby' => 'date',
+            'order'   => 'DESC',
+        ]);
+
+        $total_ids = wc_get_orders([
+            'status' => $statuses,
+            'limit'  => -1,
+            'return' => 'ids',
+        ]);
+
+        // build flat list
+        $flat = [];
+        foreach ( $orders as $order ) {
+            $order_id     = $order->get_id();
+            $bill1_status = get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending';
+            $bill2_status = get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending';
+            $bill1_amount = (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 );
+            $bill2_amount = (float) ( get_post_meta( $order_id, '_bill2_amount', true ) ?: 0 );
+
+            foreach ( $order->get_items() as $item ) {
+                $formatted = self::format_order_item( $item );
+                if ( ! $formatted ) continue;
+
+                $flat[] = array_merge([
+                    'order_id'     => $order_id,
+                    'order_number' => $order->get_order_number(),
+                    'order_status' => $order->get_status(),
+                    'order_date'   => $order->get_date_created()?->date('Y-m-d H:i:s'),
+                    'order_total'  => (float) $order->get_total(),
+                    'customer'     => [
+                        'id'    => $order->get_customer_id(),
+                        'name'  => $order->get_formatted_billing_full_name(),
+                        'email' => $order->get_billing_email(),
+                        'phone' => $order->get_billing_phone(),
+                    ],
+                    'bill1_status' => $bill1_status,
+                    'bill1_amount' => $bill1_amount,
+                    'bill2_status' => $bill2_status,
+                    'bill2_amount' => $bill2_amount,
+                ], $formatted );
+            }
+        }
+
+        // สรุปแยกตาม status
+        $status_summary = [];
+        foreach ( $flat as $row ) {
+            $s = $row['order_status'];
+            if ( ! isset( $status_summary[ $s ] ) ) {
+                $status_summary[ $s ] = [ 'order_count' => 0, 'item_count' => 0, 'total' => 0 ];
+            }
+            $status_summary[ $s ]['item_count']++;
+            $status_summary[ $s ]['total'] += $row['total'];
+        }
+        // นับ order แยก (ไม่ซ้ำ)
+        $seen_orders = [];
+        foreach ( $flat as $row ) {
+            $key = $row['order_status'] . '_' . $row['order_id'];
+            if ( ! isset( $seen_orders[ $key ] ) ) {
+                $seen_orders[ $key ] = true;
+                $status_summary[ $row['order_status'] ]['order_count']++;
+            }
+        }
+
+        return new WP_REST_Response([
+            'statuses'       => $raw,
+            'summary'        => $status_summary,
+            'data'           => $flat,
+            'pagination'     => [
+                'page'        => $page,
+                'per_page'    => $per_page,
+                'total'       => count( $total_ids ),
+                'total_pages' => ceil( count( $total_ids ) / $per_page ),
+                'total_items' => count( $flat ),
             ],
         ], 200);
     }
