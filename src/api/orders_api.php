@@ -10,27 +10,7 @@ class Orders_API {
 
     public static function register_routes(): void {
 
-        // GET /wp-json/jaonaichan/v1/orders?page=1&per_page=10
-        register_rest_route( 'jaonaichan/v1', '/orders', [
-            'methods'             => 'GET',
-            'callback'            => [ self::class, 'get_orders' ],
-            'permission_callback' => [ self::class, 'check_permission' ],
-        ]);
-
-        // GET /wp-json/jaonaichan/v1/orders/{id}
-        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)', [
-            'methods'             => 'GET',
-            'callback'            => [ self::class, 'get_order_detail' ],
-            'permission_callback' => [ self::class, 'check_permission' ],
-        ]);
-
-        // GET /wp-json/jaonaichan/v1/orders/{id}/products
-        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/products', [
-            'methods'             => 'GET',
-            'callback'            => [ self::class, 'get_order_products' ],
-            'permission_callback' => [ self::class, 'check_permission' ],
-        ]);
-
+        // ✅ specific routes ขึ้นก่อน
         // -----------------------------------------------------------------------
         // GET /wp-json/jaonaichan/v1/orders/products
         //   ?status=processing          (required)
@@ -78,6 +58,28 @@ class Orders_API {
                 'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20 ],
             ],
         ]);
+
+        // ✅ wildcard routes ลงหลัง
+        // GET /wp-json/jaonaichan/v1/orders?page=1&per_page=10
+        register_rest_route( 'jaonaichan/v1', '/orders', [
+            'methods'             => 'GET',
+            'callback'            => [ self::class, 'get_orders' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);
+
+        // GET /wp-json/jaonaichan/v1/orders/{id}
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)', [
+            'methods'             => 'GET',
+            'callback'            => [ self::class, 'get_order_detail' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);
+
+        // GET /wp-json/jaonaichan/v1/orders/{id}/products
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/products', [
+            'methods'             => 'GET',
+            'callback'            => [ self::class, 'get_order_products' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);        
 
         // PATCH /wp-json/jaonaichan/v1/orders/{id}/status
         register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/status', [

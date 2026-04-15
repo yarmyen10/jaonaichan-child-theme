@@ -14,17 +14,17 @@ add_action( 'rest_api_init', function() {
             'https://bigboss.jaonaichan.com',
         ];
 
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $origin = get_http_origin(); // ✅ ใช้ WP function แทน $_SERVER โดยตรง
 
-        if ( in_array( $origin, $allowed_origins ) ) {
+        if ( in_array( $origin, $allowed_origins, true ) ) { // ✅ เพิ่ม strict true
             header( 'Access-Control-Allow-Origin: '      . $origin );
-            header( 'Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS' );
+            header( 'Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS' ); // ✅ เพิ่ม PATCH
             header( 'Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce' );
             header( 'Access-Control-Allow-Credentials: true' );
         }
 
         if ( $_SERVER['REQUEST_METHOD'] === 'OPTIONS' ) {
-            header( 'HTTP/1.1 200 OK' );
+            status_header( 200 ); // ✅ ใช้ WP function แทน header() โดยตรง
             exit();
         }
 
