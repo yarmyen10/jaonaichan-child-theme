@@ -656,14 +656,31 @@ class Orders_API {
 
     private static function get_product_attributes( WC_Product $product ): array {
         $attributes = [];
+
         foreach ( $product->get_attributes() as $key => $attribute ) {
+
+            // ✅ ข้ามถ้าไม่ใช่ object (บาง product เก็บ attribute เป็น string)
+            if ( ! is_object( $attribute ) ) {
+                continue;
+            }
+
+            $options = $attribute->get_options();
+
+            // ✅ get_options() คืน array of term_ids (taxonomy) หรือ array of strings (custom)
+            // ถ้าเป็น taxonomy ต้องแปลงจาก ID → name
+            if ( $attribute->is_taxonomy() ) {
+                $terms   = array_map( fn( $id ) => get_term( $id )?->name ?? $id, $options );
+                $values  = array_filter( $terms );
+            } else {
+                $values  = is_array( $options ) ? $options : [ $options ];
+            }
+
             $attributes[] = [
-                'name'   => wc_attribute_label( $key ),
-                'values' => is_array( $attribute->get_options() )
-                    ? $attribute->get_options()
-                    : [ $attribute->get_options() ],
+                'name'   => wc_attribute_label( $key, $product ),
+                'values' => array_values( $values ),
             ];
         }
+
         return $attributes;
     }
 
