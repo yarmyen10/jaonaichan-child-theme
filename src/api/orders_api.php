@@ -142,7 +142,6 @@ class Orders_API {
         $page     = max( 1, (int) $request->get_param('page') );
         $per_page = min( 50, (int) $request->get_param('per_page') );
 
-        // ดึง orders ตาม status + paging
         $orders = wc_get_orders([
             'status'  => $status,
             'limit'   => $per_page,
@@ -183,27 +182,23 @@ class Orders_API {
         $per_page = min( 50, (int) $request->get_param('per_page') );
         $raw      = $request->get_param('statuses');
 
-        // แปลง statuses
         if ( $raw === 'all' ) {
             $statuses = 'any';
         } else {
-            // รองรับทั้ง "processing" และ "wc-processing"
             $statuses = array_filter(
                 array_map( 'trim', explode( ',', $raw ) )
             );
 
-            // validate แต่ละ status
             $invalid = array_filter( $statuses, fn( $s ) => ! self::validate_order_status( $s ) );
             if ( ! empty( $invalid ) ) {
                 return new WP_REST_Response([
-                    'success' => false,
-                    'message' => 'status ไม่ถูกต้อง: ' . implode( ', ', $invalid ),
+                    'success'        => false,
+                    'message'        => 'status ไม่ถูกต้อง: ' . implode( ', ', $invalid ),
                     'valid_statuses' => array_keys( wc_get_order_statuses() ),
                 ], 400);
             }
         }
 
-        // ดึง orders
         $orders = wc_get_orders([
             'status'  => $statuses,
             'limit'   => $per_page,
@@ -218,35 +213,36 @@ class Orders_API {
             'return' => 'ids',
         ]);
 
-        // build flat list
+        // build flat list — ใช้ field names เดียวกับ format_order()
         $flat = [];
         foreach ( $orders as $order ) {
-            $order_id     = $order->get_id();
-            $bill1_status = get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending';
-            $bill2_status = get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending';
-            $bill1_amount = (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 );
-            $bill2_amount = (float) ( get_post_meta( $order_id, '_bill2_amount', true ) ?: 0 );
+            $order_id = $order->get_id();
 
             foreach ( $order->get_items() as $item ) {
                 $formatted = self::format_order_item( $item );
                 if ( ! $formatted ) continue;
 
                 $flat[] = array_merge([
-                    'order_id'     => $order_id,
-                    'order_number' => $order->get_order_number(),
-                    'order_status' => $order->get_status(),
-                    'order_date'   => $order->get_date_created()?->date('Y-m-d H:i:s'),
-                    'order_total'  => (float) $order->get_total(),
-                    'customer'     => [
+                    'id'       => $order_id,
+                    'number'   => $order->get_order_number(),
+                    'status'   => $order->get_status(),
+                    'date'     => $order->get_date_created()?->date('Y-m-d H:i:s'),
+                    'total'    => (float) $order->get_total(),
+                    'currency' => $order->get_currency(),
+                    'customer' => [
                         'id'    => $order->get_customer_id(),
                         'name'  => $order->get_formatted_billing_full_name(),
                         'email' => $order->get_billing_email(),
                         'phone' => $order->get_billing_phone(),
                     ],
-                    'bill1_status' => $bill1_status,
-                    'bill1_amount' => $bill1_amount,
-                    'bill2_status' => $bill2_status,
-                    'bill2_amount' => $bill2_amount,
+                    'bill1' => [
+                        'status' => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                        'amount' => (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 ),
+                    ],
+                    'bill2' => [
+                        'status' => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                        'amount' => (float) ( get_post_meta( $order_id, '_bill2_amount', true ) ?: 0 ),
+                    ],
                 ], $formatted );
             }
         }
@@ -254,28 +250,27 @@ class Orders_API {
         // สรุปแยกตาม status
         $status_summary = [];
         foreach ( $flat as $row ) {
-            $s = $row['order_status'];
+            $s = $row['status'];
             if ( ! isset( $status_summary[ $s ] ) ) {
                 $status_summary[ $s ] = [ 'order_count' => 0, 'item_count' => 0, 'total' => 0 ];
             }
             $status_summary[ $s ]['item_count']++;
             $status_summary[ $s ]['total'] += $row['total'];
         }
-        // นับ order แยก (ไม่ซ้ำ)
         $seen_orders = [];
         foreach ( $flat as $row ) {
-            $key = $row['order_status'] . '_' . $row['order_id'];
+            $key = $row['status'] . '_' . $row['id'];
             if ( ! isset( $seen_orders[ $key ] ) ) {
                 $seen_orders[ $key ] = true;
-                $status_summary[ $row['order_status'] ]['order_count']++;
+                $status_summary[ $row['status'] ]['order_count']++;
             }
         }
 
         return new WP_REST_Response([
-            'statuses'       => $raw,
-            'summary'        => $status_summary,
-            'data'           => $flat,
-            'pagination'     => [
+            'statuses'   => $raw,
+            'summary'    => $status_summary,
+            'data'       => $flat,
+            'pagination' => [
                 'page'        => $page,
                 'per_page'    => $per_page,
                 'total'       => count( $total_ids ),
@@ -291,8 +286,8 @@ class Orders_API {
     // Response:
     // [
     //   {
-    //     "order_id": 101, "order_number": "#101", "status": "processing",
-    //     "order_total": 5000, "bill1": {...}, "bill2": {...},
+    //     "id": 101, "number": "#101", "status": "processing",
+    //     "total": 5000, "bill1": {...}, "bill2": {...},
     //     "customer": { "name": "...", "email": "..." },
     //     "items": [ { item + product }, ... ]
     //   },
@@ -304,12 +299,13 @@ class Orders_API {
         return array_map( function( WC_Order $order ) {
             $order_id = $order->get_id();
             return [
-                'order_id'     => $order_id,
-                'order_number' => $order->get_order_number(),
-                'status'       => $order->get_status(),
-                'order_total'  => (float) $order->get_total(),
-                'date'         => $order->get_date_created()?->date('Y-m-d H:i:s'),
-                'customer'     => [
+                'id'       => $order_id,
+                'number'   => $order->get_order_number(),
+                'status'   => $order->get_status(),
+                'total'    => (float) $order->get_total(),
+                'currency' => $order->get_currency(),
+                'date'     => $order->get_date_created()?->date('Y-m-d H:i:s'),
+                'customer' => [
                     'id'    => $order->get_customer_id(),
                     'name'  => $order->get_formatted_billing_full_name(),
                     'email' => $order->get_billing_email(),
@@ -333,14 +329,14 @@ class Orders_API {
     }
 
     // -------------------------------------------------------------------------
-    // flat: รวม products ทุก order เป็น list เดียว พร้อมอ้างอิง order_id
+    // flat: รวม products ทุก order เป็น list เดียว พร้อมอ้างอิง id
     // -------------------------------------------------------------------------
     // Response:
     // [
     //   {
-    //     "order_id": 101, "order_number": "#101", "order_status": "processing",
+    //     "id": 101, "number": "#101", "status": "processing", "date": "...",
+    //     "bill1": { "status": "paid" }, "bill2": { "status": "pending" },
     //     "item_id": 55, "name": "สินค้า A", "quantity": 2, "total": 2000,
-    //     "bill1_status": "paid", "bill2_status": "pending",
     //     "product": { ... }
     //   },
     //   ...
@@ -351,9 +347,7 @@ class Orders_API {
         $flat = [];
 
         foreach ( $orders as $order ) {
-            $order_id     = $order->get_id();
-            $bill1_status = get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending';
-            $bill2_status = get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending';
+            $order_id = $order->get_id();
 
             foreach ( $order->get_items() as $item ) {
                 $formatted = self::format_order_item( $item );
@@ -361,12 +355,16 @@ class Orders_API {
 
                 $flat[] = array_merge(
                     [
-                        'order_id'     => $order_id,
-                        'order_number' => $order->get_order_number(),
-                        'order_status' => $order->get_status(),
-                        'order_date'   => $order->get_date_created()?->date('Y-m-d H:i:s'),
-                        'bill1_status' => $bill1_status,
-                        'bill2_status' => $bill2_status,
+                        'id'     => $order_id,
+                        'number' => $order->get_order_number(),
+                        'status' => $order->get_status(),
+                        'date'   => $order->get_date_created()?->date('Y-m-d H:i:s'),
+                        'bill1'  => [
+                            'status' => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                        ],
+                        'bill2'  => [
+                            'status' => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                        ],
                     ],
                     $formatted
                 );
@@ -393,18 +391,16 @@ class Orders_API {
         ));
 
         return new WP_REST_Response([
-            'order_id'     => $order_id,
-            'order_total'  => $order_total,
-            'bill1_amount' => $bill1_amount,
-            'bill2_amount' => round( $order_total - $bill1_amount, 2 ),
-            'bill1'        => [
+            'id'    => $order_id,
+            'total' => $order_total,
+            'bill1' => [
                 'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
                 'amount'  => $bill1_amount,
                 'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
             ],
-            'bill2'        => [
+            'bill2' => [
                 'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
-                'amount'  => get_post_meta( $order_id, '_bill2_amount', true ),
+                'amount'  => round( $order_total - $bill1_amount, 2 ),
                 'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
             ],
             'items_summary' => [
@@ -412,7 +408,7 @@ class Orders_API {
                 'subtotal'  => array_sum( array_column( $items, 'subtotal' ) ),
                 'total_qty' => array_sum( array_column( $items, 'quantity' ) ),
             ],
-            'items'        => $items,
+            'items' => $items,
         ], 200);
     }
 
@@ -635,12 +631,12 @@ class Orders_API {
             ],
             'bill1' => [
                 'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
-                'amount'  => get_post_meta( $order_id, '_bill1_amount', true ),
+                'amount'  => (float) get_post_meta( $order_id, '_bill1_amount', true ),
                 'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
             ],
             'bill2' => [
                 'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
-                'amount'  => get_post_meta( $order_id, '_bill2_amount', true ),
+                'amount'  => (float) get_post_meta( $order_id, '_bill2_amount', true ),
                 'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
             ],
         ];
@@ -669,10 +665,10 @@ class Orders_API {
             // ✅ get_options() คืน array of term_ids (taxonomy) หรือ array of strings (custom)
             // ถ้าเป็น taxonomy ต้องแปลงจาก ID → name
             if ( $attribute->is_taxonomy() ) {
-                $terms   = array_map( fn( $id ) => get_term( $id )?->name ?? $id, $options );
-                $values  = array_filter( $terms );
+                $terms  = array_map( fn( $id ) => get_term( $id )?->name ?? $id, $options );
+                $values = array_filter( $terms );
             } else {
-                $values  = is_array( $options ) ? $options : [ $options ];
+                $values = is_array( $options ) ? $options : [ $options ];
             }
 
             $attributes[] = [
