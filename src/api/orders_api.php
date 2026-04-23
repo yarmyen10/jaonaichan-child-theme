@@ -313,12 +313,17 @@ class Orders_API {
     // =========================================================================
 
     public static function get_products_bulk_by_ids( WP_REST_Request $request ): WP_REST_Response {
-        $page          = max( 1, (int) $request->get_param('page') );
-        $per_page_raw  = $request->get_param('per_page');
-        $per_page      = ( $per_page_raw === null ) ? -1 : max( 1, (int) $per_page_raw ); // -1 = all
+        // Read JSON body directly — get_param() can miss body values when WP REST
+        // resolves defaults before the body is fully merged into the param stack.
+        $body = $request->get_json_params() ?: [];
 
+        $page         = max( 1, (int) ( $body['page']     ?? $request->get_param('page')     ?? 1 ) );
+        $per_page_raw =          $body['per_page'] ?? $request->get_param('per_page');
+        $per_page     = ( $per_page_raw === null ) ? -1 : max( 1, (int) $per_page_raw ); // -1 = all
+
+        $raw_order_ids = $body['order_ids'] ?? $request->get_param('order_ids') ?? [];
         $order_ids = array_values( array_filter(
-            array_map( 'absint', (array) $request->get_param('order_ids') )
+            array_map( 'absint', (array) $raw_order_ids )
         ));
 
         if ( empty( $order_ids ) ) {
@@ -328,7 +333,7 @@ class Orders_API {
             ], 400);
         }
 
-        $raw_statuses  = $request->get_param('statuses');
+        $raw_statuses  = $body['statuses'] ?? $request->get_param('statuses');
         $status_filter = null; // null = no filter
 
         if ( $raw_statuses !== null && $raw_statuses !== '' && $raw_statuses !== 'all' ) {
