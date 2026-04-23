@@ -82,7 +82,7 @@ class Orders_API {
                         'description'       => 'comma-separated statuses หรือ "all" (optional filter)',
                     ],
                     'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
-                    'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => -1 ],
+                    'per_page' => [ 'required' => false, 'type' => 'integer' ],
                 ],
             ],
         ]);
@@ -313,8 +313,9 @@ class Orders_API {
     // =========================================================================
 
     public static function get_products_bulk_by_ids( WP_REST_Request $request ): WP_REST_Response {
-        $page     = max( 1, (int) $request->get_param('page') );
-        $per_page = (int) $request->get_param('per_page'); // -1 = all
+        $page          = max( 1, (int) $request->get_param('page') );
+        $per_page_raw  = $request->get_param('per_page');
+        $per_page      = ( $per_page_raw === null ) ? -1 : max( 1, (int) $per_page_raw ); // -1 = all
 
         $order_ids = array_values( array_filter(
             array_map( 'absint', (array) $request->get_param('order_ids') )
