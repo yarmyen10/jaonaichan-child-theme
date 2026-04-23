@@ -82,7 +82,7 @@ class Orders_API {
                         'description'       => 'comma-separated statuses หรือ "all" (optional filter)',
                     ],
                     'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
-                    'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20 ],
+                    'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => -1 ],
                 ],
             ],
         ]);
@@ -314,7 +314,7 @@ class Orders_API {
 
     public static function get_products_bulk_by_ids( WP_REST_Request $request ): WP_REST_Response {
         $page     = max( 1, (int) $request->get_param('page') );
-        $per_page = min( 100, (int) $request->get_param('per_page') );
+        $per_page = (int) $request->get_param('per_page'); // -1 = all
 
         $order_ids = array_values( array_filter(
             array_map( 'absint', (array) $request->get_param('order_ids') )
@@ -359,7 +359,9 @@ class Orders_API {
         }
 
         $total_count  = count( $all_orders );
-        $paged_orders = array_slice( $all_orders, ( $page - 1 ) * $per_page, $per_page );
+        $paged_orders = $per_page === -1
+            ? $all_orders
+            : array_slice( $all_orders, ( $page - 1 ) * $per_page, $per_page );
 
         $flat = [];
         foreach ( $paged_orders as $order ) {
@@ -419,7 +421,7 @@ class Orders_API {
                 'page'        => $page,
                 'per_page'    => $per_page,
                 'total'       => $total_count,
-                'total_pages' => ceil( $total_count / $per_page ),
+                'total_pages' => $per_page === -1 ? 1 : (int) ceil( $total_count / $per_page ),
                 'total_items' => count( $flat ),
             ],
         ], 200);
