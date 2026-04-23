@@ -327,55 +327,42 @@ class Orders_API {
             ], 400);
         }
 
-        $raw_statuses = $request->get_param('statuses');
-        $statuses     = 'any';
+        $raw_statuses  = $request->get_param('statuses');
+        $status_filter = null; // null = no filter
 
-        if ( $raw_statuses !== null && $raw_statuses !== '' ) {
-            if ( $raw_statuses !== 'all' ) {
-                $parsed  = array_filter( array_map( 'trim', explode( ',', $raw_statuses ) ) );
-                $invalid = array_filter( $parsed, fn( $s ) => ! self::validate_order_status( $s ) );
-                if ( ! empty( $invalid ) ) {
-                    return new WP_REST_Response([
-                        'success'        => false,
-                        'message'        => 'status ไม่ถูกต้อง: ' . implode( ', ', $invalid ),
-                        'valid_statuses' => array_keys( wc_get_order_statuses() ),
-                    ], 400);
-                }
-                $statuses = $parsed;
+        if ( $raw_statuses !== null && $raw_statuses !== '' && $raw_statuses !== 'all' ) {
+            $parsed  = array_filter( array_map( 'trim', explode( ',', $raw_statuses ) ) );
+            $invalid = array_filter( $parsed, fn( $s ) => ! self::validate_order_status( $s ) );
+            if ( ! empty( $invalid ) ) {
+                return new WP_REST_Response([
+                    'success'        => false,
+                    'message'        => 'status ไม่ถูกต้อง: ' . implode( ', ', $invalid ),
+                    'valid_statuses' => array_keys( wc_get_order_statuses() ),
+                ], 400);
             }
+            // Normalize: strip wc- prefix so it matches get_status() output
+            $status_filter = array_map( fn( $s ) => str_replace( 'wc-', '', $s ), $parsed );
         }
 
-        $base_args = [
-            'status'  => $statuses,
-            'orderby' => 'date',
-            'order'   => 'DESC',
-        ];
+        // Fetch each order directly by primary key — works on both CPT and HPOS,
+        // and guarantees the result set matches exactly the requested IDs.
+        $all_orders = array_values( array_filter(
+            array_map( 'wc_get_order', $order_ids ),
+            fn( $o ) => $o instanceof WC_Order
+        ));
 
-        // wc_get_orders 'include' does not reliably produce a WHERE id IN (...)
-        // on all WC versions / storage modes. For CPT store we inject post__in
-        // directly into the WP_Query args via the data-store filter. For HPOS we
-        // pass 'include' (the documented param) and rely on WC to honour it.
-        $cpt_filter = static function ( $wp_args ) use ( $order_ids ) {
-            $wp_args['post__in'] = array_map( 'absint', $order_ids );
-            return $wp_args;
-        };
-        add_filter( 'woocommerce_order_data_store_cpt_get_orders_query', $cpt_filter );
+        if ( $status_filter !== null ) {
+            $all_orders = array_values( array_filter(
+                $all_orders,
+                fn( $o ) => in_array( $o->get_status(), $status_filter, true )
+            ));
+        }
 
-        $orders    = wc_get_orders( array_merge( $base_args, [
-            'include' => $order_ids,
-            'limit'   => $per_page,
-            'offset'  => ( $page - 1 ) * $per_page,
-        ]));
-        $total_ids = wc_get_orders( array_merge( $base_args, [
-            'include' => $order_ids,
-            'limit'   => -1,
-            'return'  => 'ids',
-        ]));
-
-        remove_filter( 'woocommerce_order_data_store_cpt_get_orders_query', $cpt_filter );
+        $total_count  = count( $all_orders );
+        $paged_orders = array_slice( $all_orders, ( $page - 1 ) * $per_page, $per_page );
 
         $flat = [];
-        foreach ( $orders as $order ) {
+        foreach ( $paged_orders as $order ) {
             $order_id = $order->get_id();
 
             foreach ( $order->get_items() as $item ) {
@@ -431,8 +418,8 @@ class Orders_API {
             'pagination' => [
                 'page'        => $page,
                 'per_page'    => $per_page,
-                'total'       => count( $total_ids ),
-                'total_pages' => ceil( count( $total_ids ) / $per_page ),
+                'total'       => $total_count,
+                'total_pages' => ceil( $total_count / $per_page ),
                 'total_items' => count( $flat ),
             ],
         ], 200);
