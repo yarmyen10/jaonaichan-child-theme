@@ -346,20 +346,33 @@ class Orders_API {
         }
 
         $base_args = [
-            'include' => $order_ids,
             'status'  => $statuses,
             'orderby' => 'date',
             'order'   => 'DESC',
         ];
 
+        // wc_get_orders 'include' does not reliably produce a WHERE id IN (...)
+        // on all WC versions / storage modes. For CPT store we inject post__in
+        // directly into the WP_Query args via the data-store filter. For HPOS we
+        // pass 'include' (the documented param) and rely on WC to honour it.
+        $cpt_filter = static function ( $wp_args ) use ( $order_ids ) {
+            $wp_args['post__in'] = array_map( 'absint', $order_ids );
+            return $wp_args;
+        };
+        add_filter( 'woocommerce_order_data_store_cpt_get_orders_query', $cpt_filter );
+
         $orders    = wc_get_orders( array_merge( $base_args, [
-            'limit'  => $per_page,
-            'offset' => ( $page - 1 ) * $per_page,
+            'include' => $order_ids,
+            'limit'   => $per_page,
+            'offset'  => ( $page - 1 ) * $per_page,
         ]));
         $total_ids = wc_get_orders( array_merge( $base_args, [
-            'limit'  => -1,
-            'return' => 'ids',
+            'include' => $order_ids,
+            'limit'   => -1,
+            'return'  => 'ids',
         ]));
+
+        remove_filter( 'woocommerce_order_data_store_cpt_get_orders_query', $cpt_filter );
 
         $flat = [];
         foreach ( $orders as $order ) {
