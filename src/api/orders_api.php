@@ -39,23 +39,51 @@ class Orders_API {
             ],
         ]);
 
-        // GET /wp-json/jaonaichan/v1/orders/products/bulk
+        // GET  /wp-json/jaonaichan/v1/orders/products/bulk
         //   ?statuses=processing,completed,on-hold   (คั่นด้วย comma)
         //   ?statuses=all                             (ทุก status)
         //   &page=1&per_page=20
+        //
+        // POST /wp-json/jaonaichan/v1/orders/products/bulk
+        //   body: { "order_ids": [101,102,...], "statuses": "processing,completed", "page": 1, "per_page": 20 }
+        //   order_ids คือ JSON array ของ integer — ใช้ POST body เพื่อรองรับจำนวนมากโดยไม่ติด URL length limit
+        //   statuses ใน POST เป็น optional filter เสริม
         register_rest_route( 'jaonaichan/v1', '/orders/products/bulk', [
-            'methods'             => 'GET',
-            'callback'            => [ self::class, 'get_products_bulk' ],
-            'permission_callback' => [ self::class, 'check_permission' ],
-            'args'                => [
-                'statuses' => [
-                    'required'          => true,
-                    'type'              => 'string',
-                    'sanitize_callback' => 'sanitize_text_field',
-                    'description'       => 'comma-separated statuses หรือ "all"',
+            [
+                'methods'             => 'GET',
+                'callback'            => [ self::class, 'get_products_bulk' ],
+                'permission_callback' => [ self::class, 'check_permission' ],
+                'args'                => [
+                    'statuses' => [
+                        'required'          => true,
+                        'type'              => 'string',
+                        'sanitize_callback' => 'sanitize_text_field',
+                        'description'       => 'comma-separated statuses หรือ "all"',
+                    ],
+                    'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
+                    'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20 ],
                 ],
-                'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
-                'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20 ],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [ self::class, 'get_products_bulk_by_ids' ],
+                'permission_callback' => [ self::class, 'check_permission' ],
+                'args'                => [
+                    'order_ids' => [
+                        'required'    => true,
+                        'type'        => 'array',
+                        'items'       => [ 'type' => 'integer', 'minimum' => 1 ],
+                        'description' => 'JSON array of order IDs',
+                    ],
+                    'statuses'  => [
+                        'required'          => false,
+                        'type'              => 'string',
+                        'sanitize_callback' => 'sanitize_text_field',
+                        'description'       => 'comma-separated statuses หรือ "all" (optional filter)',
+                    ],
+                    'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
+                    'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20 ],
+                ],
             ],
         ]);
 
@@ -268,6 +296,123 @@ class Orders_API {
 
         return new WP_REST_Response([
             'statuses'   => $raw,
+            'summary'    => $status_summary,
+            'data'       => $flat,
+            'pagination' => [
+                'page'        => $page,
+                'per_page'    => $per_page,
+                'total'       => count( $total_ids ),
+                'total_pages' => ceil( count( $total_ids ) / $per_page ),
+                'total_items' => count( $flat ),
+            ],
+        ], 200);
+    }
+
+    // =========================================================================
+    // POST /orders/products/bulk  — body: { order_ids: [101,102,...], statuses?, page?, per_page? }
+    // =========================================================================
+
+    public static function get_products_bulk_by_ids( WP_REST_Request $request ): WP_REST_Response {
+        $page     = max( 1, (int) $request->get_param('page') );
+        $per_page = min( 100, (int) $request->get_param('per_page') );
+
+        $order_ids = array_values( array_filter(
+            array_map( 'absint', (array) $request->get_param('order_ids') )
+        ));
+
+        if ( empty( $order_ids ) ) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'order_ids ต้องมีค่าอย่างน้อยหนึ่งรายการ',
+            ], 400);
+        }
+
+        $raw_statuses = $request->get_param('statuses');
+        $statuses     = 'any';
+
+        if ( $raw_statuses !== null && $raw_statuses !== '' ) {
+            if ( $raw_statuses !== 'all' ) {
+                $parsed  = array_filter( array_map( 'trim', explode( ',', $raw_statuses ) ) );
+                $invalid = array_filter( $parsed, fn( $s ) => ! self::validate_order_status( $s ) );
+                if ( ! empty( $invalid ) ) {
+                    return new WP_REST_Response([
+                        'success'        => false,
+                        'message'        => 'status ไม่ถูกต้อง: ' . implode( ', ', $invalid ),
+                        'valid_statuses' => array_keys( wc_get_order_statuses() ),
+                    ], 400);
+                }
+                $statuses = $parsed;
+            }
+        }
+
+        $base_args = [
+            'include' => $order_ids,
+            'status'  => $statuses,
+            'orderby' => 'date',
+            'order'   => 'DESC',
+        ];
+
+        $orders    = wc_get_orders( array_merge( $base_args, [
+            'limit'  => $per_page,
+            'offset' => ( $page - 1 ) * $per_page,
+        ]));
+        $total_ids = wc_get_orders( array_merge( $base_args, [
+            'limit'  => -1,
+            'return' => 'ids',
+        ]));
+
+        $flat = [];
+        foreach ( $orders as $order ) {
+            $order_id = $order->get_id();
+
+            foreach ( $order->get_items() as $item ) {
+                $formatted = self::format_order_item( $item );
+                if ( ! $formatted ) continue;
+
+                $flat[] = array_merge([
+                    'id'       => $order_id,
+                    'number'   => $order->get_order_number(),
+                    'status'   => $order->get_status(),
+                    'date'     => $order->get_date_created()?->date('Y-m-d H:i:s'),
+                    'total'    => (float) $order->get_total(),
+                    'currency' => $order->get_currency(),
+                    'customer' => [
+                        'id'    => $order->get_customer_id(),
+                        'name'  => $order->get_formatted_billing_full_name(),
+                        'email' => $order->get_billing_email(),
+                        'phone' => $order->get_billing_phone(),
+                    ],
+                    'bill1' => [
+                        'status' => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                        'amount' => (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 ),
+                    ],
+                    'bill2' => [
+                        'status' => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                        'amount' => (float) ( get_post_meta( $order_id, '_bill2_amount', true ) ?: 0 ),
+                    ],
+                ], $formatted );
+            }
+        }
+
+        $status_summary = [];
+        $seen_orders    = [];
+        foreach ( $flat as $row ) {
+            $s = $row['status'];
+            if ( ! isset( $status_summary[ $s ] ) ) {
+                $status_summary[ $s ] = [ 'order_count' => 0, 'item_count' => 0, 'total' => 0 ];
+            }
+            $status_summary[ $s ]['item_count']++;
+            $status_summary[ $s ]['total'] += $row['total'];
+            $key = $s . '_' . $row['id'];
+            if ( ! isset( $seen_orders[ $key ] ) ) {
+                $seen_orders[ $key ] = true;
+                $status_summary[ $s ]['order_count']++;
+            }
+        }
+
+        return new WP_REST_Response([
+            'order_ids'  => $order_ids,
+            'statuses'   => $raw_statuses,
             'summary'    => $status_summary,
             'data'       => $flat,
             'pagination' => [
