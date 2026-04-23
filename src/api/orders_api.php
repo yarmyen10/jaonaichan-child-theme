@@ -351,28 +351,35 @@ class Orders_API {
             'order'   => 'DESC',
         ];
 
-        // wc_get_orders 'include' does not reliably produce a WHERE id IN (...)
-        // on all WC versions / storage modes. For CPT store we inject post__in
-        // directly into the WP_Query args via the data-store filter. For HPOS we
-        // pass 'include' (the documented param) and rely on WC to honour it.
+        // Force WHERE id IN (...) for both storage modes:
+        // - CPT store  → post__in injected via woocommerce_order_data_store_cpt_get_orders_query
+        // - HPOS store → AND wp_wc_orders.id IN (...) injected via woocommerce_orders_table_query_clauses
+        $ids_sql = implode( ', ', array_map( 'absint', $order_ids ) );
+
         $cpt_filter = static function ( $wp_args ) use ( $order_ids ) {
             $wp_args['post__in'] = array_map( 'absint', $order_ids );
             return $wp_args;
         };
+        $hpos_filter = static function ( $clauses ) use ( $ids_sql ) {
+            global $wpdb;
+            $clauses['where'] .= " AND {$wpdb->prefix}wc_orders.id IN ({$ids_sql})";
+            return $clauses;
+        };
+
         add_filter( 'woocommerce_order_data_store_cpt_get_orders_query', $cpt_filter );
+        add_filter( 'woocommerce_orders_table_query_clauses',             $hpos_filter );
 
         $orders    = wc_get_orders( array_merge( $base_args, [
-            'include' => $order_ids,
-            'limit'   => $per_page,
-            'offset'  => ( $page - 1 ) * $per_page,
+            'limit'  => $per_page,
+            'offset' => ( $page - 1 ) * $per_page,
         ]));
         $total_ids = wc_get_orders( array_merge( $base_args, [
-            'include' => $order_ids,
-            'limit'   => -1,
-            'return'  => 'ids',
+            'limit'  => -1,
+            'return' => 'ids',
         ]));
 
         remove_filter( 'woocommerce_order_data_store_cpt_get_orders_query', $cpt_filter );
+        remove_filter( 'woocommerce_orders_table_query_clauses',             $hpos_filter );
 
         $flat = [];
         foreach ( $orders as $order ) {
