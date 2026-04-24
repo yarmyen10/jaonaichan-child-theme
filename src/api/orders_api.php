@@ -88,11 +88,39 @@ class Orders_API {
         ]);
 
         // ✅ wildcard routes ลงหลัง
-        // GET /wp-json/jaonaichan/v1/orders?page=1&per_page=10
+        // GET /wp-json/jaonaichan/v1/orders?page=1&per_page=10&status=...
+        //   &create_date=dd/mm/yyyy   (exact day)
+        //   &create_date_m=mm         (month only)
+        //   &create_date_y=yyyy       (year only — combinable with create_date_m)
         register_rest_route( 'jaonaichan/v1', '/orders', [
             'methods'             => 'GET',
             'callback'            => [ self::class, 'get_orders' ],
             'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'page'          => [ 'required' => false, 'type' => 'integer', 'default' => 1 ],
+                'per_page'      => [ 'required' => false, 'type' => 'integer', 'default' => 10 ],
+                'status'        => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'create_date'   => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => fn( $v ) => (bool) preg_match( '/^\d{1,2}\/\d{1,2}\/\d{4}$/', $v ),
+                    'description'       => 'dd/mm/yyyy — กรองตามวันที่สร้าง (เฉพาะวัน)',
+                ],
+                'create_date_m' => [
+                    'required'    => false,
+                    'type'        => 'integer',
+                    'minimum'     => 1,
+                    'maximum'     => 12,
+                    'description' => 'เดือน (1-12) — ใช้ร่วมกับ create_date_y ได้',
+                ],
+                'create_date_y' => [
+                    'required'    => false,
+                    'type'        => 'integer',
+                    'minimum'     => 2000,
+                    'description' => 'ปี (yyyy) — ใช้ร่วมกับ create_date_m ได้',
+                ],
+            ],
         ]);
 
         // GET /wp-json/jaonaichan/v1/orders/{id}
@@ -573,19 +601,26 @@ class Orders_API {
         $per_page = min( 50, (int) $request->get_param('per_page') ?: 10 );
         $status   = sanitize_text_field( $request->get_param('status') ?: 'any' );
 
-        $orders = wc_get_orders([
-            'limit'   => $per_page,
-            'offset'  => ( $page - 1 ) * $per_page,
+        $base_args = [
             'orderby' => 'date',
             'order'   => 'DESC',
             'status'  => $status,
-        ]);
+        ];
 
-        $total = wc_get_orders([
+        $date_query = self::build_date_query( $request );
+        if ( $date_query ) {
+            $base_args['date_query'] = $date_query;
+        }
+
+        $orders = wc_get_orders( array_merge( $base_args, [
+            'limit'  => $per_page,
+            'offset' => ( $page - 1 ) * $per_page,
+        ]));
+
+        $total = wc_get_orders( array_merge( $base_args, [
             'limit'  => -1,
-            'status' => $status,
             'return' => 'ids',
-        ]);
+        ]));
 
         return new WP_REST_Response([
             'data'       => array_map( fn( $o ) => self::format_order( $o ), $orders ),
@@ -596,6 +631,23 @@ class Orders_API {
                 'total_pages' => ceil( count( $total ) / $per_page ),
             ],
         ], 200);
+    }
+
+    private static function build_date_query( WP_REST_Request $request ): array {
+        $create_date = $request->get_param('create_date');
+
+        if ( $create_date ) {
+            [ $d, $m, $y ] = explode( '/', $create_date );
+            return [ [ 'year' => (int) $y, 'month' => (int) $m, 'day' => (int) $d ] ];
+        }
+
+        $clause = [];
+        $m = $request->get_param('create_date_m');
+        $y = $request->get_param('create_date_y');
+        if ( $m ) $clause['month'] = (int) $m;
+        if ( $y ) $clause['year']  = (int) $y;
+
+        return $clause ? [ $clause ] : [];
     }
 
     public static function get_order_detail( WP_REST_Request $request ): WP_REST_Response {
