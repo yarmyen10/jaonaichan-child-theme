@@ -38,6 +38,9 @@ $cart_total_raw       = (float) $cart->get_total( 'edit' );
     <?php wp_nonce_field( 'woocommerce-process_checkout', 'woocommerce-process-checkout-nonce' ); ?>
     <input type="hidden" name="ship_to_different_address" value="0">
     <input type="hidden" name="payment_method" :value="selectedMethod">
+    <?php if ( is_user_logged_in() ) : ?>
+      <input type="hidden" name="billing_email" value="<?= esc_attr( $user->user_email ) ?>">
+    <?php endif; ?>
 
     <div class="flex flex-col md:flex-row gap-8 items-start">
 
@@ -56,139 +59,6 @@ $cart_total_raw       = (float) $cart->get_total( 'edit' );
               ) ?>
             </p>
           <?php endif; ?>
-        </div>
-
-        <!-- Billing Info -->
-        <div>
-          <h2 class="text-base font-semibold text-gray-900 mb-4">
-            <?= __( 'ข้อมูลผู้ซื้อ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
-          </h2>
-
-          <div class="flex flex-col gap-3">
-
-            <!-- First + Last name -->
-            <div class="grid grid-cols-2 gap-3">
-              <input
-                type="text"
-                name="billing_first_name"
-                value="<?= $val( 'billing_first_name' ) ?>"
-                placeholder="<?= esc_attr( __( 'ชื่อ', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-                class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-              <input
-                type="text"
-                name="billing_last_name"
-                value="<?= $val( 'billing_last_name' ) ?>"
-                placeholder="<?= esc_attr( __( 'นามสกุล', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-                class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-            </div>
-
-            <!-- Country -->
-            <select
-              name="billing_country"
-              x-model="billingCountry"
-              class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-              <?php foreach ( $countries as $code => $name ) : ?>
-                <option
-                  value="<?= esc_attr( $code ) ?>"
-                  <?= selected( $billing_country_init, $code, false ) ?>
-                >
-                  <?= esc_html( $name ) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-
-            <!-- Address line 1 -->
-            <input
-              type="text"
-              name="billing_address_1"
-              value="<?= $val( 'billing_address_1' ) ?>"
-              placeholder="<?= esc_attr( __( 'บ้านเลขที่ / ถนน', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-              class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-
-            <!-- Sub-district / Tambon -->
-            <input
-              type="text"
-              name="billing_address_2"
-              value="<?= $val( 'billing_address_2' ) ?>"
-              placeholder="<?= esc_attr( __( 'แขวง / ตำบล', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-              class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-
-            <!-- City + State + Postcode -->
-            <div class="grid grid-cols-3 gap-3">
-              <input
-                type="text"
-                name="billing_city"
-                value="<?= $val( 'billing_city' ) ?>"
-                placeholder="<?= esc_attr( __( 'เขต / อำเภอ', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-                class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-
-              <!-- State select for TH -->
-              <select
-                name="billing_state"
-                x-show="billingCountry === 'TH'"
-                :disabled="billingCountry !== 'TH'"
-                class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-                <option value=""><?= __( 'จังหวัด', $_ENV['TEXTDOMAIN_NAME'] ) ?></option>
-                <?php foreach ( $th_states as $code => $name ) : ?>
-                  <option
-                    value="<?= esc_attr( $code ) ?>"
-                    <?= selected( $val( 'billing_state' ), $code, false ) ?>
-                  >
-                    <?= esc_html( $name ) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-
-              <!-- State text for non-TH -->
-              <input
-                type="text"
-                name="billing_state"
-                x-show="billingCountry !== 'TH'"
-                :disabled="billingCountry === 'TH'"
-                value="<?= $billing_country_init !== 'TH' ? $val( 'billing_state' ) : '' ?>"
-                placeholder="<?= esc_attr( __( 'จังหวัด / State', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-                class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-
-              <input
-                type="text"
-                name="billing_postcode"
-                value="<?= $val( 'billing_postcode' ) ?>"
-                placeholder="<?= esc_attr( __( 'รหัสไปรษณีย์', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-                class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-            </div>
-
-            <!-- Phone -->
-            <input
-              type="tel"
-              name="billing_phone"
-              value="<?= $val( 'billing_phone' ) ?>"
-              placeholder="<?= esc_attr( __( 'เบอร์โทรศัพท์', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-              class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-
-            <!-- Email: hidden for logged-in, visible for guests -->
-            <?php if ( is_user_logged_in() ) : ?>
-              <input type="hidden" name="billing_email" value="<?= esc_attr( $user->user_email ) ?>">
-            <?php else : ?>
-              <input
-                type="email"
-                name="billing_email"
-                value="<?= $val( 'billing_email' ) ?>"
-                placeholder="<?= esc_attr( __( 'อีเมล', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-                class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-            <?php endif; ?>
-
-          </div>
         </div>
 
         <!-- Additional Info -->
