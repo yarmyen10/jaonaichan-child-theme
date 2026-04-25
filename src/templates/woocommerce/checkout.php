@@ -20,7 +20,7 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
 
 <main
     x-data="jaoCheckout()"
-    class="max-w-4xl mx-auto px-4 py-8"
+    class="w-full mx-auto px-12 py-12 my-12 bg-[#ffffff]"
 >
   <?php $color = '#FB5FAB'; include get_stylesheet_directory() . '/src/templates/spinner.php'; ?>
 
