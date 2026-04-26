@@ -270,6 +270,7 @@ function jaoCheckout() {
             const form = document.getElementById('jao-checkout-form');
             const data = new URLSearchParams(new FormData(form));
             data.set('payment_method', this.selectedMethod);
+            data.set('status', 'wc-pending-payment-1'); // ตั้งสถานะเริ่มต้นเป็น "รอชำระบิลที่ 1"
 
             try {
                 const res    = await fetch('/?wc-ajax=checkout', {

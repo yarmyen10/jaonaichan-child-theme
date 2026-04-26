@@ -85,10 +85,17 @@ function walkDry(localDir, remoteDir) {
 // ---------- changed-files mode ----------
 
 function getModifiedFiles() {
-  return execSync('git diff --name-only', { cwd: ROOT, encoding: 'utf8' })
+  const modified = execSync('git diff --name-only', { cwd: ROOT, encoding: 'utf8' })
     .trim()
     .split('\n')
     .filter(Boolean);
+
+  const untracked = execSync('git ls-files --others --exclude-standard', { cwd: ROOT, encoding: 'utf8' })
+    .trim()
+    .split('\n')
+    .filter(Boolean);
+
+  return [...new Set([...modified, ...untracked])];
 }
 
 function isSkipped(relPath) {
@@ -138,7 +145,7 @@ async function main() {
       return;
     }
 
-    console.log(`Uploading ${files.length} modified file(s):`);
+    console.log(`Uploading ${files.length} file(s):`);
     for (const f of files) console.log(`  - ${f}`);
     console.log('');
 

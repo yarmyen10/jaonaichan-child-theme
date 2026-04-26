@@ -9,7 +9,8 @@
     "deploy": "node deploy.js",
     "deploy:dry": "node deploy.js --dry-run",
     "deploy:changed": "node deploy.js --changed",
-    "deploy:changed:dry": "node deploy.js --changed --dry-run"
+    "deploy:changed:dry": "node deploy.js --changed --dry-run",
+    "build:mo": "node scripts/build-mo.js"
   },
   "repository": {
     "type": "git",
@@ -28,5 +29,8 @@
     "basic-ftp": "^5.3.0",
     "dotenv": "^17.4.2",
     "tailwindcss": "^4.2.1"
+  },
+  "devDependencies": {
+    "gettext-parser": "^9.0.2"
   }
 }
