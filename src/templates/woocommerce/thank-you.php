@@ -9,7 +9,7 @@
 
 get_header();
 ?>
-<main x-data="billTabs()" class="w-full mx-auto px-12 py-12 my-12 bg-[#ffffff]">
+<main x-data="billTabs()" class="w-full mx-auto px-12 py-12 my-12 rounded-xl bg-[#ffffff]">
 
   <?php
     $color = '#FB5FAB';

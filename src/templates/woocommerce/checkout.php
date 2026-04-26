@@ -18,9 +18,31 @@ $first_gw       = ! empty( $gateways ) ? array_key_first( $gateways ) : '';
 $cart_total_raw = (float) $cart->get_total( 'edit' );
 ?>
 
+<style>
+.jn-checkout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 922px) {
+  .jn-checkout-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+@media (max-width: 921px) {
+  .jn-checkout-heading { font-size: 1rem; }
+  .jn-confirm-btn { font-size: 0.95rem; padding: 0.75rem; }
+}
+@media (min-width: 922px) {
+  .jn-checkout-heading { font-size: 1.125rem; }
+  .jn-confirm-btn { font-size: 1rem; padding: 0.875rem; }
+}
+</style>
+
 <main
     x-data="jaoCheckout()"
-    class="w-full mx-auto px-12 py-12 my-12 bg-[#ffffff]"
+    class="w-full mx-auto px-12 py-12 my-12 rounded-xl bg-[#ffffff]"
 >
   <?php $color = '#FB5FAB'; include get_stylesheet_directory() . '/src/templates/spinner.php'; ?>
 
@@ -37,41 +59,98 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
       <input type="hidden" name="billing_email" value="<?= esc_attr( $user->user_email ) ?>">
     <?php endif; ?>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="jn-checkout-grid">
 
-      <!-- ===== Left Column (col-span-2) ===== -->
-      <div class="md:col-span-2 space-y-6">
+      <!-- ===== Left Column ===== -->
+      <div>
 
-        <!-- Contact -->
-        <div class="bg-white rounded-2xl shadow-sm p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">Contact</h2>
-          <?php if ( is_user_logged_in() ) : ?>
-            <p class="text-sm text-gray-500">
-              <?= sprintf(
-                __( 'Welcome Back %s (%s)', $_ENV['TEXTDOMAIN_NAME'] ),
-                esc_html( $user->display_name ),
-                esc_html( $user->user_email )
-              ) ?>
-            </p>
-          <?php endif; ?>
+        <!-- Order Summary -->
+        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+          <h3 class="jn-checkout-heading font-semibold text-gray-800" style="margin-bottom:1rem;">
+            <?= __( 'สรุปคำสั่งซื้อ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h3>
+
+          <!-- scrollable items container -->
+          <div style="max-height:320px; overflow-y:auto; margin:0 -0.25rem; padding:0 0.25rem;">
+            <?php foreach ( $cart->get_cart() as $cart_item ) :
+              $product   = $cart_item['data'];
+              $qty       = $cart_item['quantity'];
+              $image_id  = $product->get_image_id();
+              $image_url = $image_id
+                ? wp_get_attachment_image_url( $image_id, 'custom-100' )
+                : wc_placeholder_img_src( 'custom-100' );
+            ?>
+              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom:1px solid #f3f4f6;">
+                <img
+                  src="<?= esc_url( $image_url ) ?>"
+                  alt="<?= esc_attr( $product->get_name() ) ?>"
+                  style="width:56px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0;"
+                />
+                <div style="flex:1; min-width:0;">
+                  <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;">
+                    <?= esc_html( $product->get_name() ) ?>
+                  </p>
+                  <p style="font-size:0.75rem; color:#6b7280; margin:0;">x<?= $qty ?></p>
+                </div>
+                <span style="font-size:0.875rem; font-weight:600; white-space:nowrap;">
+                  <?= wc_price( $cart_item['line_total'] ) ?>
+                </span>
+              </div>
+            <?php endforeach; ?>
+          </div>
+
+          <!-- subtotal + totals outside scroll -->
+          <div style="border-top:1px solid #f3f4f6; margin-top:0.5rem; padding-top:0.75rem; display:flex; flex-direction:column; gap:0.375rem;">
+
+            <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#6b7280;">
+              <span><?= __( 'ยอดรวมสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+              <span><?= wc_price( $cart->get_subtotal() ) ?></span>
+            </div>
+
+            <?php if ( $cart->get_shipping_total() > 0 ) : ?>
+            <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#6b7280;">
+              <span><?= __( 'ค่าจัดส่ง', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+              <span><?= wc_price( $cart->get_shipping_total() ) ?></span>
+            </div>
+            <?php endif; ?>
+
+            <?php if ( $cart->get_discount_total() > 0 ) : ?>
+            <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#e53e3e;">
+              <span><?= __( 'ส่วนลด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+              <span>-<?= wc_price( $cart->get_discount_total() ) ?></span>
+            </div>
+            <?php endif; ?>
+
+            <div style="display:flex; justify-content:space-between; font-size:1rem; font-weight:700; padding-top:0.5rem; border-top:1px solid #e5e7eb;">
+              <span><?= __( 'ยอดรวมทั้งหมด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+              <span><?= wc_price( $cart_total_raw ) ?></span>
+            </div>
+
+          </div>
         </div>
 
         <!-- Additional Info -->
-        <div class="bg-white rounded-2xl shadow-sm p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">
+        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+          <h3 class="jn-checkout-heading font-semibold text-gray-800" style="margin-bottom:1rem;">
             <?= __( 'ข้อมูลเพิ่มเติม', $_ENV['TEXTDOMAIN_NAME'] ) ?>
-          </h2>
+          </h3>
           <textarea
             name="order_comments"
-            rows="4"
             placeholder="<?= esc_attr( __( 'หมายเหตุต่างๆ เช่น รายละเอียดการจัดส่ง', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-            class="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-600 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+            class="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-600 resize-none focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px] md:min-h-[120px]"
           ><?= esc_textarea( $checkout->get_value( 'order_comments' ) ?? '' ) ?></textarea>
         </div>
 
-        <!-- Payment Methods -->
-        <div class="bg-white rounded-2xl shadow-sm p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">Payment</h2>
+      </div><!-- /left col -->
+
+      <!-- ===== Right Column (sticky) ===== -->
+      <div class="sticky top-6 self-start">
+
+        <!-- Payment -->
+        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+          <h3 class="jn-checkout-heading font-semibold text-gray-800" style="margin-bottom:1rem;">
+            <?= __( 'Payment', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h3>
 
           <?php if ( ! empty( $gateways ) ) : ?>
             <div class="flex flex-col gap-3">
@@ -93,8 +172,8 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
                     <?php if ( $icon = $gateway->get_icon() ) : ?>
                       <span class="shrink-0 flex items-center"><?= $icon ?></span>
                     <?php endif; ?>
-                    <span class="text-sm font-medium text-gray-800">
-                      <?= esc_html( $gateway->get_title() ) ?>
+                    <span class="text-sm font-medium text-gray-800 [&_img]:inline-block [&_img]:!h-5 [&_img]:!w-auto [&_img]:!mr-2 [&_img]:!align-middle">
+                      <?= wp_kses_post( $gateway->get_title() ) ?>
                     </span>
                   </div>
 
@@ -115,75 +194,8 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
           <?php endif; ?>
         </div>
 
-        <!-- Validation / WC error messages -->
-        <div
-          x-show="errorHtml"
-          x-html="errorHtml"
-          class="text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl px-4 py-3"
-        ></div>
-
-        <!-- Privacy notice + Submit -->
-        <div class="bg-white rounded-2xl shadow-sm p-6">
-          <p class="text-xs text-gray-400 mb-4">
-            <?= sprintf(
-              __( 'Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our %s.', $_ENV['TEXTDOMAIN_NAME'] ),
-              '<a href="' . esc_url( wc_get_page_permalink( 'privacy' ) ) . '" class="text-primary underline">' . __( 'นโยบายความเป็นส่วนตัว', $_ENV['TEXTDOMAIN_NAME'] ) . '</a>'
-            ) ?>
-          </p>
-
-          <button
-            type="submit"
-            :disabled="loading || <?= empty( $gateways ) ? 'true' : 'false' ?>"
-            class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-[#5e9a28] text-white py-3 rounded-xl text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2"/>
-              <path d="M7 11V7a5 5 0 0110 0v4"/>
-            </svg>
-            <?= __( 'Place Order', $_ENV['TEXTDOMAIN_NAME'] ) ?>
-            ฿<?= number_format( $cart_total_raw, 2 ) ?>
-          </button>
-        </div>
-
-      </div><!-- /left col -->
-
-      <!-- ===== Right Column (sticky) ===== -->
-      <div class="space-y-6 md:sticky md:top-8 self-start">
-
-        <!-- Cart items -->
-        <div class="bg-white rounded-2xl shadow-sm p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">สรุปคำสั่งซื้อ</h2>
-          <div class="w-full text-sm divide-y divide-gray-100">
-            <?php foreach ( $cart->get_cart() as $cart_item ) :
-              $product = $cart_item['data'];
-              $qty     = $cart_item['quantity'];
-              $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'woocommerce_thumbnail' )
-                      ?: wc_placeholder_img_src( 'woocommerce_thumbnail' );
-            ?>
-              <div class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <div class="relative shrink-0">
-                  <img
-                    src="<?= esc_url( $img_url ) ?>"
-                    alt="<?= esc_attr( $product->get_name() ) ?>"
-                    class="w-14 h-14 object-cover rounded-lg border border-gray-100"
-                  >
-                  <span class="absolute -top-1.5 -left-1.5 w-5 h-5 flex items-center justify-center bg-primary text-white text-[10px] font-bold rounded-full">
-                    <?= $qty ?>
-                  </span>
-                </div>
-                <p class="flex-1 text-gray-800 line-clamp-2">
-                  <?= esc_html( $product->get_name() ) ?>
-                </p>
-                <p class="font-medium text-gray-900 shrink-0">
-                  ฿<?= number_format( (float) $cart_item['line_total'], 2 ) ?>
-                </p>
-              </div>
-            <?php endforeach; ?>
-          </div>
-        </div>
-
         <!-- Coupon -->
-        <div class="bg-white rounded-2xl shadow-sm p-6">
+        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
           <div class="flex gap-2">
             <input
               type="text"
@@ -204,33 +216,35 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
           <p x-show="couponError" x-text="couponError" class="text-xs text-red-500 mt-1.5"></p>
         </div>
 
-        <!-- Totals -->
-        <div class="bg-white rounded-2xl shadow-sm p-6">
-          <div class="w-full text-sm divide-y divide-gray-100">
-            <div class="flex justify-between pb-2">
-              <span class="text-gray-600"><?= __( 'Subtotal', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
-              <span class="text-primary">฿<?= number_format( (float) $cart->get_subtotal(), 2 ) ?></span>
-            </div>
+        <!-- Validation / WC error messages -->
+        <div
+          x-show="errorHtml"
+          x-html="errorHtml"
+          class="text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl px-4 py-3"
+          style="margin-bottom:1rem;"
+        ></div>
 
-            <?php foreach ( $cart->get_coupons() as $code => $coupon ) : ?>
-              <div class="flex justify-between py-2">
-                <span class="text-gray-500"><?= __( 'Coupon', $_ENV['TEXTDOMAIN_NAME'] ) ?>: <?= esc_html( $code ) ?></span>
-                <span class="text-green-600">- ฿<?= number_format( (float) $cart->get_coupon_discount_amount( $code ), 2 ) ?></span>
-              </div>
-            <?php endforeach; ?>
+        <!-- Submit + Privacy -->
+        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+          <p class="text-xs text-gray-400 mb-4">
+            <?= sprintf(
+              __( 'Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our %s.', $_ENV['TEXTDOMAIN_NAME'] ),
+              '<a href="' . esc_url( wc_get_page_permalink( 'privacy' ) ) . '" class="text-primary underline">' . __( 'นโยบายความเป็นส่วนตัว', $_ENV['TEXTDOMAIN_NAME'] ) . '</a>'
+            ) ?>
+          </p>
 
-            <?php if ( wc_tax_enabled() && $cart->get_taxes_total() > 0 ) : ?>
-              <div class="flex justify-between py-2">
-                <span class="text-gray-500"><?= __( 'Tax', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
-                <span class="text-gray-700">฿<?= number_format( (float) $cart->get_taxes_total(), 2 ) ?></span>
-              </div>
-            <?php endif; ?>
-
-            <div class="flex justify-between pt-3">
-              <span class="font-semibold text-gray-900">Total</span>
-              <span class="font-semibold text-gray-900">฿<?= number_format( $cart_total_raw, 2 ) ?></span>
-            </div>
-          </div>
+          <button
+            type="submit"
+            :disabled="loading || <?= empty( $gateways ) ? 'true' : 'false' ?>"
+            class="jn-confirm-btn w-full flex items-center justify-center gap-2 bg-primary hover:bg-[#5e9a28] text-white rounded-xl font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0110 0v4"/>
+            </svg>
+            <?= __( 'Place Order', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+            <?= wc_price( $cart_total_raw ) ?>
+          </button>
         </div>
 
       </div><!-- /right col -->
