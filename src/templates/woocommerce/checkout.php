@@ -279,9 +279,13 @@ function jaoCheckout() {
                     body:    data.toString(),
                 });
                 const result = await res.json();
+                // console.log('[placeOrder] result.redirect =', result.redirect);
 
                 if (result.result === 'success') {
-                    window.location.href = result.redirect;
+                    const m = result.redirect.match(/order-received\/(\d+)/i);
+                    window.location.href = m
+                        ? '<?= esc_js( home_url( '/thank-you-slave/' ) ) ?>?wcf-order=' + m[1]
+                        : result.redirect;
                 } else {
                     this.errorHtml = result.messages
                         ?? '<?= esc_js( __( 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>';

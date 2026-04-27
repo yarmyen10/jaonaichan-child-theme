@@ -8,12 +8,6 @@ class Theme_Redirect {
      * กำหนด Rules ทั้งหมดตรงนี้ที่เดียว
      */
     private static array $rules = [
-        [
-            'match'    => '/step/thank-you',     // URI ที่ต้องการ match
-            'target'   => '/thank-you-slave/',        // redirect ไปที่ไหน
-            'pass_params' => ['wcf-order'],        // Query params ที่ต้องการส่งต่อ
-            'status'   => 301,
-        ],
         // เพิ่ม rule ใหม่ได้ตรงนี้
         // [
         //     'match'       => '/step/order',

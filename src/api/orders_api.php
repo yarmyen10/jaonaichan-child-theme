@@ -292,12 +292,12 @@ class Orders_API {
                         'phone' => $order->get_billing_phone(),
                     ],
                     'bill1' => [
-                        'status' => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
-                        'amount' => (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 ),
+                        'status' => $order->get_meta( '_bill1_status' ) ?: 'pending',
+                        'amount' => (float) ( $order->get_meta( '_bill1_amount' ) ?: 0 ),
                     ],
                     'bill2' => [
-                        'status' => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
-                        'amount' => (float) ( get_post_meta( $order_id, '_bill2_amount', true ) ?: 0 ),
+                        'status' => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                        'amount' => (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
                     ],
                 ], $formatted );
             }
@@ -414,12 +414,12 @@ class Orders_API {
                         'phone' => $order->get_billing_phone(),
                     ],
                     'bill1' => [
-                        'status' => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
-                        'amount' => (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 ),
+                        'status' => $order->get_meta( '_bill1_status' ) ?: 'pending',
+                        'amount' => (float) ( $order->get_meta( '_bill1_amount' ) ?: 0 ),
                     ],
                     'bill2' => [
-                        'status' => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
-                        'amount' => (float) ( get_post_meta( $order_id, '_bill2_amount', true ) ?: 0 ),
+                        'status' => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                        'amount' => (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
                     ],
                 ], $formatted );
             }
@@ -492,14 +492,14 @@ class Orders_API {
                     'phone' => $order->get_billing_phone(),
                 ],
                 'bill1' => [
-                    'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
-                    'amount'  => (float) get_post_meta( $order_id, '_bill1_amount', true ),
-                    'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
+                    'status'  => $order->get_meta( '_bill1_status' ) ?: 'pending',
+                    'amount'  => (float) $order->get_meta( '_bill1_amount' ),
+                    'paid_at' => $order->get_meta( '_bill1_paid_at' ),
                 ],
                 'bill2' => [
-                    'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
-                    'amount'  => (float) get_post_meta( $order_id, '_bill2_amount', true ),
-                    'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
+                    'status'  => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                    'amount'  => (float) $order->get_meta( '_bill2_amount' ),
+                    'paid_at' => $order->get_meta( '_bill2_paid_at' ),
                 ],
                 'items' => array_values( array_filter(
                     array_map( fn( $item ) => self::format_order_item( $item ), $order->get_items() )
@@ -540,10 +540,10 @@ class Orders_API {
                         'status' => $order->get_status(),
                         'date'   => $order->get_date_created()?->date('Y-m-d H:i:s'),
                         'bill1'  => [
-                            'status' => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                            'status' => $order->get_meta( '_bill1_status' ) ?: 'pending',
                         ],
                         'bill2'  => [
-                            'status' => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                            'status' => $order->get_meta( '_bill2_status' ) ?: 'pending',
                         ],
                     ],
                     $formatted
@@ -563,7 +563,7 @@ class Orders_API {
         if ( $order instanceof WP_REST_Response ) return $order;
 
         $order_id     = $order->get_id();
-        $bill1_amount = (float) ( get_post_meta( $order_id, '_bill1_amount', true ) ?: 0 );
+        $bill1_amount = (float) ( $order->get_meta( '_bill1_amount' ) ?: 0 );
         $order_total  = (float) $order->get_total();
 
         $items = array_values( array_filter(
@@ -574,14 +574,14 @@ class Orders_API {
             'id'    => $order_id,
             'total' => $order_total,
             'bill1' => [
-                'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
+                'status'  => $order->get_meta( '_bill1_status' ) ?: 'pending',
                 'amount'  => $bill1_amount,
-                'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
+                'paid_at' => $order->get_meta( '_bill1_paid_at' ),
             ],
             'bill2' => [
-                'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
+                'status'  => $order->get_meta( '_bill2_status' ) ?: 'pending',
                 'amount'  => round( $order_total - $bill1_amount, 2 ),
-                'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
+                'paid_at' => $order->get_meta( '_bill2_paid_at' ),
             ],
             'items_summary' => [
                 'count'     => count( $items ),
@@ -742,7 +742,7 @@ class Orders_API {
         foreach ( $field_map as $param => $meta_key ) {
             $value = $request->get_param( $param );
             if ( ! is_null( $value ) ) {
-                update_post_meta( $order_id, $meta_key, sanitize_text_field( $value ) );
+                $order->update_meta_data( $meta_key, sanitize_text_field( $value ) );
                 $updated[ $param ] = $value;
             }
         }
@@ -750,6 +750,8 @@ class Orders_API {
         if ( empty( $updated ) ) {
             return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่มี field ที่ส่งมา' ], 400);
         }
+
+        $order->save();
 
         return new WP_REST_Response([
             'success' => true,
@@ -834,14 +836,14 @@ class Orders_API {
                 'address' => $order->get_formatted_billing_address(),
             ],
             'bill1' => [
-                'status'  => get_post_meta( $order_id, '_bill1_status', true ) ?: 'pending',
-                'amount'  => (float) get_post_meta( $order_id, '_bill1_amount', true ),
-                'paid_at' => get_post_meta( $order_id, '_bill1_paid_at', true ),
+                'status'  => $order->get_meta( '_bill1_status' ) ?: 'pending',
+                'amount'  => (float) $order->get_meta( '_bill1_amount' ),
+                'paid_at' => $order->get_meta( '_bill1_paid_at' ),
             ],
             'bill2' => [
-                'status'  => get_post_meta( $order_id, '_bill2_status', true ) ?: 'pending',
-                'amount'  => (float) get_post_meta( $order_id, '_bill2_amount', true ),
-                'paid_at' => get_post_meta( $order_id, '_bill2_paid_at', true ),
+                'status'  => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                'amount'  => (float) $order->get_meta( '_bill2_amount' ),
+                'paid_at' => $order->get_meta( '_bill2_paid_at' ),
             ],
         ];
 
