@@ -80,7 +80,7 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
                 ? wp_get_attachment_image_url( $image_id, 'custom-100' )
                 : wc_placeholder_img_src( 'custom-100' );
             ?>
-              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom:1px solid #f3f4f6;">
+              <div class="border-b border-gray-100 last:border-0" style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0;">
                 <img
                   src="<?= esc_url( $image_url ) ?>"
                   alt="<?= esc_attr( $product->get_name() ) ?>"
