@@ -263,6 +263,18 @@ function jaoCheckout() {
         couponError: '',
         errorHtml: '',
 
+        async init() {
+          try {
+            this.loading = true;
+            console.log('🚧 jaoCheckout init');
+          } catch (error) {
+            
+          } finally {
+            this.loading = false;
+          }
+          
+        },
+
         async placeOrder() {
             this.loading   = true;
             this.errorHtml = '';
