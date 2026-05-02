@@ -111,19 +111,36 @@ function add_custom_status_to_dropdown( $order_statuses ) {
 add_filter( 'wc_order_statuses', 'add_custom_status_to_dropdown' );
 
 
-// // เพิ่มสีให้กับสถานะ
-// add_filter( 'wc_order_status_classes', 'add_custom_status_color', 10, 2 );
-// function add_custom_status_color( $classes, $status ) {
-//     if ( 'wc-waiting-transfer' === $status ) {
-//         $classes[] = 'status-waiting-transfer'; // เพิ่มคลาสที่เราจะใช้ในการใส่สี
-//     }
-//     return $classes;
-// }
+// ใส่สีพื้นหลังให้ badge ของสถานะที่กำหนดเองในหน้า admin
+add_action( 'admin_head', 'jaonaichan_custom_status_badge_colors' );
+function jaonaichan_custom_status_badge_colors() {
+    $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+    if ( $screen && ! in_array( $screen->id, array( 'edit-shop_order', 'shop_order', 'woocommerce_page_wc-orders', 'woocommerce_page_wc-orders--shop_order' ), true ) ) {
+        return;
+    }
+    ?>
+    <style>
+        /* รอโอนเงิน */
+        .order-status.status-waiting-transfer,
+        mark.status-waiting-transfer { background: #f8dda7; color: #94660c; }
 
-// // ใส่ CSS เพื่อเปลี่ยนสี
-// add_action( 'admin_head', 'custom_admin_status_color' );
-// function custom_admin_status_color() {
-//     echo '<style>
-//         .status-waiting-transfer { background-color: #ffcc00; color: #fff; } /* ใส่สีที่คุณต้องการ */
-//     </style>';
-// }
+        /* รอชำระบิลที่ 1 / 2 */
+        .order-status.status-pending-payment-1,
+        mark.status-pending-payment-1 { background: #fdf1d8; color: #94660c; }
+        .order-status.status-pending-payment-2,
+        mark.status-pending-payment-2 { background: #f8dda7; color: #94660c; }
+
+        /* รอตรวจสอบการชำระ ครั้งที่ 1 / 2 */
+        .order-status.status-waiting-verification-1,
+        mark.status-waiting-verification-1 { background: #d4e7ff; color: #1c4a86; }
+        .order-status.status-waiting-verification-2,
+        mark.status-waiting-verification-2 { background: #a9cdff; color: #1c4a86; }
+
+        /* ชำระแล้ว ครั้งที่ 1 / 2 */
+        .order-status.status-paid-1,
+        mark.status-paid-1 { background: #c8e6c9; color: #2e7d32; }
+        .order-status.status-paid-2,
+        mark.status-paid-2 { background: #81c784; color: #1b5e20; }
+    </style>
+    <?php
+}

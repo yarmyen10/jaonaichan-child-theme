@@ -37,7 +37,7 @@ get_header();
         class="flex-1 flex items-center justify-center gap-2 pb-3 text-sm transition-colors cursor-pointer"
       >
         <span :class="bill1Paid ? 'bg-emerald-500' : 'bg-amber-400'" class="inline-block w-2 h-2 rounded-full"></span>
-        บิลแรก
+        Chinees invoice (บิลจีน)
       </div>
 
       <div
@@ -49,7 +49,7 @@ get_header();
         class="flex-1 flex items-center justify-center gap-2 pb-3 text-sm transition-colors"
       >
         <span :class="bill2Paid ? 'bg-emerald-500' : (bill1Paid ? 'bg-amber-400' : 'bg-gray-300')" class="inline-block w-2 h-2 rounded-full"></span>
-        บิลที่สอง
+        Thai invoice (บิลไทย)
         <svg x-show="!bill1Paid" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
           <path d="M7 11V7a5 5 0 0110 0v4"/>

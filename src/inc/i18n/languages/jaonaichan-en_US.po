@@ -3,6 +3,9 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: en_US\n"
 
+msgid "jao nai chan"
+msgstr "jao nai chan"
+
 msgid "รอโอนเงิน"
 msgstr "Waiting Transfer"
 
@@ -23,3 +26,13 @@ msgstr "Paid 1"
 
 msgid "ชำระแล้ว (ครั้งที่ 2)"
 msgstr "Paid 2"
+
+
+msgid "Username or Email"
+msgstr "Username or Email"
+
+msgid "Password"
+msgstr "Password"
+
+msgid "Forgot your password"
+msgstr "Forgot your password"

@@ -3,6 +3,11 @@
  * Template Name: Jaonaichan Checkout
  */
 
+if ( ! is_user_logged_in() ) {
+    wp_safe_redirect( home_url( '/shop-login' ) );
+    exit;
+}
+
 get_header();
 
 if ( ! WC()->cart || WC()->cart->is_empty() ) {
@@ -38,6 +43,8 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
   .jn-checkout-heading { font-size: 1.125rem; }
   .jn-confirm-btn { font-size: 1rem; padding: 0.875rem; }
 }
+
+.cart-item:last-child { border-bottom: none; }
 </style>
 
 <main
@@ -79,8 +86,10 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
               $image_url = $image_id
                 ? wp_get_attachment_image_url( $image_id, 'custom-100' )
                 : wc_placeholder_img_src( 'custom-100' );
+              $items     = $cart->get_cart();
+              $last_key  = array_key_last( $items );
             ?>
-              <div class="border-b border-gray-100 last:border-0" style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0;">
+              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom: <?= $cart_item === end($items) ? 'none' : '1px solid #f3f4f6' ?>;">
                 <img
                   src="<?= esc_url( $image_url ) ?>"
                   alt="<?= esc_attr( $product->get_name() ) ?>"
@@ -290,9 +299,8 @@ function jaoCheckout() {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
                     body:    data.toString(),
                 });
-                const result = await res.json();
-                // console.log('[placeOrder] result.redirect =', result.redirect);
 
+                const result = await res.json();
                 if (result.result === 'success') {
                     const m = result.redirect.match(/order-received\/(\d+)/i);
                     window.location.href = m
