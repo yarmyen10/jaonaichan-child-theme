@@ -294,7 +294,7 @@ function jaoCheckout() {
             data.set('status', 'wc-pending-payment-1'); // ตั้งสถานะเริ่มต้นเป็น "รอชำระบิลที่ 1"
 
             try {
-                const res    = await fetch('/?wc-ajax=checkout', {
+                const res = await fetch('/?wc-ajax=checkout', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
                     body:    data.toString(),
@@ -329,7 +329,7 @@ function jaoCheckout() {
             });
 
             try {
-                const res  = await fetch('/?wc-ajax=apply_coupon', {
+                const res = await fetch('/?wc-ajax=apply_coupon', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
                     body:    data.toString(),

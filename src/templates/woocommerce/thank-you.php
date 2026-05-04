@@ -500,6 +500,8 @@ function billTabs() {
       const res  = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
       const data = await res.json();
 
+      log('🚀 payBill1 result', data);
+
       if (data.success) {
           this.bill1Paid = true;
           this.activeTab = 2;
