@@ -20,8 +20,13 @@ get_header();
     <h2 class="text-2xl font-medium text-gray-900">ขอบคุณสำหรับคำสั่งซื้อ</h2>
     <p class="text-sm text-gray-500 mt-1">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
     <?php
-      $order_id = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
-      $order    = $order_id ? wc_get_order($order_id) : null;
+      $order_id     = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
+      $order        = $order_id ? wc_get_order($order_id) : null;
+      $order_status = $order ? $order->get_status() : '';
+      $bill1_status = $order ? ( $order->get_meta('_bill1_status', true) ?: 'pending' ) : 'pending';
+      $bill2_status = $order ? ( $order->get_meta('_bill2_status', true) ?: 'pending' ) : 'pending';
+      $bill1_paid   = $bill1_status === 'paid';
+      $bill2_paid   = $bill2_status === 'paid';
     ?>
     <span class="inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
       Order #<?= $order ? $order->get_order_number() : $order_id ?>
@@ -427,8 +432,11 @@ function billTabs() {
   return {
     loading: false,
     activeTab: 1,
-    bill1Paid: false,
-    bill2Paid: false,
+    // status ล่าสุดของ order (WC status เช่น wait-verify-1, paid-1, ...)
+    orderStatus: '<?= esc_js( $order_status ) ?>',
+    // ค่าเริ่มต้นมาจาก _bill{N}_status ใน order meta — bill2 จะเปิดให้ก็ต่อเมื่อ bill1Paid
+    bill1Paid: <?= $bill1_paid ? 'true' : 'false' ?>,
+    bill2Paid: <?= $bill2_paid ? 'true' : 'false' ?>,
     preview1: null,
     preview2: null,
     viewBill1: null,
@@ -440,26 +448,22 @@ function billTabs() {
     async init() {
       try {
         this.loading = true;
-        console.log('🚧 billTabs init');
-        this.viewBill1 = await this.loadSlip(1);
-        if (this.viewBill1) {
-          this.preview1 = null;
-          this.bill1Paid = true;
+
+        // ถ้าบิล 1 จ่ายแล้ว (admin approve → _bill1_status = 'paid') ให้เด้งไป tab 2
+        if (this.bill1Paid) {
           this.activeTab = 2;
         }
 
-        if (this.activeTab === 2) {
-          // TODO activeTab 2
+        // โหลดสลิปที่อัปโหลดไว้แล้วเพื่อแสดง preview (ไม่เกี่ยวกับสถานะ paid)
+        this.viewBill1 = await this.loadSlip(1);
+        if (this.bill1Paid) {
+          this.viewBill2 = await this.loadSlip(2);
         }
-
-
-        // this.loadSlip(2).then(url => { this.viewBill2 = url; });
       } catch (error) {
-        
+        console.error('billTabs init error', error);
       } finally {
         this.loading = false;
       }
-      
     },
 
     loadSlip(bill) {
@@ -490,24 +494,32 @@ function billTabs() {
     async payBill1() {
       if (!this.preview1) return;
 
-      const formData = new FormData();
-      formData.append('action',   'promptpay_verify_slip');
-      formData.append('bill', '1');
-      formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
-      formData.append('order_id', '<?= $order_id ?>');
-      formData.append('slip',     this.$refs.file1.files[0]);
+      try {
+        this.loading = true;
+        const formData = new FormData();
+        formData.append('action',   'promptpay_verify_slip');
+        formData.append('bill', '1');
+        formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
+        formData.append('order_id', '<?= $order_id ?>');
+        formData.append('slip',     this.$refs.file1.files[0]);
 
-      const res  = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
-      const data = await res.json();
+        const res  = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
+        const json = await res.json();
 
-      log('🚀 payBill1 result', data);
+        console.log('🚀 payBill1 result', json);
 
-      if (data.success) {
-          this.bill1Paid = true;
-          this.activeTab = 2;
-      } else {
-          alert(data.data.message); // หรือแสดง error ใน UI
-      }
+        if (json.success && json.data.verify) {
+            // TODO: อัปเดตสถานะบิล 1 เป็น paid แล้วให้ user ดูสลิปที่อัปโหลดไปเลย (ไม่ต้องรอ admin approve)
+            // this.bill1Paid = true;
+            // this.activeTab = 1;
+        } else {
+            alert(json.data.message); // หรือแสดง error ใน UI
+        }
+      } catch (error) {
+        console.error('Error occurred while paying bill 1:', error);
+      } finally {
+        this.loading = false;
+      } 
     },
     payBill2() {
       if (!this.preview2) return;

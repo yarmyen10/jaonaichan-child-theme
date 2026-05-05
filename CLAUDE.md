@@ -69,7 +69,7 @@ Stored as WooCommerce post meta on the order; **there is no custom table**. For 
 - `_bill{N}_paid_at`
 
 Custom WC statuses ([src/inc/woocommerce/order-status.php](src/inc/woocommerce/order-status.php), registered on `init` priority 5 *after* textdomain at priority 1):
-`wc-waiting-transfer`, `wc-pending-payment-{1,2}`, `wc-waiting-verification-{1,2}`, `wc-paid-{1,2}`.
+`wc-waiting-transfer`, `wc-pending-payment-{1,2}`, `wc-wait-verify-{1,2}`, `wc-paid-{1,2}`. Slug length matters — WP's `post_status` column is `varchar(20)`, so `wc-waiting-verification-{N}` (25 chars) was truncated and silently broke status matching; the renamed `wc-wait-verify-{N}` (16 chars) fits.
 
 ## Page templates
 
