@@ -10,64 +10,194 @@ $shop_login_image = [
     'alt'    => '',
 ];
 
+// Normalize action — only the four we handle
+$action = sanitize_key( $_GET['action'] ?? 'login' );
+if ( ! in_array( $action, [ 'login', 'lostpassword', 'rp', 'resetpass' ], true ) ) {
+    $action = 'login';
+}
+
 $default_redirect = home_url( '/shop/' );
 
-$self_path   = strtok( $_SERVER['REQUEST_URI'], '?' );
-$redirect_to = '';
-if ( ! empty( $_REQUEST['redirect_to'] ) ) {
-    $candidate = esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) );
-    if ( parse_url( $candidate, PHP_URL_PATH ) !== $self_path ) {
-        $redirect_to = $candidate;
-    }
-} elseif ( $_SERVER['REQUEST_METHOD'] === 'GET' && ! empty( $_SERVER['HTTP_REFERER'] ) ) {
-    $referer  = esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) );
-    $self_url = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'] . strtok( $_SERVER['REQUEST_URI'], '?' );
-    if ( strpos( $referer, $self_url ) !== 0 ) {
-        $redirect_to = $referer;
-    }
-}
-$redirect_to = wp_validate_redirect( $redirect_to, $default_redirect );
-
-// Final guard: ถ้า redirect_to ลงเอยที่ตัว login page เอง → fallback ไปที่ '/' (path ดิบๆ ไม่ผ่าน home_url)
-// เพื่อกัน redirect loop กรณี home_url() ถูก config ผิด
-$rt_path   = parse_url( $redirect_to, PHP_URL_PATH ) ?: '';
-$self_norm = rtrim( $self_path, '/' );
-$rt_norm   = rtrim( $rt_path, '/' );
-if ( $rt_norm === $self_norm ) {
-    $redirect_to = '/';
-}
-
-if ( is_user_logged_in() && ! is_preview() ) {
-    wp_redirect( $redirect_to );
-    exit;
-}
-
+// ── LOGIN ───────────────────────────────────────────────────────────────────
 $login_error = '';
-if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['shop_login_nonce'] ) ) {
-    if ( wp_verify_nonce( $_POST['shop_login_nonce'], 'shop_login' ) ) {
-        $user = wp_signon([
-            'user_login'    => sanitize_text_field( wp_unslash( $_POST['log'] ?? '' ) ),
-            'user_password' => $_POST['pwd'] ?? '',
-            'remember'      => true,
-        ], is_ssl());
-        if ( ! is_wp_error( $user ) ) {
-            // ใช้ $redirect_to ที่คำนวณไว้ด้านบน (จาก redirect_to → HTTP_REFERER → /shop/)
-            $target = $redirect_to;
-            if ( ! headers_sent( $hs_file, $hs_line ) ) {
-                wp_redirect( $target );
+$redirect_to = '';
+$jn_notice   = '';
+
+if ( $action === 'login' ) {
+
+    $self_path   = strtok( $_SERVER['REQUEST_URI'], '?' );
+    $redirect_to = '';
+    if ( ! empty( $_REQUEST['redirect_to'] ) ) {
+        $candidate = esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) );
+        if ( parse_url( $candidate, PHP_URL_PATH ) !== $self_path ) {
+            $redirect_to = $candidate;
+        }
+    } elseif ( $_SERVER['REQUEST_METHOD'] === 'GET' && ! empty( $_SERVER['HTTP_REFERER'] ) ) {
+        $referer  = esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) );
+        $self_url = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'] . strtok( $_SERVER['REQUEST_URI'], '?' );
+        if ( strpos( $referer, $self_url ) !== 0 ) {
+            $redirect_to = $referer;
+        }
+    }
+    $redirect_to = wp_validate_redirect( $redirect_to, $default_redirect );
+
+    // Final guard: ถ้า redirect_to ลงเอยที่ตัว login page เอง → fallback ไปที่ '/' (path ดิบๆ ไม่ผ่าน home_url)
+    // เพื่อกัน redirect loop กรณี home_url() ถูก config ผิด
+    $rt_path   = parse_url( $redirect_to, PHP_URL_PATH ) ?: '';
+    $self_norm = rtrim( $self_path, '/' );
+    $rt_norm   = rtrim( $rt_path, '/' );
+    if ( $rt_norm === $self_norm ) {
+        $redirect_to = '/';
+    }
+
+    if ( is_user_logged_in() && ! is_preview() ) {
+        wp_redirect( $redirect_to );
+        exit;
+    }
+
+    if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['shop_login_nonce'] ) ) {
+        if ( wp_verify_nonce( $_POST['shop_login_nonce'], 'shop_login' ) ) {
+            $user = wp_signon([
+                'user_login'    => sanitize_text_field( wp_unslash( $_POST['log'] ?? '' ) ),
+                'user_password' => $_POST['pwd'] ?? '',
+                'remember'      => true,
+            ], is_ssl());
+            if ( ! is_wp_error( $user ) ) {
+                $target = $redirect_to;
+                if ( ! headers_sent( $hs_file, $hs_line ) ) {
+                    wp_redirect( $target );
+                    exit;
+                }
+                // Fallback: ถ้า headers ส่งไปแล้ว (มี plugin echo ก่อน) → ใช้ JS redirect + แสดง source
+                echo '<!-- DEBUG headers_sent_at: ' . esc_html( $hs_file . ':' . $hs_line ) . ' -->';
+                echo '<script>window.location.replace(' . wp_json_encode( $target ) . ');</script>';
                 exit;
             }
-            // Fallback: ถ้า headers ส่งไปแล้ว (มี plugin echo ก่อน) → ใช้ JS redirect + แสดง source
-            echo '<!-- DEBUG headers_sent_at: ' . esc_html( $hs_file . ':' . $hs_line ) . ' -->';
-            echo '<script>window.location.replace(' . wp_json_encode( $target ) . ');</script>';
-            exit;
+            // DEBUG ชั่วคราว — แสดง error code จริงจาก WP เพื่อหาสาเหตุ
+            $login_error = $user->get_error_code() . ': ' . wp_strip_all_tags( $user->get_error_message() );
+        } else {
+            $login_error = __( 'การยืนยันความปลอดภัยล้มเหลว กรุณาลองใหม่', $_ENV['TEXTDOMAIN_NAME'] );
         }
-        // DEBUG ชั่วคราว — แสดง error code จริงจาก WP เพื่อหาสาเหตุ
-        $login_error = $user->get_error_code() . ': ' . wp_strip_all_tags( $user->get_error_message() );
-    } else {
-        $login_error = __( 'การยืนยันความปลอดภัยล้มเหลว กรุณาลองใหม่', $_ENV['TEXTDOMAIN_NAME'] );
+    }
+
+    // Success/info notices from redirect (password_sent, password_reset)
+    if ( isset( $_GET['jn_notice'] ) ) {
+        $n = sanitize_key( $_GET['jn_notice'] );
+        if ( $n === 'password_sent' )  $jn_notice = __( 'ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว', $_ENV['TEXTDOMAIN_NAME'] );
+        if ( $n === 'password_reset' ) $jn_notice = __( 'รีเซ็ตรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบ', $_ENV['TEXTDOMAIN_NAME'] );
     }
 }
+
+// ── LOST PASSWORD ───────────────────────────────────────────────────────────
+$lp_error   = '';
+$lp_success = false;
+
+if ( $action === 'lostpassword' ) {
+
+    if ( is_user_logged_in() && ! is_preview() ) {
+        wp_safe_redirect( home_url( '/shop/' ) );
+        exit;
+    }
+
+    // Expired-key error forwarded from the rp block below
+    if ( $_SERVER['REQUEST_METHOD'] === 'GET'
+        && isset( $_GET['error'] )
+        && sanitize_key( $_GET['error'] ) === 'expiredkey'
+    ) {
+        $lp_error = __( 'ลิงก์รีเซ็ตหมดอายุหรือไม่ถูกต้อง กรุณาส่งคำขอใหม่', $_ENV['TEXTDOMAIN_NAME'] );
+    }
+
+    if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['jn_lostpass_nonce'] ) ) {
+        if ( ! wp_verify_nonce( $_POST['jn_lostpass_nonce'], 'jn_lostpassword' ) ) {
+            $lp_error = __( 'การยืนยันความปลอดภัยล้มเหลว กรุณาลองใหม่', $_ENV['TEXTDOMAIN_NAME'] );
+        } else {
+            $user_input = sanitize_text_field( wp_unslash( $_POST['user_login'] ?? '' ) );
+            if ( empty( $user_input ) ) {
+                $lp_error = __( 'กรุณากรอก Username หรือ Email', $_ENV['TEXTDOMAIN_NAME'] );
+            } else {
+                $user = strpos( $user_input, '@' )
+                    ? get_user_by( 'email', $user_input )
+                    : get_user_by( 'login', $user_input );
+
+                if ( ! $user instanceof WP_User ) {
+                    $lp_error = __( 'ไม่พบบัญชีที่ใช้ Username หรือ Email นี้', $_ENV['TEXTDOMAIN_NAME'] );
+                } else {
+                    $key = get_password_reset_key( $user );
+                    if ( is_wp_error( $key ) ) {
+                        $lp_error = wp_strip_all_tags( $key->get_error_message() );
+                    } else {
+                        $reset_url = add_query_arg(
+                            [
+                                'action' => 'rp',
+                                'key'    => $key,
+                                'login'  => rawurlencode( $user->user_login ),
+                            ],
+                            home_url( JN_SHOP_LOGIN_PATH )
+                        );
+                        $blog_name = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
+                        $message   = __( 'Someone has requested a password reset for the following account:', $_ENV['TEXTDOMAIN_NAME'] ) . "\r\n\r\n";
+                        $message  .= sprintf( __( 'Site Name: %s', $_ENV['TEXTDOMAIN_NAME'] ), $blog_name ) . "\r\n\r\n";
+                        $message  .= sprintf( __( 'Username: %s', $_ENV['TEXTDOMAIN_NAME'] ), $user->user_login ) . "\r\n\r\n";
+                        $message  .= __( 'If this was a mistake, ignore this email and nothing will happen.', $_ENV['TEXTDOMAIN_NAME'] ) . "\r\n\r\n";
+                        $message  .= __( 'To reset your password, visit the following address:', $_ENV['TEXTDOMAIN_NAME'] ) . "\r\n\r\n";
+                        $message  .= "<{$reset_url}>\r\n";
+                        $message   = apply_filters( 'retrieve_password_message', $message, $key, $user->user_login, $user );
+                        $subject   = apply_filters( 'retrieve_password_title', sprintf( '[%s] Password Reset', $blog_name ), $user->user_login, $user );
+                        wp_mail( $user->user_email, $subject, $message );
+                        $lp_success = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── RESET PASSWORD ──────────────────────────────────────────────────────────
+// Key/login come from GET params (the email link); form posts back to the same URL,
+// so $_GET still carries them on POST.
+$rp_error = '';
+$rp_key   = sanitize_text_field( wp_unslash( $_GET['key']   ?? '' ) );
+$rp_login = sanitize_user(        wp_unslash( $_GET['login'] ?? '' ) );
+$rp_user  = null;
+
+if ( $action === 'rp' || $action === 'resetpass' ) {
+
+    $rp_user = check_password_reset_key( $rp_key, $rp_login );
+
+    if ( is_wp_error( $rp_user ) ) {
+        wp_safe_redirect( add_query_arg(
+            [ 'action' => 'lostpassword', 'error' => 'expiredkey' ],
+            home_url( JN_SHOP_LOGIN_PATH )
+        ) );
+        exit;
+    }
+
+    if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['jn_reset_nonce'] ) ) {
+        if ( ! wp_verify_nonce( $_POST['jn_reset_nonce'], 'jn_reset_password' ) ) {
+            $rp_error = __( 'การยืนยันความปลอดภัยล้มเหลว กรุณาลองใหม่', $_ENV['TEXTDOMAIN_NAME'] );
+        } else {
+            $pass1 = $_POST['pass1'] ?? '';
+            $pass2 = $_POST['pass2'] ?? '';
+            if ( empty( $pass1 ) ) {
+                $rp_error = __( 'กรุณากรอกรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] );
+            } elseif ( $pass1 !== $pass2 ) {
+                $rp_error = __( 'รหัสผ่านไม่ตรงกัน กรุณากรอกอีกครั้ง', $_ENV['TEXTDOMAIN_NAME'] );
+            } else {
+                reset_password( $rp_user, $pass1 );
+                // after_password_reset hook (password-reset.php) fires here → redirect + exit
+            }
+        }
+    }
+}
+
+// Page title for <head>
+$page_titles = [
+    'login'     => __( 'Shop Login',        $_ENV['TEXTDOMAIN_NAME'] ),
+    'lostpassword' => __( 'ลืมรหัสผ่าน',  $_ENV['TEXTDOMAIN_NAME'] ),
+    'rp'        => __( 'ตั้งรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ),
+    'resetpass' => __( 'ตั้งรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ),
+];
+$page_title = $page_titles[ $action ] ?? $page_titles['login'];
 
 nocache_headers();
 ?>
@@ -76,7 +206,7 @@ nocache_headers();
 <head>
   <meta charset="<?php bloginfo( 'charset' ); ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= esc_html__( 'Shop Login', $_ENV['TEXTDOMAIN_NAME'] ) ?> — <?php bloginfo( 'name' ); ?></title>
+  <title><?= esc_html( $page_title ) ?> — <?php bloginfo( 'name' ); ?></title>
   <style>
     :root {
       --jn-bg: #FAE3D1; /* #F5C254 */
@@ -276,63 +406,187 @@ nocache_headers();
 
     <div class="jn-login-grid">
       <div class="jn-login-left">
-        <h1 class="jn-login-title">
-          <?= esc_html__( 'jao nai chan', $_ENV['TEXTDOMAIN_NAME'] ) ?>
-        </h1>
 
-        <h2 class="jn-login-sub">
-          <?= esc_html__( 'ยินดีต้อนรับกลับ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
-        </h2>
-        <p class="jn-login-body-text">
-          <?= esc_html__( 'เข้าสู่ระบบเพื่อดำเนินการสั่งซื้อสินค้าและติดตามคำสั่งซื้อของคุณ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
-        </p>
+        <?php if ( $action === 'login' ) : ?>
 
-        <?php if ( $login_error ) : ?>
-          <div class="jn-login-error"><?= esc_html( $login_error ) ?></div>
+          <h1 class="jn-login-title">
+            <?= esc_html__( 'jao nai chan', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h1>
+          <h2 class="jn-login-sub">
+            <?= esc_html__( 'ยินดีต้อนรับกลับ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h2>
+          <p class="jn-login-body-text">
+            <?= esc_html__( 'เข้าสู่ระบบเพื่อดำเนินการสั่งซื้อสินค้าและติดตามคำสั่งซื้อของคุณ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </p>
+
+          <?php if ( $jn_notice ) : ?>
+            <div class="jn-login-error"><?= esc_html( $jn_notice ) ?></div>
+          <?php endif; ?>
+
+          <?php if ( $login_error ) : ?>
+            <div class="jn-login-error"><?= esc_html( $login_error ) ?></div>
+          <?php endif; ?>
+
+          <form
+            method="post"
+            action=""
+            x-data="{ loading: false }"
+            @submit="loading = true"
+            @pageshow.window="if ($event.persisted) loading = false"
+          >
+            <?php wp_nonce_field( 'shop_login', 'shop_login_nonce' ); ?>
+            <input
+              type="text"
+              name="log"
+              class="jn-login-input"
+              placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
+              autocomplete="username"
+              :readonly="loading"
+              required
+            >
+            <input
+              type="password"
+              name="pwd"
+              class="jn-login-input"
+              placeholder="<?= esc_attr__( 'Password', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
+              :readonly="loading"
+              autocomplete="current-password"
+              required
+            >
+            <input type="hidden" name="redirect_to" value="<?= esc_attr( $redirect_to ) ?>">
+
+            <button type="submit" class="jn-login-btn" :class="{ 'is-loading': loading }" :disabled="loading">
+              <svg class="jn-login-btn-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"></circle>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity:.75"></path>
+              </svg>
+              <?= esc_html__( 'CONFIRM', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+            </button>
+          </form>
+
+          <p class="jn-login-foot">
+            <a href="<?= esc_url( wp_lostpassword_url() ) ?>">
+              <?= esc_html__( 'Forgot your password', $_ENV['TEXTDOMAIN_NAME'] ) ?>?
+            </a>
+          </p>
+
+        <?php elseif ( $action === 'lostpassword' ) : ?>
+
+          <h1 class="jn-login-title">
+            <?= esc_html__( 'jao nai chan', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h1>
+          <h2 class="jn-login-sub">
+            <?= esc_html__( 'ลืมรหัสผ่าน?', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h2>
+
+          <?php if ( $lp_success ) : ?>
+
+            <p class="jn-login-body-text">
+              <?= esc_html__( 'ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องขาเข้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+            </p>
+            <p class="jn-login-foot">
+              <a href="<?= esc_url( home_url( JN_SHOP_LOGIN_PATH ) ) ?>">
+                &larr; <?= esc_html__( 'กลับหน้าเข้าสู่ระบบ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+              </a>
+            </p>
+
+          <?php else : ?>
+
+            <p class="jn-login-body-text">
+              <?= esc_html__( 'กรอก Username หรือ Email เพื่อรับลิงก์รีเซ็ตรหัสผ่าน', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+            </p>
+
+            <?php if ( $lp_error ) : ?>
+              <div class="jn-login-error"><?= esc_html( $lp_error ) ?></div>
+            <?php endif; ?>
+
+            <form
+              method="post"
+              action=""
+              x-data="{ loading: false }"
+              @submit="loading = true"
+              @pageshow.window="if ($event.persisted) loading = false"
+            >
+              <?php wp_nonce_field( 'jn_lostpassword', 'jn_lostpass_nonce' ); ?>
+              <input
+                type="text"
+                name="user_login"
+                class="jn-login-input"
+                placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
+                autocomplete="username email"
+                :readonly="loading"
+                required
+              >
+              <button type="submit" class="jn-login-btn" :class="{ 'is-loading': loading }" :disabled="loading">
+                <svg class="jn-login-btn-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"></circle>
+                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity:.75"></path>
+                </svg>
+                <?= esc_html__( 'ส่งลิงก์รีเซ็ต', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+              </button>
+            </form>
+
+            <p class="jn-login-foot">
+              <a href="<?= esc_url( home_url( JN_SHOP_LOGIN_PATH ) ) ?>">
+                &larr; <?= esc_html__( 'กลับหน้าเข้าสู่ระบบ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+              </a>
+            </p>
+
+          <?php endif; ?>
+
+        <?php elseif ( $action === 'rp' || $action === 'resetpass' ) : ?>
+
+          <h1 class="jn-login-title">
+            <?= esc_html__( 'jao nai chan', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h1>
+          <h2 class="jn-login-sub">
+            <?= esc_html__( 'ตั้งรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </h2>
+          <p class="jn-login-body-text">
+            <?= esc_html__( 'กรอกรหัสผ่านใหม่สำหรับบัญชีของคุณ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+          </p>
+
+          <?php if ( $rp_error ) : ?>
+            <div class="jn-login-error"><?= esc_html( $rp_error ) ?></div>
+          <?php endif; ?>
+
+          <form
+            method="post"
+            action=""
+            x-data="{ loading: false }"
+            @submit="loading = true"
+            @pageshow.window="if ($event.persisted) loading = false"
+          >
+            <?php wp_nonce_field( 'jn_reset_password', 'jn_reset_nonce' ); ?>
+            <input
+              type="password"
+              name="pass1"
+              class="jn-login-input"
+              placeholder="<?= esc_attr__( 'รหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
+              autocomplete="new-password"
+              :readonly="loading"
+              required
+            >
+            <input
+              type="password"
+              name="pass2"
+              class="jn-login-input"
+              placeholder="<?= esc_attr__( 'ยืนยันรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
+              autocomplete="new-password"
+              :readonly="loading"
+              required
+            >
+            <button type="submit" class="jn-login-btn" :class="{ 'is-loading': loading }" :disabled="loading">
+              <svg class="jn-login-btn-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"></circle>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity:.75"></path>
+              </svg>
+              <?= esc_html__( 'ยืนยันรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ) ?>
+            </button>
+          </form>
+
         <?php endif; ?>
 
-        <form
-          method="post"
-          action=""
-          x-data="{ loading: false }"
-          @submit="loading = true"
-          @pageshow.window="if ($event.persisted) loading = false"
-        >
-          <?php wp_nonce_field( 'shop_login', 'shop_login_nonce' ); ?>
-          <input
-            type="text"
-            name="log"
-            class="jn-login-input"
-            placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
-            autocomplete="username"
-            :readonly="loading"
-            required
-          >
-          <input
-            type="password"
-            name="pwd"
-            class="jn-login-input"
-            placeholder="<?= esc_attr__( 'Password', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
-            :readonly="loading"
-            autocomplete="current-password"
-            required
-          >
-          <input type="hidden" name="redirect_to" value="<?= esc_attr( $redirect_to ) ?>">
-
-          <button type="submit" class="jn-login-btn" :class="{ 'is-loading': loading }" :disabled="loading">
-            <svg class="jn-login-btn-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"></circle>
-              <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity:.75"></path>
-            </svg>
-            <?= esc_html__( 'CONFIRM', $_ENV['TEXTDOMAIN_NAME'] ) ?>
-          </button>
-        </form>
-
-        <p class="jn-login-foot">
-          <a href="<?= esc_url( wp_lostpassword_url( $redirect_to ) ) ?>">
-            <?= esc_html__( 'Forgot your password', $_ENV['TEXTDOMAIN_NAME'] ) ?>?
-          </a>
-        </p>
       </div>
 
       <div class="jn-login-right" aria-hidden="<?= empty( $shop_login_image['src'] ) ? 'true' : 'false' ?>">

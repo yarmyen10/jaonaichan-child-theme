@@ -71,13 +71,10 @@ add_filter( 'logout_url', 'jaonaichan_filter_logout_url', 10, 2 );
 
 
 /**
- * 2c) lostpassword_url — ใช้ wp-login.php?action=lostpassword (whitelist ใน step 1 อยู่แล้ว)
- *      ถ้า /shop-login เริ่ม handle action=lostpassword เอง ค่อยเปลี่ยน base เป็น home_url(JN_SHOP_LOGIN_PATH)
+ * 2c) lostpassword_url → /shop-login/?action=lostpassword (handled by shop-login.php template)
  */
 function jaonaichan_filter_lostpassword_url( $lostpassword_url, $redirect ) {
-    $args = [ 'action' => 'lostpassword' ];
-    if ( ! empty( $redirect ) ) $args['redirect_to'] = urlencode( $redirect );
-    return add_query_arg( $args, site_url( 'wp-login.php', 'login' ) );
+    return add_query_arg( 'action', 'lostpassword', home_url( JN_SHOP_LOGIN_PATH ) );
 }
 add_filter( 'lostpassword_url', 'jaonaichan_filter_lostpassword_url', 10, 2 );
 
