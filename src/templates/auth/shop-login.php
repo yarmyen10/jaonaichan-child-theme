@@ -10,7 +10,7 @@ $shop_login_image = [
     'alt'    => '',
 ];
 
-$default_redirect = home_url();
+$default_redirect = home_url( '/shop/' );
 
 $self_path   = strtok( $_SERVER['REQUEST_URI'], '?' );
 $redirect_to = '';
@@ -28,8 +28,17 @@ if ( ! empty( $_REQUEST['redirect_to'] ) ) {
 }
 $redirect_to = wp_validate_redirect( $redirect_to, $default_redirect );
 
+// Final guard: ถ้า redirect_to ลงเอยที่ตัว login page เอง → fallback ไปที่ '/' (path ดิบๆ ไม่ผ่าน home_url)
+// เพื่อกัน redirect loop กรณี home_url() ถูก config ผิด
+$rt_path   = parse_url( $redirect_to, PHP_URL_PATH ) ?: '';
+$self_norm = rtrim( $self_path, '/' );
+$rt_norm   = rtrim( $rt_path, '/' );
+if ( $rt_norm === $self_norm ) {
+    $redirect_to = '/';
+}
+
 if ( is_user_logged_in() && ! is_preview() ) {
-    wp_safe_redirect( $redirect_to );
+    wp_redirect( $redirect_to );
     exit;
 }
 
@@ -42,10 +51,19 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['shop_login_nonce'] 
             'remember'      => true,
         ], is_ssl());
         if ( ! is_wp_error( $user ) ) {
-            wp_safe_redirect( $redirect_to );
+            // ใช้ $redirect_to ที่คำนวณไว้ด้านบน (จาก redirect_to → HTTP_REFERER → /shop/)
+            $target = $redirect_to;
+            if ( ! headers_sent( $hs_file, $hs_line ) ) {
+                wp_redirect( $target );
+                exit;
+            }
+            // Fallback: ถ้า headers ส่งไปแล้ว (มี plugin echo ก่อน) → ใช้ JS redirect + แสดง source
+            echo '<!-- DEBUG headers_sent_at: ' . esc_html( $hs_file . ':' . $hs_line ) . ' -->';
+            echo '<script>window.location.replace(' . wp_json_encode( $target ) . ');</script>';
             exit;
         }
-        $login_error = __( 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', $_ENV['TEXTDOMAIN_NAME'] );
+        // DEBUG ชั่วคราว — แสดง error code จริงจาก WP เพื่อหาสาเหตุ
+        $login_error = $user->get_error_code() . ': ' . wp_strip_all_tags( $user->get_error_message() );
     } else {
         $login_error = __( 'การยืนยันความปลอดภัยล้มเหลว กรุณาลองใหม่', $_ENV['TEXTDOMAIN_NAME'] );
     }
@@ -287,7 +305,7 @@ nocache_headers();
             class="jn-login-input"
             placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
             autocomplete="username"
-            :disabled="loading"
+            :readonly="loading"
             required
           >
           <input
@@ -295,7 +313,7 @@ nocache_headers();
             name="pwd"
             class="jn-login-input"
             placeholder="<?= esc_attr__( 'Password', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
-            :disabled="loading"
+            :readonly="loading"
             autocomplete="current-password"
             required
           >
