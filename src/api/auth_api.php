@@ -5,13 +5,6 @@
 class Auth_API {
 
     public static function init(): void {
-        $users = get_users([
-            'number' => -1,
-            'orderby' => 'ID',
-            'order'   => 'ASC',
-        ]);
-        do_action('qm/info', '$users: ' . print_r($users, true));
-
         add_action( 'rest_api_init', [ self::class, 'register_routes' ], 10 );
         add_filter('jwt_auth_token_before_dispatch', function ($data, $user) {
             $data['roles'] = $user->roles;                 // เช่น ['administrator']

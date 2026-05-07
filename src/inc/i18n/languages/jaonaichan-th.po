@@ -37,3 +37,6 @@ msgstr "รหัสผ่าน"
 msgid "Forgot your password"
 msgstr "ลืมรหัสผ่าน"
 
+msgid "username หรือ password ไม่ถูกต้อง"
+msgstr "username หรือ password ไม่ถูกต้อง"
+

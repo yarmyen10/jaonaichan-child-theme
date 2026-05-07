@@ -39,7 +39,6 @@ add_action( 'init', 'register_custom_order_status', 5 );
 function add_custom_status_to_dropdown( $order_statuses ) {
     return array_merge( $order_statuses, jaonaichan_get_custom_order_statuses() );
 }
-add_filter( 'wc_order_statuses', 'add_custom_status_to_dropdown' );
 
 // HPOS: WooCommerce registers shop_order post statuses through this filter
 // when High-Performance Order Storage is enabled, bypassing register_post_status().
@@ -49,6 +48,8 @@ function jaonaichan_register_hpos_order_statuses( $statuses ) {
     }
     return $statuses;
 }
+
+add_filter( 'wc_order_statuses', 'add_custom_status_to_dropdown' );
 add_filter( 'woocommerce_register_shop_order_post_statuses', 'jaonaichan_register_hpos_order_statuses' );
 
 

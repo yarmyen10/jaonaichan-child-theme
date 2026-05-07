@@ -4,12 +4,11 @@
  *
  * Depends on JN_SHOP_LOGIN_PATH (defined in shop-login-redirect.php).
  *
- * shop-login.php now handles lostpassword / rp / resetpass natively, so these
- * hooks are safety nets for any plugin or WP core path that still goes through
- * wp-login.php directly.
+ * shop-login.php handles lostpassword / rp / resetpass natively.
+ * shop-login-redirect.php redirects all wp-login.php requests to /shop-login/
+ * (except logout + postpass which must go through WP's own handler).
  *
- * The WordPress-root .htaccess redirects all wp-login.php requests to /shop-login/
- * except: action=logout, action=postpass, action=rp, action=resetpass, action=lostpassword.
+ * These hooks are safety nets for plugin/WP-core paths that bypass the redirect.
  */
 
 

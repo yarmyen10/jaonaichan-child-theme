@@ -12,6 +12,13 @@ $shop_login_image = [
 
 // Normalize action — only the four we handle
 $action = sanitize_key( $_GET['action'] ?? 'login' );
+
+// Logout ต้องผ่าน wp-login.php เพื่อ nonce + cookie clear
+if ( $action === 'logout' ) {
+    wp_safe_redirect( is_user_logged_in() ? wp_logout_url() : home_url( JN_SHOP_LOGIN_PATH ) );
+    exit;
+}
+
 if ( ! in_array( $action, [ 'login', 'lostpassword', 'rp', 'resetpass' ], true ) ) {
     $action = 'login';
 }
@@ -73,8 +80,7 @@ if ( $action === 'login' ) {
                 echo '<script>window.location.replace(' . wp_json_encode( $target ) . ');</script>';
                 exit;
             }
-            // DEBUG ชั่วคราว — แสดง error code จริงจาก WP เพื่อหาสาเหตุ
-            $login_error = $user->get_error_code() . ': ' . wp_strip_all_tags( $user->get_error_message() );
+            $login_error = __( 'username หรือ password ไม่ถูกต้อง', $_ENV['TEXTDOMAIN_NAME'] );
         } else {
             $login_error = __( 'การยืนยันความปลอดภัยล้มเหลว กรุณาลองใหม่', $_ENV['TEXTDOMAIN_NAME'] );
         }
@@ -201,6 +207,7 @@ $page_title = $page_titles[ $action ] ?? $page_titles['login'];
 
 nocache_headers();
 ?>
+<!-- JN-DEBUG action=<?= esc_html( $_GET['action'] ?? 'NONE' ) ?> all_get=<?= esc_html( implode( ',', array_keys( $_GET ) ) ) ?> -->
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>

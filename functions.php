@@ -51,17 +51,6 @@ foreach ( $inc_folders as $folder ) {
 
 add_action('init', function() {
     add_image_size( 'custom-100', 100, 100, true );
-    do_action('qm/info', '__DIR__: ' . __DIR__);
-    do_action('qm/info', '__DIR__ <2: ' . dirname(__DIR__, 2));
-    do_action('qm/info', 'get_stylesheet_directory_uri: ' . get_stylesheet_directory_uri());
-    do_action('qm/info', '__FILE__: ' . __FILE__);
-    do_action('qm/info', 'plugin_dir_url: ' . plugin_dir_url(dirname( __FILE__ )));
-    do_action('qm/info', 'locale: ' . get_locale());
-    do_action('qm/info', 'WPLANG: ' . get_option('WPLANG'));
-    do_action('qm/info', 'translated: ' . __('รอโอนเงิน', $_ENV['TEXTDOMAIN_NAME']));
-    $sizes = get_intermediate_image_sizes();
-    do_action('qm/info', 'image sizes: ' . print_r($sizes, true));
-    
 }, 1);
 
 // add_action('init', function() {
