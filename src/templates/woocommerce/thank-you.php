@@ -27,6 +27,20 @@ get_header();
       $bill2_status   = $order ? ( $order->get_meta('_bill2_status', true) ?: 'pending' ) : 'pending';
       $bill2_has_meta = $order && $order->get_meta('_bill2_status', true) !== '';
 
+      $bill2_unit_prices_raw = $order ? $order->get_meta('_bill2_unit_prices', true) : '';
+      $bill2_unit_prices     = $bill2_unit_prices_raw ? (array) json_decode($bill2_unit_prices_raw, true) : [];
+      $bill2_total           = 0.0;
+      if ( $order ) {
+          foreach ( $order->get_items() as $item ) {
+              $p   = $item->get_product();
+              if ( ! $p ) continue;
+              $pid  = (string) $p->get_id();
+              $unit = isset( $bill2_unit_prices[$pid] ) ? (float) $bill2_unit_prices[$pid] : 0.0;
+              $bill2_total += $unit * $item->get_quantity();
+          }
+      }
+      $bill2_amount = $bill2_unit_prices ? $bill2_total : ( $order ? (float) $order->get_total() : 0.0 );
+
       if ( current_user_can('manage_options') && isset($_GET['mock_result']) ) {
         $mock = sanitize_key($_GET['mock_result']);
         // pending → wait_verify_1 → bill1_paid → wait_verify_2 → both_paid
@@ -298,6 +312,10 @@ get_header();
                     if ( ! $img_url ) {
                         $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
                     }
+
+                    $pid2        = (string) $product->get_id();
+                    $unit2       = isset( $bill2_unit_prices[$pid2] ) ? (float) $bill2_unit_prices[$pid2] : null;
+                    $line_total2 = $unit2 !== null ? $unit2 * $item->get_quantity() : (float) $item->get_total();
                   ?>
                     <div class="flex items-center gap-3">
                       <?php if ( $img_url ) : ?>
@@ -313,7 +331,7 @@ get_header();
                           </p>
                       </div>
                       <p class="text-sm font-medium text-gray-900">
-                          ฿<?= number_format( $item->get_total(), 2 ) ?>
+                          ฿<?= number_format( $line_total2, 2 ) ?>
                       </p>
                     </div>
                   <?php endforeach; ?>
@@ -322,7 +340,7 @@ get_header();
                 <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
                   <span class="text-sm text-gray-500">รวมทั้งหมด</span>
                   <span class="text-sm font-semibold text-gray-900">
-                      ฿<?= number_format( $order->get_total(), 2 ) ?>
+                      ฿<?= number_format( $bill2_amount, 2 ) ?>
                   </span>
                 </div>
               <?php endif; ?>
@@ -337,7 +355,7 @@ get_header();
                   <?php
                       $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
                       $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
-                      $amount  = $order ? $order->get_total() : 0;
+                      $amount  = $bill2_amount;
                       $qr_url  = PromptPay_QR_Generator::generate($phone, $amount);
                   ?>
                   <div class="bg-white border border-gray-200 rounded-lg flex items-center justify-center">
@@ -467,6 +485,7 @@ function billTabs() {
     bill1Paid:    <?= $bill1_paid    ? 'true' : 'false' ?>,
     bill2Paid:    <?= $bill2_paid    ? 'true' : 'false' ?>,
     bill2HasMeta: <?= $bill2_has_meta ? 'true' : 'false' ?>,
+    bill2Amount:  <?= (float) $bill2_amount ?>,
     preview1: null,
     preview2: null,
     viewBill1: null,
@@ -605,6 +624,7 @@ function billTabs() {
           formData.append('bill',     '2');
           formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
           formData.append('order_id', '<?= $order_id ?>');
+          formData.append('amount',   this.bill2Amount);
           formData.append('slip',     this.$refs.file2.files[0]);
           formData.append('mock_result', true);
 
@@ -621,7 +641,7 @@ function billTabs() {
             const patch2 = await fetch(`/wp-json/jaonaichan/v1/orders/<?= $order_id ?>/bill/2`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' },
-              body: JSON.stringify({ status: 'paid', paid_at: new Date().toISOString() }),
+              body: JSON.stringify({ status: 'paid', amount: this.bill2Amount, paid_at: new Date().toISOString() }),
             });
             this.loading = false;
             if (!patch2.ok) {

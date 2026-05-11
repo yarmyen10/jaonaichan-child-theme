@@ -612,7 +612,15 @@ class Orders_API {
     public static function get_orders( WP_REST_Request $request ): WP_REST_Response {
         $page     = max( 1, (int) $request->get_param('page')     ?: 1 );
         $per_page = min( 50, (int) $request->get_param('per_page') ?: 10 );
-        $status   = sanitize_text_field( $request->get_param('status') ?: 'any' );
+        $status_raw = sanitize_text_field( $request->get_param('status') ?: 'any' );
+
+        // Support comma-separated statuses e.g. "paid-1,paid-2,completed"
+        if ( str_contains( $status_raw, ',' ) ) {
+            $parts  = array_filter( array_map( 'trim', explode( ',', $status_raw ) ) );
+            $status = array_map( fn( $s ) => str_replace( 'wc-', '', $s ), $parts );
+        } else {
+            $status = $status_raw === 'any' ? 'any' : str_replace( 'wc-', '', $status_raw );
+        }
 
         $base_args = [
             'orderby' => 'date',
