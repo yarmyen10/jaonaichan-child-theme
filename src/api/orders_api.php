@@ -392,8 +392,15 @@ class Orders_API {
             ));
         }
 
+        $total_order_count = count( $all_orders );
+
+        // Paginate at the order level (consistent with get_products_bulk)
+        $paged_orders = $per_page === -1
+            ? $all_orders
+            : array_slice( $all_orders, ( $page - 1 ) * $per_page, $per_page );
+
         $flat = [];
-        foreach ( $all_orders as $order ) {
+        foreach ( $paged_orders as $order ) {
             $order_id = $order->get_id();
 
             foreach ( $order->get_items() as $item ) {
@@ -425,11 +432,6 @@ class Orders_API {
             }
         }
 
-        $total_count = count( $flat );
-        $paged_flat  = $per_page === -1
-            ? $flat
-            : array_slice( $flat, ( $page - 1 ) * $per_page, $per_page );
-
         $status_summary = [];
         $seen_orders    = [];
         foreach ( $flat as $row ) {
@@ -450,12 +452,13 @@ class Orders_API {
             'order_ids'  => $order_ids,
             'statuses'   => $raw_statuses,
             'summary'    => $status_summary,
-            'data'       => $paged_flat,
+            'data'       => $flat,
             'pagination' => [
                 'page'        => $page,
                 'per_page'    => $per_page,
-                'total'       => $total_count,
-                'total_pages' => $per_page === -1 ? 1 : (int) ceil( $total_count / $per_page ),
+                'total'       => $total_order_count,
+                'total_pages' => $per_page === -1 ? 1 : (int) ceil( $total_order_count / $per_page ),
+                'total_items' => count( $flat ),
             ],
         ], 200);
     }

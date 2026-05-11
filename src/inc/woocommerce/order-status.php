@@ -74,15 +74,17 @@ function jaonaichan_custom_status_badge_colors() {
 
         /* รอตรวจสอบการชำระ ครั้งที่ 1 / 2 */
         .order-status.status-wait-verify-1,
-        mark.status-wait-verify-1 { background: #d4e7ff; color: #1c4a86; }
+        mark.status-wait-verify-1 { background: #fdf1d8; color: #94660c; }
         .order-status.status-wait-verify-2,
-        mark.status-wait-verify-2 { background: #a9cdff; color: #1c4a86; }
+        mark.status-wait-verify-2 { background: #f8dda7; color: #94660c; }
 
         /* ชำระแล้ว ครั้งที่ 1 / 2 */
         .order-status.status-paid-1,
-        mark.status-paid-1 { background: #c8e6c9; color: #2e7d32; }
+        mark.status-paid-1 { background: #d4e7ff; color: #1c4a86; }
         .order-status.status-paid-2,
-        mark.status-paid-2 { background: #81c784; color: #1b5e20; }
+        mark.status-paid-2 { background: #a9cdff; color: #1c4a86; }
+        /* { background: #c8e6c9; color: #2e7d32; } */
+        /* { background: #81c784; color: #1b5e20; } */
     </style>
     <?php
 }

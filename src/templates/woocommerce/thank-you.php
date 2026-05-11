@@ -23,14 +23,34 @@ get_header();
       $order_id     = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
       $order        = $order_id ? wc_get_order($order_id) : null;
       $order_status = $order ? $order->get_status() : '';
-      $bill1_status = $order ? ( $order->get_meta('_bill1_status', true) ?: 'pending' ) : 'pending';
-      $bill2_status = $order ? ( $order->get_meta('_bill2_status', true) ?: 'pending' ) : 'pending';
+      $bill1_status   = $order ? ( $order->get_meta('_bill1_status', true) ?: 'pending' ) : 'pending';
+      $bill2_status   = $order ? ( $order->get_meta('_bill2_status', true) ?: 'pending' ) : 'pending';
+      $bill2_has_meta = $order && $order->get_meta('_bill2_status', true) !== '';
+
+      if ( current_user_can('manage_options') && isset($_GET['mock_result']) ) {
+        $mock = sanitize_key($_GET['mock_result']);
+        // pending → wait_verify_1 → bill1_paid → wait_verify_2 → both_paid
+        // pending → wait_verify_1 → bill1_paid → wait_verify_2 → both_paid
+        // bill2_has_meta เป็น true เฉพาะ state ที่ควรสร้าง bill2 แล้ว
+        if ( $mock === 'pending' )          { $bill1_status = 'pending'; $bill2_status = 'pending'; $order_status = 'waiting-transfer'; $bill2_has_meta = false; }
+        elseif ( $mock === 'wait_verify_1') { $bill1_status = 'pending'; $bill2_status = 'pending'; $order_status = 'wait-verify-1';   $bill2_has_meta = false; }
+        elseif ( $mock === 'bill1_paid' )   { $bill1_status = 'paid';    $bill2_status = 'pending'; $order_status = 'paid-1';           $bill2_has_meta = false; }
+        elseif ( $mock === 'wait_verify_2') { $bill1_status = 'paid';    $bill2_status = 'pending'; $order_status = 'wait-verify-2';   $bill2_has_meta = true;  }
+        elseif ( $mock === 'both_paid' )    { $bill1_status = 'paid';    $bill2_status = 'paid';    $order_status = 'paid-2';           $bill2_has_meta = true;  }
+      }
+
       $bill1_paid   = $bill1_status === 'paid';
       $bill2_paid   = $bill2_status === 'paid';
     ?>
     <span class="inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
       Order #<?= $order ? $order->get_order_number() : $order_id ?>
     </span>
+    <?php if ( current_user_can('manage_options') && isset($mock) && $mock ) : ?>
+      <div class="inline-flex items-center gap-1.5 mt-2 px-3 py-1 text-xs font-mono text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+        mock: <?= esc_html($mock) ?>
+      </div>
+    <?php endif; ?>
   </div>
 
   <div>
@@ -42,20 +62,20 @@ get_header();
         class="flex-1 flex items-center justify-center gap-2 pb-3 text-sm transition-colors cursor-pointer"
       >
         <span :class="bill1Paid ? 'bg-emerald-500' : 'bg-amber-400'" class="inline-block w-2 h-2 rounded-full"></span>
-        Chinees invoice (บิลจีน)
+        Chinees invoice (🇨🇳 บิลจีน)
       </div>
 
       <div
         @click="switchTab(2)"
         :class="[
           activeTab === 2 ? 'border-b-2 border-gray-900 text-gray-900 font-medium' : 'text-gray-400',
-          !bill1Paid ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+          (!bill1Paid || !bill2HasMeta) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
         ]"
         class="flex-1 flex items-center justify-center gap-2 pb-3 text-sm transition-colors"
       >
         <span :class="bill2Paid ? 'bg-emerald-500' : (bill1Paid ? 'bg-amber-400' : 'bg-gray-300')" class="inline-block w-2 h-2 rounded-full"></span>
-        Thai invoice (บิลไทย)
-        <svg x-show="!bill1Paid" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        Thai invoice (🇹🇭 บิลไทย)
+        <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
           <path d="M7 11V7a5 5 0 0110 0v4"/>
         </svg>
@@ -184,8 +204,12 @@ get_header();
                 <template x-if="!preview1 && viewBill1">
                   <div class="relative w-full h-full">
                     <img :src="viewBill1" class="w-full h-full object-cover" />
-                    <!-- Badge ชำระแล้ว -->
-                    <div class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
+                    <!-- Badge: ตรวจสอบ (verify failed) -->
+                    <div x-show="slip1Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
+                      ⚠︎ ตรวจสอบ
+                    </div>
+                    <!-- Badge: ชำระแล้ว (verify passed or unknown) -->
+                    <div x-show="slip1Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
                       ✓ ชำระแล้ว
                     </div>
                     <!-- คลิกเพื่อขยาย -->
@@ -365,8 +389,12 @@ get_header();
                   <template x-if="!preview2 && viewBill2">
                     <div class="relative w-full h-full">
                       <img :src="viewBill2" class="w-full h-full object-cover" />
-                      <!-- Badge ชำระแล้ว -->
-                      <div class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
+                      <!-- Badge: ตรวจสอบ (verify failed) -->
+                      <div x-show="slip2Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
+                        ⚠︎ ตรวจสอบ
+                      </div>
+                      <!-- Badge: ชำระแล้ว (verify passed or unknown) -->
+                      <div x-show="slip2Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
                         ✓ ชำระแล้ว
                       </div>
                       <!-- คลิกเพื่อขยาย -->
@@ -434,13 +462,17 @@ function billTabs() {
     activeTab: 1,
     // status ล่าสุดของ order (WC status เช่น wait-verify-1, paid-1, ...)
     orderStatus: '<?= esc_js( $order_status ) ?>',
+    mockResult:  '<?= isset($mock) ? esc_js($mock) : '' ?>',
     // ค่าเริ่มต้นมาจาก _bill{N}_status ใน order meta — bill2 จะเปิดให้ก็ต่อเมื่อ bill1Paid
-    bill1Paid: <?= $bill1_paid ? 'true' : 'false' ?>,
-    bill2Paid: <?= $bill2_paid ? 'true' : 'false' ?>,
+    bill1Paid:    <?= $bill1_paid    ? 'true' : 'false' ?>,
+    bill2Paid:    <?= $bill2_paid    ? 'true' : 'false' ?>,
+    bill2HasMeta: <?= $bill2_has_meta ? 'true' : 'false' ?>,
     preview1: null,
     preview2: null,
     viewBill1: null,
     viewBill2: null,
+    slip1Verify: null,
+    slip2Verify: null,
 
     slipModal: false,
     slipModalUrl: null,
@@ -449,15 +481,23 @@ function billTabs() {
       try {
         this.loading = true;
 
-        // ถ้าบิล 1 จ่ายแล้ว (admin approve → _bill1_status = 'paid') ให้เด้งไป tab 2
-        if (this.bill1Paid) {
+        // เด้งไป tab 2 เมื่อ bill1 จ่ายแล้ว และมีข้อมูล _bill2_* ใน order meta แล้วเท่านั้น
+        console.log('billTabs init', { bill1Paid: this.bill1Paid, bill2HasMeta: this.bill2HasMeta });
+        if (this.bill1Paid && this.bill2HasMeta) {
           this.activeTab = 2;
         }
 
         // โหลดสลิปที่อัปโหลดไว้แล้วเพื่อแสดง preview (ไม่เกี่ยวกับสถานะ paid)
         this.viewBill1 = await this.loadSlip(1);
+        if ((this.viewBill1 || this.mockResult) && this.orderStatus.startsWith('wait-verify-1')) {
+          this.slip1Verify = false;
+        }
+
         if (this.bill1Paid) {
           this.viewBill2 = await this.loadSlip(2);
+          if ((this.viewBill2 || this.mockResult) && this.orderStatus.startsWith('wait-verify-2')) {
+            this.slip2Verify = false;
+          }
         }
       } catch (error) {
         console.error('billTabs init error', error);
@@ -478,7 +518,7 @@ function billTabs() {
     },
 
     switchTab(n) {
-      if (n === 2 && !this.bill1Paid) return;
+      if (n === 2 && (!this.bill1Paid || !this.bill2HasMeta)) return;
       this.activeTab = n;
     },
     handleFile(e, bill) {
@@ -496,24 +536,54 @@ function billTabs() {
 
       try {
         this.loading = true;
-        const formData = new FormData();
-        formData.append('action',   'promptpay_verify_slip');
-        formData.append('bill', '1');
-        formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
-        formData.append('order_id', '<?= $order_id ?>');
-        formData.append('slip',     this.$refs.file1.files[0]);
-
-        const res  = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
-        const json = await res.json();
-
-        console.log('🚀 payBill1 result', json);
-
-        if (json.success && json.data.verify) {
-            // TODO: อัปเดตสถานะบิล 1 เป็น paid แล้วให้ user ดูสลิปที่อัปโหลดไปเลย (ไม่ต้องรอ admin approve)
-            // this.bill1Paid = true;
-            // this.activeTab = 1;
+        let json;
+        if (this.mockResult) {
+          json = { success: true, data: { verify: true, message: '[mock]' } };
         } else {
-            alert(json.data.message); // หรือแสดง error ใน UI
+          const formData = new FormData();
+          formData.append('action',   'promptpay_verify_slip');
+          formData.append('bill',     '1');
+          formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
+          formData.append('order_id', '<?= $order_id ?>');
+          formData.append('slip',     this.$refs.file1.files[0]);
+          formData.append('mock_result', true);
+
+          const res = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
+          json = await res.json();
+        }
+
+        console.log('🚀 payBill1.result', json);
+
+        this.slip1Verify = json.data.verify ?? false;
+        // clear preview so the viewBill1 badge template becomes active
+        this.preview1 = null;
+        this.viewBill1 = await this.loadSlip(1);
+        if (json.success && json.data.verify) {
+          const patch1 = await fetch(`/wp-json/jaonaichan/v1/orders/<?= $order_id ?>/bill/1`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' },
+            body: JSON.stringify({ status: 'paid', paid_at: new Date().toISOString() }),
+          });
+          this.loading = false;
+          if (!patch1.ok) {
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถอัปเดตสถานะได้ กรุณาติดต่อแอดมิน', confirmButtonColor: '#111827' });
+            return;
+          }
+          await Swal.fire({
+            icon: 'success',
+            title: 'ชำระเงินสำเร็จ',
+            text: 'ระบบได้รับสลิปของคุณแล้ว',
+            confirmButtonColor: '#111827',
+          });
+          window.location.href = '/shop';
+        } else {
+          this.loading = false;
+          Swal.fire({
+            icon: 'warning',
+            title: 'ตรวจสอบไม่ผ่าน',
+            text: json.data.message,
+            confirmButtonColor: '#111827',
+          });
         }
       } catch (error) {
         console.error('Error occurred while paying bill 1:', error);
@@ -521,9 +591,64 @@ function billTabs() {
         this.loading = false;
       } 
     },
-    payBill2() {
+    async payBill2() {
       if (!this.preview2) return;
-      this.bill2Paid = true;
+
+      try {
+        this.loading = true;
+        let json;
+        if (this.mockResult) {
+          json = { success: true, data: { verify: true, message: '[mock]' } };
+        } else {
+          const formData = new FormData();
+          formData.append('action',   'promptpay_verify_slip');
+          formData.append('bill',     '2');
+          formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
+          formData.append('order_id', '<?= $order_id ?>');
+          formData.append('slip',     this.$refs.file2.files[0]);
+          formData.append('mock_result', true);
+
+          const res = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
+          json = await res.json();
+        }
+
+        console.log('🚀 payBill2.result', json);
+
+        this.slip2Verify = json.data.verify ?? false;
+        this.preview2 = null;
+        this.viewBill2 = await this.loadSlip(2);
+        if (json.success && json.data.verify) {
+            const patch2 = await fetch(`/wp-json/jaonaichan/v1/orders/<?= $order_id ?>/bill/2`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' },
+              body: JSON.stringify({ status: 'paid', paid_at: new Date().toISOString() }),
+            });
+            this.loading = false;
+            if (!patch2.ok) {
+              Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถอัปเดตสถานะได้ กรุณาติดต่อแอดมิน', confirmButtonColor: '#111827' });
+              return;
+            }
+            await Swal.fire({
+              icon: 'success',
+              title: 'ชำระเงินสำเร็จ',
+              text: 'ระบบได้รับสลิปของคุณแล้ว',
+              confirmButtonColor: '#111827',
+            });
+            window.location.href = '/shop';
+        } else {
+            this.loading = false;
+            Swal.fire({
+              icon: 'warning',
+              title: 'ตรวจสอบไม่ผ่าน',
+              text: json.data.message,
+              confirmButtonColor: '#111827',
+            });
+        }
+      } catch (error) {
+        console.error('Error occurred while paying bill 2:', error);
+      } finally {
+        this.loading = false;
+      }
     },
 
     openSlip(url) {
@@ -533,5 +658,7 @@ function billTabs() {
   }
 }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js" defer></script>
 
 <?php get_footer(); ?>
