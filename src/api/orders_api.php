@@ -182,8 +182,10 @@ class Orders_API {
                     'sanitize_callback' => 'sanitize_text_field',
                     'validate_callback' => [ self::class, 'validate_bill_status' ],
                 ],
-                'amount'  => [ 'required' => false, 'type' => 'number' ],
-                'paid_at' => [ 'required' => false, 'type' => 'string' ],
+                'amount'      => [ 'required' => false, 'type' => 'number' ],
+                'paid_at'     => [ 'required' => false, 'type' => 'string' ],
+                'unit_prices'    => [ 'required' => false, 'type' => 'object' ],
+                'unit_prices_id' => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
             ],
         ]);
     }
@@ -296,8 +298,10 @@ class Orders_API {
                         'amount' => (float) ( $order->get_meta( '_bill1_amount' ) ?: 0 ),
                     ],
                     'bill2' => [
-                        'status' => $order->get_meta( '_bill2_status' ) ?: 'pending',
-                        'amount' => (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
+                        'status'         => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                        'amount'         => (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
+                        'unit_prices'    => self::get_bill2_unit_prices( $order ),
+                        'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
                     ],
                 ], $formatted );
             }
@@ -425,8 +429,10 @@ class Orders_API {
                         'amount' => (float) ( $order->get_meta( '_bill1_amount' ) ?: 0 ),
                     ],
                     'bill2' => [
-                        'status' => $order->get_meta( '_bill2_status' ) ?: 'pending',
-                        'amount' => (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
+                        'status'         => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                        'amount'         => (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
+                        'unit_prices'    => self::get_bill2_unit_prices( $order ),
+                        'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
                     ],
                 ], $formatted );
             }
@@ -500,9 +506,11 @@ class Orders_API {
                     'paid_at' => $order->get_meta( '_bill1_paid_at' ),
                 ],
                 'bill2' => [
-                    'status'  => $order->get_meta( '_bill2_status' ) ?: 'pending',
-                    'amount'  => (float) $order->get_meta( '_bill2_amount' ),
-                    'paid_at' => $order->get_meta( '_bill2_paid_at' ),
+                    'status'         => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                    'amount'         => (float) $order->get_meta( '_bill2_amount' ),
+                    'paid_at'        => $order->get_meta( '_bill2_paid_at' ),
+                    'unit_prices'    => self::get_bill2_unit_prices( $order ),
+                    'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
                 ],
                 'items' => array_values( array_filter(
                     array_map( fn( $item ) => self::format_order_item( $item ), $order->get_items() )
@@ -582,9 +590,11 @@ class Orders_API {
                 'paid_at' => $order->get_meta( '_bill1_paid_at' ),
             ],
             'bill2' => [
-                'status'  => $order->get_meta( '_bill2_status' ) ?: 'pending',
-                'amount'  => round( $order_total - $bill1_amount, 2 ),
-                'paid_at' => $order->get_meta( '_bill2_paid_at' ),
+                'status'         => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                'amount'         => round( $order_total - $bill1_amount, 2 ),
+                'paid_at'        => $order->get_meta( '_bill2_paid_at' ),
+                'unit_prices'    => self::get_bill2_unit_prices( $order ),
+                'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
             ],
             'items_summary' => [
                 'count'     => count( $items ),
@@ -750,6 +760,24 @@ class Orders_API {
             }
         }
 
+        if ( $bill_number === '2' ) {
+            $raw_prices = $request->get_param('unit_prices');
+            if ( is_array( $raw_prices ) ) {
+                $clean = [];
+                foreach ( $raw_prices as $pid => $price ) {
+                    $clean[ absint( $pid ) ] = (float) $price;
+                }
+                $order->update_meta_data( '_bill2_unit_prices', wp_json_encode( $clean ) );
+                $updated['unit_prices'] = $clean;
+            }
+
+            $prices_id = $request->get_param('unit_prices_id');
+            if ( ! is_null( $prices_id ) ) {
+                $order->update_meta_data( '_bill2_unit_prices_id', sanitize_text_field( $prices_id ) );
+                $updated['unit_prices_id'] = $prices_id;
+            }
+        }
+
         if ( empty( $updated ) ) {
             return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่มี field ที่ส่งมา' ], 400);
         }
@@ -844,9 +872,11 @@ class Orders_API {
                 'paid_at' => $order->get_meta( '_bill1_paid_at' ),
             ],
             'bill2' => [
-                'status'  => $order->get_meta( '_bill2_status' ) ?: 'pending',
-                'amount'  => (float) $order->get_meta( '_bill2_amount' ),
-                'paid_at' => $order->get_meta( '_bill2_paid_at' ),
+                'status'         => $order->get_meta( '_bill2_status' ) ?: 'pending',
+                'amount'         => (float) $order->get_meta( '_bill2_amount' ),
+                'paid_at'        => $order->get_meta( '_bill2_paid_at' ),
+                'unit_prices'    => self::get_bill2_unit_prices( $order ),
+                'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
             ],
         ];
 
@@ -892,6 +922,13 @@ class Orders_API {
     // =========================================================================
     // Helpers
     // =========================================================================
+
+    private static function get_bill2_unit_prices( WC_Order $order ): array {
+        $raw = $order->get_meta( '_bill2_unit_prices' );
+        if ( ! $raw ) return [];
+        $decoded = json_decode( $raw, true );
+        return is_array( $decoded ) ? $decoded : [];
+    }
 
     private static function get_order_or_fail( $id ): WC_Order|WP_REST_Response {
         $order = wc_get_order( absint( $id ) );
