@@ -3,6 +3,15 @@
  * Template Name: Shop Login
  */
 
+// Dequeue all external stylesheets — this page uses its own inline CSS.
+// wp_enqueue_scripts fires inside wp_head() so this hook runs in time.
+add_action( 'wp_enqueue_scripts', function () {
+    global $wp_styles;
+    foreach ( array_keys( $wp_styles->registered ) as $handle ) {
+        wp_dequeue_style( $handle );
+    }
+}, PHP_INT_MAX );
+
 $shop_login_image = [
     'src'    => get_stylesheet_directory_uri() . '/assets/imgs/login-maow.png',
     'width'  => '112%',
@@ -214,6 +223,7 @@ nocache_headers();
   <meta charset="<?php bloginfo( 'charset' ); ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= esc_html( $page_title ) ?> — <?php bloginfo( 'name' ); ?></title>
+  <?php wp_head(); ?>
   <style>
     :root {
       --jn-bg: #FAE3D1; /* #F5C254 */
@@ -230,6 +240,27 @@ nocache_headers();
     }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
+    /* Hide anything plugins inject into <body> outside our card */
+    body > *:not(.jn-login-card) { display: none !important; }
+    /* MiniOrange social login — left-align, compact icon row */
+    [id*="mo_social_login_"],
+    [class*="mo_social_login"],
+    .mo-openid-app-icons {
+      text-align: left !important;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 0 0 !important;
+    }
+    .mo_login_button {
+      width: auto !important;
+      height: auto !important;
+      padding: 6px !important;
+      border-radius: 50% !important;
+      margin: 0 8px 0 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
     body {
       min-height: 100vh;
       min-height: 100dvh;
@@ -324,7 +355,7 @@ nocache_headers();
       color: var(--jn-text);
       font-size: clamp(0.9rem, 1.1vw, 1.05rem);
       line-height: 1.6;
-      margin: 0 0 clamp(1.25rem, 2vw, 2rem);
+      margin: 0 0 clamp(0.25rem, 2vw, 0rem);
       max-width: 60ch;
     }
     .jn-login-input {
@@ -433,6 +464,8 @@ nocache_headers();
           <?php if ( $login_error ) : ?>
             <div class="jn-login-error"><?= esc_html( $login_error ) ?></div>
           <?php endif; ?>
+
+          <?php echo apply_shortcodes('[miniorange_social_login shape="round" theme="default" space="4" size="35"]') ?>
 
           <form
             method="post"
@@ -608,5 +641,6 @@ nocache_headers();
       </div>
     </div>
   </div>
+  <?php wp_footer(); ?>
 </body>
 </html>
