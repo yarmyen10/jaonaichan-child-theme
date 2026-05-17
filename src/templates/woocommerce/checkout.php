@@ -8,6 +8,14 @@ if ( ! is_user_logged_in() ) {
     exit;
 }
 
+// Force Astra full-width / no-sidebar layout for this template
+add_filter( 'astra_get_option', function ( $val, $option ) {
+    if ( in_array( $option, [ 'site-sidebar-layout', 'single-page-sidebar-layout' ], true ) ) {
+        return 'no-sidebar';
+    }
+    return $val;
+}, 10, 2 );
+
 get_header();
 
 if ( ! WC()->cart || WC()->cart->is_empty() ) {
@@ -24,32 +32,61 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
 ?>
 
 <style>
+/* ── Layout ── */
 .jn-checkout-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 @media (min-width: 922px) {
-  .jn-checkout-grid {
-    grid-template-columns: 2fr 1fr;
-  }
+  .jn-checkout-grid { flex-direction: row; gap: 1.5rem; }
+  .jn-left-col  { flex: 2 1 0; min-width: 0; }
+  .jn-right-col { flex: 1 1 0; min-width: 0; }
 }
 
-@media (max-width: 921px) {
-  .jn-checkout-heading { font-size: 1rem; }
-  .jn-confirm-btn { font-size: 0.95rem; padding: 0.75rem; }
+/* ── Right col sticky (same breakpoint as 2-col) ── */
+@media (min-width: 922px) {
+  .jn-right-col { position: sticky; top: 1.5rem; align-self: flex-start; }
 }
+
+/* ── Typography / buttons ── */
+.jn-checkout-heading { font-size: 1rem; }
+.jn-confirm-btn { font-size: 0.95rem; padding: 0.75rem; }
 @media (min-width: 922px) {
   .jn-checkout-heading { font-size: 1.125rem; }
   .jn-confirm-btn { font-size: 1rem; padding: 0.875rem; }
 }
 
+/* ── Mobile card tweaks ── */
+@media (max-width: 639px) {
+  .jn-checkout-card { padding: 1rem !important; }
+  .jn-items-scroll  { max-height: 200px !important; }
+}
+
 .cart-item:last-child { border-bottom: none; }
+
+/* Force no-sidebar: hide sidebar + make content area fill 100% */
+#secondary,
+aside.widget-area { display: none !important; }
+
+#primary,
+#primary.content-area {
+  float: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+
+.site-content .ast-container,
+.site-content > .ast-container {
+  display: block !important;
+}
 </style>
 
 <main
     x-data="jaoCheckout()"
-    class="w-full mx-auto px-12 py-12 my-12 rounded-xl bg-[#ffffff]"
+    class="w-full mx-auto px-4 py-5 my-4 sm:px-6 sm:py-8 sm:my-6 lg:px-12 lg:py-12 lg:my-12 sm:rounded-xl bg-[#ffffff]"
 >
   <?php $color = '#FB5FAB'; include get_stylesheet_directory() . '/src/templates/spinner.php'; ?>
 
@@ -69,7 +106,7 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
     <div class="jn-checkout-grid">
 
       <!-- ===== Left Column ===== -->
-      <div>
+      <div class="jn-left-col">
 
         <!-- Order Summary -->
         <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
@@ -78,7 +115,7 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
           </h3>
 
           <!-- scrollable items container -->
-          <div style="max-height:320px; overflow-y:auto; margin:0 -0.25rem; padding:0 0.25rem;">
+          <div class="jn-items-scroll" style="max-height:260px; overflow-y:auto; margin:0 -0.25rem; padding:0 0.25rem;">
             <?php foreach ( $cart->get_cart() as $cart_item ) :
               $product   = $cart_item['data'];
               $qty       = $cart_item['quantity'];
@@ -152,8 +189,8 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
 
       </div><!-- /left col -->
 
-      <!-- ===== Right Column (sticky) ===== -->
-      <div class="sticky top-6 self-start">
+      <!-- ===== Right Column ===== -->
+      <div class="jn-right-col">
 
         <!-- Payment -->
         <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
@@ -204,19 +241,21 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
         </div>
 
         <!-- Coupon -->
-        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
-          <div class="flex gap-2">
+        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem; overflow:hidden;">
+          <div style="display:flex; gap:0.5rem; min-width:0;">
             <input
               type="text"
               x-model="couponCode"
               @keydown.enter.prevent="applyCoupon"
               placeholder="<?= esc_attr( __( 'Coupon Code', $_ENV['TEXTDOMAIN_NAME'] ) ) ?>"
-              class="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
+              style="flex:1 1 0%; min-width:0;"
+              class="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
             >
             <button
               type="button"
               @click="applyCoupon"
               :disabled="!couponCode || loading"
+              style="flex-shrink:0; white-space:nowrap;"
               class="px-4 py-2 bg-primary hover:bg-[#5e9a28] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <?= __( 'Apply', $_ENV['TEXTDOMAIN_NAME'] ) ?>

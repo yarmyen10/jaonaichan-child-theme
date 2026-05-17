@@ -426,11 +426,24 @@ nocache_headers();
       color: var(--jn-text);
     }
     .jn-login-foot a { color: var(--jn-accent); font-weight: 600; text-decoration: underline; }
-    .jn-blob { position: absolute; border-radius: 9999px; pointer-events: none; }
-    .jn-blob-1 { top: -40px; left: -40px; width: 160px; height: 160px; background: var(--jn-blob-1); opacity: .55; }
-    .jn-blob-2 { bottom: -50px; left: -30px; width: 180px; height: 180px; background: var(--jn-blob-2); opacity: .45; }
-    .jn-blob-3 { top: 30%; left: 45%; width: 120px; height: 120px; background: var(--jn-blob-3); opacity: .35; }
-    .jn-blob-4 { top: -60px; right: 0px; width: 150px; height: 150px; background: var(--jn-blob-4); opacity: .55; }
+    @keyframes jn-blob-a {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      35%       { transform: translate(8px, -10px) scale(1.03); }
+      68%       { transform: translate(-5px, 6px) scale(0.97); }
+    }
+    @keyframes jn-blob-b {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      40%       { transform: translate(-9px, 7px) scale(1.04); }
+      72%       { transform: translate(6px, -5px) scale(0.96); }
+    }
+    .jn-blob { position: absolute; border-radius: 9999px; pointer-events: none; will-change: transform; }
+    .jn-blob-1 { top: -40px; left: -40px; width: 160px; height: 160px; background: var(--jn-blob-1); opacity: .55; animation: jn-blob-a 13s ease-in-out infinite; }
+    .jn-blob-2 { bottom: -50px; left: -30px; width: 180px; height: 180px; background: var(--jn-blob-2); opacity: .45; animation: jn-blob-b 16s ease-in-out infinite; animation-delay: -5s; }
+    .jn-blob-3 { top: 30%; left: 45%; width: 120px; height: 120px; background: var(--jn-blob-3); opacity: .35; animation: jn-blob-a 19s ease-in-out infinite; animation-delay: -9s; }
+    .jn-blob-4 { top: -60px; right: 0px; width: 150px; height: 150px; background: var(--jn-blob-4); opacity: .55; animation: jn-blob-b 11s ease-in-out infinite; animation-delay: -2s; }
+    @media (prefers-reduced-motion: reduce) {
+      .jn-blob { animation: none; }
+    }
     [x-cloak] { display: none !important; }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
