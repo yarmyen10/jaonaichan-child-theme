@@ -9,14 +9,14 @@
 
 get_header();
 ?>
-<main x-data="billTabs()" class="w-full mx-auto px-12 py-12 my-12 rounded-xl bg-[#ffffff]">
+<main x-data="billTabs()" class="w-full mx-auto px-4 py-6 my-4 md:px-12 md:py-12 md:my-12 rounded-xl bg-[#ffffff]">
 
   <?php
     $color = '#FB5FAB';
     include get_stylesheet_directory() . '/src/templates/spinner.php';
   ?>
 
-  <div class="text-center mb-8">
+  <div class="text-center pt-4 mb-8">
     <h2 class="text-2xl font-medium text-gray-900">ขอบคุณสำหรับคำสั่งซื้อ</h2>
     <p class="text-sm text-gray-500 mt-1">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
     <?php
@@ -73,9 +73,9 @@ get_header();
       <div
         @click="switchTab(1)"
         :class="activeTab === 1 ? 'border-b-2 border-gray-900 text-gray-900 font-medium' : 'text-gray-400'"
-        class="flex-1 flex items-center justify-center gap-2 pb-3 text-sm transition-colors cursor-pointer"
+        class="flex-1 flex items-center justify-center gap-1 md:gap-2 pb-3 text-xs md:text-sm text-center leading-snug transition-colors cursor-pointer"
       >
-        <span :class="bill1Paid ? 'bg-emerald-500' : 'bg-amber-400'" class="inline-block w-2 h-2 rounded-full"></span>
+        <span :class="bill1Paid ? 'bg-emerald-500' : 'bg-amber-400'" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
         Chinees invoice (🇨🇳 บิลจีน)
       </div>
 
@@ -85,9 +85,9 @@ get_header();
           activeTab === 2 ? 'border-b-2 border-gray-900 text-gray-900 font-medium' : 'text-gray-400',
           (!bill1Paid || !bill2HasMeta) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
         ]"
-        class="flex-1 flex items-center justify-center gap-2 pb-3 text-sm transition-colors"
+        class="flex-1 flex items-center justify-center gap-1 md:gap-2 pb-3 text-xs md:text-sm text-center leading-snug transition-colors"
       >
-        <span :class="bill2Paid ? 'bg-emerald-500' : (bill1Paid ? 'bg-amber-400' : 'bg-gray-300')" class="inline-block w-2 h-2 rounded-full"></span>
+        <span :class="bill2Paid ? 'bg-emerald-500' : (bill1Paid ? 'bg-amber-400' : 'bg-gray-300')" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
         Thai invoice (🇹🇭 บิลไทย)
         <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
@@ -108,11 +108,11 @@ get_header();
         ชำระเงินแล้ว
       </div>
 
-      <div class="border border-gray-100 rounded-xl p-6">
+      <div class="border border-gray-100 rounded-xl p-4 md:p-6">
         <p class="text-base font-medium text-gray-900">ค่ามัดจำ</p>
         <p class="text-sm text-gray-400 mt-1 mb-6">ชำระครึ่งหนึ่งของยอดรวม</p>
 
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- {{-- รายการสินค้า --}} -->
           <div class="bg-gray-50 rounded-lg p-4">
             <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
@@ -161,7 +161,7 @@ get_header();
           <div class="flex flex-col gap-4">
             <!-- {{-- QR Code --}} -->
             <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
-              <div class="relative w-60 h-full">
+              <div class="relative w-full max-w-[240px] h-full">
                 <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                 <?php
                     $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
@@ -292,11 +292,11 @@ get_header();
           ชำระเงินแล้ว
         </div>
 
-        <div class="border border-gray-100 rounded-xl p-6">
+        <div class="border border-gray-100 rounded-xl p-4 md:p-6">
           <p class="text-base font-medium text-gray-900">ค่าส่วนที่เหลือ</p>
           <p class="text-sm text-gray-400 mt-1 mb-6">ยอดคงเหลือทั้งหมด</p>
 
-          <div class="grid grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <!-- {{-- รายการสินค้า --}} -->
             <div class="bg-gray-50 rounded-lg p-4">
@@ -350,7 +350,7 @@ get_header();
             <div class="flex flex-col gap-4">
               <!-- {{-- QR Code --}} -->
               <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
-                <div class="relative w-60 h-full">
+                <div class="relative w-full max-w-[240px] h-full">
                   <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                   <?php
                       $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
