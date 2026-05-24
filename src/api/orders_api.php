@@ -289,7 +289,7 @@ class Orders_API {
                     'currency' => $order->get_currency(),
                     'customer' => [
                         'id'    => $order->get_customer_id(),
-                        'name'  => $order->get_formatted_billing_full_name(),
+                        'name'  => self::get_billing_name( $order ),
                         'email' => $order->get_billing_email(),
                         'phone' => $order->get_billing_phone(),
                     ],
@@ -420,7 +420,7 @@ class Orders_API {
                     'currency' => $order->get_currency(),
                     'customer' => [
                         'id'    => $order->get_customer_id(),
-                        'name'  => $order->get_formatted_billing_full_name(),
+                        'name'  => self::get_billing_name( $order ),
                         'email' => $order->get_billing_email(),
                         'phone' => $order->get_billing_phone(),
                     ],
@@ -496,7 +496,7 @@ class Orders_API {
                 'date'     => $order->get_date_created()?->date('Y-m-d H:i:s'),
                 'customer' => [
                     'id'    => $order->get_customer_id(),
-                    'name'  => $order->get_formatted_billing_full_name(),
+                    'name'  => self::get_billing_name( $order ),
                     'email' => $order->get_billing_email(),
                     'phone' => $order->get_billing_phone(),
                 ],
@@ -854,7 +854,23 @@ class Orders_API {
         ];
     }
 
-    private static function format_order( WC_Order $order, bool $with_items = false ): array {
+    private static function get_billing_name( WC_Order $order ): string {
+        $name = trim( $order->get_formatted_billing_full_name() );
+        if ( $name !== '' ) {
+            return $name;
+        }
+        $name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
+        if ( $name !== '' ) {
+            return $name;
+        }
+        $user_id = $order->get_customer_id();
+        if ( $user_id ) {
+            $name = trim( get_user_meta( $user_id, 'first_name', true ) . ' ' . get_user_meta( $user_id, 'last_name', true ) );
+        }
+        return $name;
+    }
+
+    public static function format_order( WC_Order $order, bool $with_items = false ): array {
         $order_id = $order->get_id();
 
         $data = [
@@ -867,7 +883,7 @@ class Orders_API {
             'payment_method' => $order->get_payment_method(),
             'customer'       => [
                 'id'    => $order->get_customer_id(),
-                'name'  => $order->get_formatted_billing_full_name(),
+                'name'  => self::get_billing_name( $order ),
                 'email' => $order->get_billing_email(),
                 'phone' => $order->get_billing_phone(),
             ],
