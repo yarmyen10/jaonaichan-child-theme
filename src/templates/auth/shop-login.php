@@ -101,6 +101,12 @@ if ( $action === 'login' ) {
         if ( $n === 'password_sent' )  $jn_notice = __( 'ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว', $_ENV['TEXTDOMAIN_NAME'] );
         if ( $n === 'password_reset' ) $jn_notice = __( 'รีเซ็ตรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบ', $_ENV['TEXTDOMAIN_NAME'] );
     }
+
+    // Social login blocked: miniOrange (?social_login_blocked=1) หรือ LINE (?line_error=not_registered)
+    if ( isset( $_GET['social_login_blocked'] ) ||
+         ( isset( $_GET['line_error'] ) && sanitize_key( $_GET['line_error'] ) === 'not_registered' ) ) {
+        $login_error = __( 'ไม่พบบัญชีของคุณในระบบ กรุณาติดต่อผู้ดูแล', $_ENV['TEXTDOMAIN_NAME'] );
+    }
 }
 
 // ── LOST PASSWORD ───────────────────────────────────────────────────────────
