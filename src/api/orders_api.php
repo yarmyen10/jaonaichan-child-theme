@@ -896,6 +896,7 @@ class Orders_API {
             'total'          => (float) $order->get_total(),
             'currency'       => $order->get_currency(),
             'date'           => $order->get_date_created()?->date('Y-m-d H:i:s'),
+            'date_modified'  => $order->get_date_modified()?->date('Y-m-d H:i:s'),
             'payment_method' => $order->get_payment_method(),
             'customer'       => [
                 'id'    => $order->get_customer_id(),
