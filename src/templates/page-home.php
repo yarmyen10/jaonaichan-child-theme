@@ -94,6 +94,24 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
   transform-origin: bottom center;
   animation: jn-wiggle 2.8s ease-in-out infinite;
 }
+/* Badge text slider — 3 messages + duplicate of first for seamless loop */
+@keyframes jn-badge-slide {
+  0%,  23% { transform: translateY(0); }
+  25%, 48% { transform: translateY(-25%); }
+  50%, 73% { transform: translateY(-50%); }
+  75%, 98% { transform: translateY(-75%); }
+  100%     { transform: translateY(0); }
+}
+.jn-badge-track {
+  display: flex;
+  flex-direction: column;
+  animation: jn-badge-slide 9s ease-in-out infinite;
+}
+.jn-badge-item {
+  height: 1.35rem;
+  line-height: 1.35rem;
+  white-space: nowrap;
+}
 </style>
 
 <div class="jn-home-wrap">
@@ -177,14 +195,20 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 						<?php endif; ?>
 
 						<!-- Floating badges -->
-						<div class="absolute -top-3 -left-8 flex items-center gap-1.5 bg-white rounded-2xl px-3 py-2"
-						     style="box-shadow:0 4px 16px rgba(0,0,0,.10);">
-							<span style="color:#fbbf24;">⭐</span>
-							<span class="text-xs font-semibold" style="color:#374151;">คัดสรรคุณภาพ</span>
+						<div class="absolute -top-5 -left-12 flex items-center bg-white rounded-2xl px-4 py-3"
+						     style="box-shadow:0 4px 20px rgba(0,0,0,.12);">
+							<div style="overflow:hidden; height:1.35rem;">
+								<div class="jn-badge-track">
+									<span class="text-sm font-semibold jn-badge-item" style="color:#374151; height:1.35rem; line-height:1.35rem;">⭐ คัดสรรคุณภาพ</span>
+									<span class="text-sm font-semibold jn-badge-item" style="color:#374151; height:1.35rem; line-height:1.35rem;">🐾 ปลอดภัย 100%</span>
+									<span class="text-sm font-semibold jn-badge-item" style="color:#374151; height:1.35rem; line-height:1.35rem;">🚀 ส่งเร็ว 1-2 วัน</span>
+									<span class="text-sm font-semibold jn-badge-item" style="color:#374151; height:1.35rem; line-height:1.35rem;">⭐ คัดสรรคุณภาพ</span>
+								</div>
+							</div>
 						</div>
-						<div class="absolute -bottom-3 -right-8 rounded-2xl px-3 py-2"
-						     style="background:#ec4899; box-shadow:0 4px 16px rgba(236,72,153,.4);">
-							<span class="text-xs font-semibold text-white">🚚 ส่งฟรีทั่วไทย</span>
+						<div class="absolute -bottom-5 -right-12 rounded-2xl px-4 py-3"
+						     style="background:#ec4899; box-shadow:0 4px 20px rgba(236,72,153,.45);">
+							<span class="text-sm font-semibold text-white">🚚 ส่งฟรีทั่วไทย</span>
 						</div>
 					</div>
 				</div>

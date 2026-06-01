@@ -47,14 +47,16 @@ get_header();
         // pending → wait_verify_1 → bill1_paid → wait_verify_2 → both_paid
         // bill2_has_meta เป็น true เฉพาะ state ที่ควรสร้าง bill2 แล้ว
         if ( $mock === 'pending' )          { $bill1_status = 'pending'; $bill2_status = 'pending'; $order_status = 'waiting-transfer'; $bill2_has_meta = false; }
-        elseif ( $mock === 'wait_verify_1') { $bill1_status = 'pending'; $bill2_status = 'pending'; $order_status = 'wait-verify-1';   $bill2_has_meta = false; }
-        elseif ( $mock === 'bill1_paid' )   { $bill1_status = 'paid';    $bill2_status = 'pending'; $order_status = 'paid-1';           $bill2_has_meta = false; }
-        elseif ( $mock === 'wait_verify_2') { $bill1_status = 'paid';    $bill2_status = 'pending'; $order_status = 'wait-verify-2';   $bill2_has_meta = true;  }
+        elseif ( $mock === 'wait_verify_1') { $bill1_status = 'submitted'; $bill2_status = 'pending';    $order_status = 'wait-verify-1'; $bill2_has_meta = false; }
+        elseif ( $mock === 'bill1_paid' )   { $bill1_status = 'paid';    $bill2_status = 'pending';    $order_status = 'paid-1';        $bill2_has_meta = false; }
+        elseif ( $mock === 'wait_verify_2') { $bill1_status = 'paid';    $bill2_status = 'submitted';  $order_status = 'wait-verify-2'; $bill2_has_meta = true;  }
         elseif ( $mock === 'both_paid' )    { $bill1_status = 'paid';    $bill2_status = 'paid';    $order_status = 'paid-2';           $bill2_has_meta = true;  }
       }
 
-      $bill1_paid   = $bill1_status === 'paid';
-      $bill2_paid   = $bill2_status === 'paid';
+      $bill1_paid      = $bill1_status === 'paid';
+      $bill2_paid      = $bill2_status === 'paid';
+      $bill1_submitted = $bill1_status === 'submitted';
+      $bill2_submitted = $bill2_status === 'submitted';
     ?>
     <span class="inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
       Order #<?= $order ? $order->get_order_number() : $order_id ?>
@@ -75,7 +77,7 @@ get_header();
         :class="activeTab === 1 ? 'border-b-2 border-gray-900 text-gray-900 font-medium' : 'text-gray-400'"
         class="flex-1 flex items-center justify-center gap-1 md:gap-2 pb-3 text-xs md:text-sm text-center leading-snug transition-colors cursor-pointer"
       >
-        <span :class="bill1Paid ? 'bg-emerald-500' : 'bg-amber-400'" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
+        <span :class="bill1Paid ? 'bg-emerald-500' : (bill1Submitted ? 'bg-blue-400' : 'bg-amber-400')" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
         Chinees invoice (🇨🇳 บิลจีน)
       </div>
 
@@ -87,7 +89,7 @@ get_header();
         ]"
         class="flex-1 flex items-center justify-center gap-1 md:gap-2 pb-3 text-xs md:text-sm text-center leading-snug transition-colors"
       >
-        <span :class="bill2Paid ? 'bg-emerald-500' : (bill1Paid ? 'bg-amber-400' : 'bg-gray-300')" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
+        <span :class="bill2Paid ? 'bg-emerald-500' : (bill1Paid ? (bill2Submitted ? 'bg-blue-400' : 'bg-amber-400') : 'bg-gray-300')" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
         Thai invoice (🇹🇭 บิลไทย)
         <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
@@ -99,9 +101,13 @@ get_header();
     <!-- {{-- Bill 1 --}} -->
     <div x-show="activeTab === 1">
 
-      <div x-show="!bill1Paid" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
+      <div x-show="!bill1Paid && !bill1Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
         <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
         รอการชำระเงิน
+      </div>
+      <div x-show="bill1Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-800 text-sm rounded-lg mb-4">
+        <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+        รอเจ้าหน้าที่ตรวจสอบ
       </div>
       <div x-show="bill1Paid" class="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-800 text-sm rounded-lg mb-4">
         <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -218,11 +224,15 @@ get_header();
                 <template x-if="!preview1 && viewBill1">
                   <div class="relative w-full h-full">
                     <img :src="viewBill1" class="w-full h-full object-cover" />
-                    <!-- Badge: ตรวจสอบ (verify failed) -->
-                    <div x-show="slip1Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
+                    <!-- Badge: รอตรวจสอบ (submitted for manual review) -->
+                    <div x-show="bill1Submitted && slip1Verify === false" class="absolute top-2 right-2 bg-blue-400 text-white text-xs px-2 py-1 rounded-full">
+                      🕐 รอตรวจ
+                    </div>
+                    <!-- Badge: ตรวจสอบ (SlipOK rejected) -->
+                    <div x-show="!bill1Submitted && slip1Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
                       ⚠︎ ตรวจสอบ
                     </div>
-                    <!-- Badge: ชำระแล้ว (verify passed or unknown) -->
+                    <!-- Badge: ชำระแล้ว -->
                     <div x-show="slip1Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
                       ✓ ชำระแล้ว
                     </div>
@@ -237,7 +247,7 @@ get_header();
               </div>
 
               <!-- ปุ่ม -->
-              <template x-if="!bill1Paid">
+              <template x-if="!bill1Paid && !bill1Submitted">
                   <div class="flex flex-col gap-2">
                       <button @click="$refs.file1.click()"
                               class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700">
@@ -252,6 +262,14 @@ get_header();
                           ยืนยันการชำระเงิน
                       </button>
                   </div>
+              </template>
+
+              <!-- รอตรวจสอบ — ดูสลิปได้ -->
+              <template x-if="bill1Submitted && !bill1Paid">
+                  <button @click="viewBill1 && openSlip(viewBill1)"
+                          class="w-full py-2 text-sm bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
+                      🕐 รอตรวจสอบ — ดูสลิปที่แนบ
+                  </button>
               </template>
 
               <!-- ชำระแล้ว — ดูสลิปได้ -->
@@ -283,9 +301,13 @@ get_header();
 
       <div x-show="bill1Paid">
 
-        <div x-show="!bill2Paid" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
+        <div x-show="!bill2Paid && !bill2Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
           <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
           รอการชำระเงิน
+        </div>
+        <div x-show="bill2Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-800 text-sm rounded-lg mb-4">
+          <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+          รอเจ้าหน้าที่ตรวจสอบ
         </div>
         <div x-show="bill2Paid" class="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-800 text-sm rounded-lg mb-4">
           <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -407,11 +429,15 @@ get_header();
                   <template x-if="!preview2 && viewBill2">
                     <div class="relative w-full h-full">
                       <img :src="viewBill2" class="w-full h-full object-cover" />
-                      <!-- Badge: ตรวจสอบ (verify failed) -->
-                      <div x-show="slip2Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
+                      <!-- Badge: รอตรวจสอบ (submitted for manual review) -->
+                      <div x-show="bill2Submitted && slip2Verify === false" class="absolute top-2 right-2 bg-blue-400 text-white text-xs px-2 py-1 rounded-full">
+                        🕐 รอตรวจ
+                      </div>
+                      <!-- Badge: ตรวจสอบ (SlipOK rejected) -->
+                      <div x-show="!bill2Submitted && slip2Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
                         ⚠︎ ตรวจสอบ
                       </div>
-                      <!-- Badge: ชำระแล้ว (verify passed or unknown) -->
+                      <!-- Badge: ชำระแล้ว -->
                       <div x-show="slip2Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
                         ✓ ชำระแล้ว
                       </div>
@@ -426,7 +452,7 @@ get_header();
                 </div>
 
                 <!-- ปุ่ม -->
-                <template x-if="!bill2Paid">
+                <template x-if="!bill2Paid && !bill2Submitted">
                     <div class="flex flex-col gap-2">
                         <button @click="$refs.file2.click()"
                                 class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700">
@@ -441,6 +467,14 @@ get_header();
                             ยืนยันการชำระเงิน
                         </button>
                     </div>
+                </template>
+
+                <!-- รอตรวจสอบ — ดูสลิปได้ -->
+                <template x-if="bill2Submitted && !bill2Paid">
+                    <button @click="viewBill2 && openSlip(viewBill2)"
+                            class="w-full py-2 text-sm bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
+                        🕐 รอตรวจสอบ — ดูสลิปที่แนบ
+                    </button>
                 </template>
 
                 <!-- ชำระแล้ว — ดูสลิปได้ -->
@@ -482,8 +516,10 @@ function billTabs() {
     orderStatus: '<?= esc_js( $order_status ) ?>',
     mockResult:  '<?= isset($mock) ? esc_js($mock) : '' ?>',
     // ค่าเริ่มต้นมาจาก _bill{N}_status ใน order meta — bill2 จะเปิดให้ก็ต่อเมื่อ bill1Paid
-    bill1Paid:    <?= $bill1_paid    ? 'true' : 'false' ?>,
-    bill2Paid:    <?= $bill2_paid    ? 'true' : 'false' ?>,
+    bill1Paid:      <?= $bill1_paid      ? 'true' : 'false' ?>,
+    bill2Paid:      <?= $bill2_paid      ? 'true' : 'false' ?>,
+    bill1Submitted: <?= $bill1_submitted ? 'true' : 'false' ?>,
+    bill2Submitted: <?= $bill2_submitted ? 'true' : 'false' ?>,
     bill2HasMeta: <?= $bill2_has_meta ? 'true' : 'false' ?>,
     bill2Amount:  <?= (float) $bill2_amount ?>,
     preview1: null,
@@ -508,13 +544,13 @@ function billTabs() {
 
         // โหลดสลิปที่อัปโหลดไว้แล้วเพื่อแสดง preview (ไม่เกี่ยวกับสถานะ paid)
         this.viewBill1 = await this.loadSlip(1);
-        if ((this.viewBill1 || this.mockResult) && this.orderStatus.startsWith('wait-verify-1')) {
+        if ((this.viewBill1 || this.mockResult) && (this.bill1Submitted || this.orderStatus.startsWith('wait-verify-1'))) {
           this.slip1Verify = false;
         }
 
-        if (this.bill1Paid) {
+        if (this.bill1Paid || this.bill2Submitted) {
           this.viewBill2 = await this.loadSlip(2);
-          if ((this.viewBill2 || this.mockResult) && this.orderStatus.startsWith('wait-verify-2')) {
+          if ((this.viewBill2 || this.mockResult) && (this.bill2Submitted || this.orderStatus.startsWith('wait-verify-2'))) {
             this.slip2Verify = false;
           }
         }
@@ -565,7 +601,6 @@ function billTabs() {
           formData.append('nonce',    '<?= wp_create_nonce("promptpay_upload_slip") ?>');
           formData.append('order_id', '<?= $order_id ?>');
           formData.append('slip',     this.$refs.file1.files[0]);
-          formData.append('mock_result', true);
 
           const res = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
           json = await res.json();
@@ -595,12 +630,26 @@ function billTabs() {
             confirmButtonColor: '#111827',
           });
           window.location.href = '/shop';
+        } else if (json.success && !json.data.verify) {
+          await fetch(`/wp-json/jaonaichan/v1/orders/<?= $order_id ?>/bill/1`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' },
+            body: JSON.stringify({ status: 'submitted' }),
+          });
+          this.bill1Submitted = true;
+          this.loading = false;
+          Swal.fire({
+            icon: 'info',
+            title: 'รับสลิปแล้ว',
+            text: 'รอเจ้าหน้าที่ตรวจสอบ',
+            confirmButtonColor: '#111827',
+          });
         } else {
           this.loading = false;
           Swal.fire({
             icon: 'warning',
             title: 'ตรวจสอบไม่ผ่าน',
-            text: json.data.message,
+            text: json.data?.message ?? 'กรุณาลองอีกครั้ง',
             confirmButtonColor: '#111827',
           });
         }
@@ -626,7 +675,6 @@ function billTabs() {
           formData.append('order_id', '<?= $order_id ?>');
           formData.append('amount',   this.bill2Amount);
           formData.append('slip',     this.$refs.file2.files[0]);
-          formData.append('mock_result', true);
 
           const res = await fetch('<?= admin_url("admin-ajax.php") ?>', { method: 'POST', body: formData });
           json = await res.json();
@@ -655,12 +703,26 @@ function billTabs() {
               confirmButtonColor: '#111827',
             });
             window.location.href = '/shop';
+        } else if (json.success && !json.data.verify) {
+            await fetch(`/wp-json/jaonaichan/v1/orders/<?= $order_id ?>/bill/2`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>' },
+              body: JSON.stringify({ status: 'submitted' }),
+            });
+            this.bill2Submitted = true;
+            this.loading = false;
+            Swal.fire({
+              icon: 'info',
+              title: 'รับสลิปแล้ว',
+              text: 'รอเจ้าหน้าที่ตรวจสอบ',
+              confirmButtonColor: '#111827',
+            });
         } else {
             this.loading = false;
             Swal.fire({
               icon: 'warning',
               title: 'ตรวจสอบไม่ผ่าน',
-              text: json.data.message,
+              text: json.data?.message ?? 'กรุณาลองอีกครั้ง',
               confirmButtonColor: '#111827',
             });
         }

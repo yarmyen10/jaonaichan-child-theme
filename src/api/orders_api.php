@@ -174,7 +174,7 @@ class Orders_API {
         register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/bill/(?P<bill_number>[12])', [
             'methods'             => 'PATCH',
             'callback'            => [ self::class, 'update_order_bill' ],
-            'permission_callback' => [ self::class, 'check_permission' ],
+            'permission_callback' => [ self::class, 'check_bill_permission' ],
             'args'                => [
                 'status'  => [
                     'required'          => false,
@@ -792,6 +792,22 @@ class Orders_API {
 
         $order->save();
 
+        // sync WC order status ตาม bill status ที่เปลี่ยน
+        if ( isset( $updated['status'] ) ) {
+            $b1 = (string) $order->get_meta( '_bill1_status', true );
+            $b2 = (string) $order->get_meta( '_bill2_status', true );
+
+            if ( $b2 === 'paid' ) {
+                $order->update_status( 'paid-2', 'ชำระครบทั้ง 2 บิลแล้ว' );
+            } elseif ( $b1 === 'paid' ) {
+                $order->update_status( 'paid-1', 'ชำระบิลแรกแล้ว' );
+            } elseif ( $b2 === 'submitted' ) {
+                $order->update_status( 'wait-verify-2', 'รอตรวจสลิปบิลที่ 2' );
+            } elseif ( $b1 === 'submitted' ) {
+                $order->update_status( 'wait-verify-1', 'รอตรวจสลิปบิลแรก' );
+            }
+        }
+
         return new WP_REST_Response([
             'success' => true,
             'message' => "อัปเดต Bill {$bill_number} แล้ว",
@@ -969,11 +985,20 @@ class Orders_API {
     }
 
     public static function validate_bill_status( string $status ): bool {
-        return in_array( $status, [ 'pending', 'paid', 'cancelled' ], true );
+        return in_array( $status, [ 'pending', 'submitted', 'paid', 'cancelled' ], true );
     }
 
     public static function check_permission(): bool {
         return is_user_logged_in();
+    }
+
+    /** PATCH bill — admin หรือเจ้าของ order เท่านั้น */
+    public static function check_bill_permission( WP_REST_Request $req ): bool {
+        if ( ! is_user_logged_in() ) return false;
+        if ( current_user_can( 'manage_options' ) ) return true;
+
+        $order = wc_get_order( (int) $req['id'] );
+        return $order && (int) $order->get_customer_id() === get_current_user_id();
     }
 }
 
