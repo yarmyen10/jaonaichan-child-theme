@@ -1,6 +1,6 @@
 <?php
 /**
- * Template Name: Dashboard
+ * Template Name: Profile
  */
 
 if ( ! is_user_logged_in() ) {
@@ -10,16 +10,14 @@ if ( ! is_user_logged_in() ) {
 
 $user         = wp_get_current_user();
 $base_url     = get_permalink();
-$current_page = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'overview';
-$assets_url   = get_stylesheet_directory_uri() . '/src/templates/dashboard/assets';
-$allowed      = ['overview', 'orders', 'profile'];
+$current_page = 'profile';
 ?>
 <!DOCTYPE html>
 <html lang="<?php language_attributes(); ?>">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard — <?php bloginfo('name'); ?></title>
+    <title><?= esc_html__( 'โปรไฟล์', 'jaonaichan' ) ?> — <?php bloginfo('name'); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
@@ -29,12 +27,9 @@ $allowed      = ['overview', 'orders', 'profile'];
 <body
     style="font-family: 'Outfit', sans-serif;"
     x-data="{
-        page: '<?= esc_js($current_page) ?>',
-        loaded: true,
         darkMode: false,
         stickyMenu: false,
-        sidebarToggle: false,
-        scrollTop: false
+        sidebarToggle: false
     }"
     x-init="
         darkMode = JSON.parse(localStorage.getItem('darkMode'));
@@ -45,22 +40,15 @@ $allowed      = ['overview', 'orders', 'profile'];
 
 <div class="flex h-screen overflow-hidden">
 
-    <!-- Sidebar -->
     <?php include __DIR__ . '/partials/sidebar.php'; ?>
 
     <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
 
-        <!-- Header -->
         <?php include __DIR__ . '/partials/header.php'; ?>
 
-        <!-- Content -->
         <main>
             <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
-                <?php
-                if ( in_array($current_page, $allowed) ) {
-                    include __DIR__ . '/partials/' . $current_page . '.php';
-                }
-                ?>
+                <?php include __DIR__ . '/partials/profile.php'; ?>
             </div>
         </main>
 

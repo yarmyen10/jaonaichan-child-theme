@@ -5,13 +5,22 @@
 class Auth_API {
 
     public static function init(): void {
-        // Inject bb_jwt cookie as HTTP_AUTHORIZATION before any WP auth hook runs.
-        // The JWT plugin reads $_SERVER directly in both determine_current_user and
-        // rest_authentication_errors — setting it here (file-load time) is the only
-        // reliable way to ensure it's visible to both.
+        // Inject bb_jwt cookie as HTTP_AUTHORIZATION.
+        // Two-layer approach:
+        // 1) File-load time — for servers where determine_current_user fires after theme loads.
+        // 2) determine_current_user priority 9 — fires right before the JWT plugin (priority 10),
+        //    handles servers where WP bootstraps the user BEFORE loading the theme.
         if ( ! empty( $_COOKIE['bb_jwt'] ) && empty( $_SERVER['HTTP_AUTHORIZATION'] ) ) {
             $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . sanitize_text_field( wp_unslash( $_COOKIE['bb_jwt'] ) );
         }
+
+        add_filter( 'determine_current_user', function ( $user_id ) {
+            if ( $user_id ) return $user_id;
+            if ( ! empty( $_COOKIE['bb_jwt'] ) && empty( $_SERVER['HTTP_AUTHORIZATION'] ) ) {
+                $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . sanitize_text_field( wp_unslash( $_COOKIE['bb_jwt'] ) );
+            }
+            return $user_id;
+        }, 9 );
 
         add_action( 'rest_api_init', [ self::class, 'register_routes' ], 10 );
 

@@ -69,6 +69,15 @@ class Invoices_API {
                 'callback'            => [ self::class, 'get_invoice' ],
                 'permission_callback' => [ self::class, 'check_permission' ],
             ],
+            [
+                'methods'             => 'PATCH',
+                'callback'            => [ self::class, 'patch_invoice' ],
+                'permission_callback' => [ self::class, 'check_permission' ],
+                'args'                => [
+                    'status' => [ 'type' => 'string', 'enum' => [ 'draft', 'sent', 'paid' ] ],
+                    'notes'  => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_textarea_field' ],
+                ],
+            ],
         ] );
     }
 
@@ -156,6 +165,47 @@ class Invoices_API {
             'success' => true,
             'data'    => self::format_invoice( $row ),
         ], 201 );
+    }
+
+    public static function patch_invoice( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+        global $wpdb;
+        $table = $wpdb->prefix . 'jaonaichan_invoices';
+        $id    = intval( $request->get_param( 'id' ) );
+
+        $exists = $wpdb->get_var(
+            $wpdb->prepare( "SELECT id FROM {$table} WHERE id = %d", $id )
+        );
+        if ( ! $exists ) {
+            return new WP_Error( 'not_found', 'Invoice not found', [ 'status' => 404 ] );
+        }
+
+        $data   = [];
+        $format = [];
+
+        if ( $request->has_param( 'status' ) ) {
+            $data['status'] = sanitize_text_field( $request->get_param( 'status' ) );
+            $format[]       = '%s';
+        }
+        if ( $request->has_param( 'notes' ) ) {
+            $data['notes'] = sanitize_textarea_field( $request->get_param( 'notes' ) );
+            $format[]      = '%s';
+        }
+
+        if ( empty( $data ) ) {
+            return new WP_Error( 'no_fields', 'No fields to update', [ 'status' => 400 ] );
+        }
+
+        $wpdb->update( $table, $data, [ 'id' => $id ], $format, [ '%d' ] );
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ),
+            ARRAY_A
+        );
+
+        return new WP_REST_Response( [
+            'success' => true,
+            'data'    => self::format_invoice( $row ),
+        ], 200 );
     }
 
     private static function format_invoice( array $row ): array {
