@@ -114,20 +114,21 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 }
 </style>
 
-<div class="jn-home-wrap">
+<div class="jn-home-wrap w-full min-h-[calc(100vh-80px)] font-sans relative z-10 breakout-desktop">
+
+  <!-- Full Width Background Container -->
+  <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
+    <!-- Decorative background blobs -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 2s;"></div>
+  </div>
 
 	<!-- ═══════════════════════════════════════════
 	     1. HERO
 	══════════════════════════════════════════════ -->
-	<section class="relative overflow-hidden" style="background: linear-gradient(90deg, #fff0f6 0%, #fce7f3 55%, #fdf4ff 100%);">
+	<section class="relative overflow-hidden">
 
-		<!-- Decorative blobs -->
-		<div class="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none jn-blob-a"
-		     style="background: #f9a8d4; opacity: .18;"></div>
-		<div class="absolute bottom-0 left-0 w-72 h-72 rounded-full pointer-events-none jn-blob-b"
-		     style="background: #fde68a; opacity: .22;"></div>
-
-		<div class="mx-auto max-w-6xl px-6 py-16 md:py-28 relative" style="z-index:1;">
+		<div class="mx-auto max-w-6xl px-6 pt-[240px] pb-16 md:pt-[280px] md:pb-28 relative" style="z-index:1;">
 			<div class="flex flex-col md:flex-row items-center gap-10 md:gap-16">
 
 				<!-- ── Text ── -->
@@ -221,7 +222,7 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 	     2. FEATURED PRODUCTS
 	══════════════════════════════════════════════ -->
 	<?php if ( ! empty( $featured ) ) : ?>
-	<section class="py-16 bg-white">
+	<section class="py-16">
 		<div class="mx-auto max-w-6xl px-6">
 
 			<div class="text-center mb-10">
@@ -238,10 +239,9 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 						: wc_placeholder_img_src( 'woocommerce_thumbnail' );
 					$on_sale = $product->is_on_sale();
 				?>
-				<article class="jn-product-card group rounded-2xl overflow-hidden border transition-all duration-300"
-				         style="background:#fff; border-color:#f3f4f6; box-shadow:0 1px 4px rgba(0,0,0,.06);"
-				         onmouseover="this.style.boxShadow='0 8px 28px rgba(236,72,153,.14)'; this.style.borderColor='#fbcfe8';"
-				         onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'; this.style.borderColor='#f3f4f6';">
+				<article class="jn-product-card group rounded-[1.5rem] overflow-hidden border transition-all duration-300 bg-white/70 backdrop-blur-xl border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
+				         onmouseover="this.style.boxShadow='0 8px 32px rgba(236,72,153,.2)';"
+				         onmouseout="this.style.boxShadow='';">
 					<a href="<?php echo esc_url( $product->get_permalink() ); ?>" class="block">
 
 						<!-- Image -->
@@ -303,7 +303,7 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 	     3. CATEGORY GRID
 	══════════════════════════════════════════════ -->
 	<?php if ( ! empty( $categories ) ) : ?>
-	<section id="jn-categories" class="py-16" style="background: linear-gradient(180deg,#fff0f6 0%,#fdf4ff 100%);">
+	<section id="jn-categories" class="py-16">
 		<div class="mx-auto max-w-6xl px-6">
 
 			<div class="text-center mb-10">

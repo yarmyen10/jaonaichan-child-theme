@@ -84,10 +84,19 @@ aside.widget-area { display: none !important; }
 }
 </style>
 
-<main
-    x-data="jaoCheckout()"
-    class="w-full mx-auto px-4 py-5 my-4 sm:px-6 sm:py-8 sm:my-6 lg:px-12 lg:py-12 lg:my-12 sm:rounded-xl bg-[#ffffff]"
->
+<div class="w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+  
+  <!-- Full Width Background Container -->
+  <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
+    <!-- Decorative background blobs -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 2s;"></div>
+  </div>
+
+  <main
+      x-data="jaoCheckout()"
+      class="relative z-10 w-full max-w-6xl mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
+  >
   <?php $color = '#FB5FAB'; include get_stylesheet_directory() . '/src/templates/spinner.php'; ?>
 
   <form
@@ -300,7 +309,8 @@ aside.widget-area { display: none !important; }
     </div>
   </form>
 
-</main>
+  </main>
+</div>
 
 <script>
 function jaoCheckout() {

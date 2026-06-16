@@ -907,6 +907,11 @@ class Orders_API {
             'billing' => [
                 'address' => $order->get_formatted_billing_address(),
             ],
+            'shipping' => [
+                'name'    => trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() ),
+                'phone'   => (string) $order->get_meta( '_shipping_phone', true ),
+                'address' => $order->get_shipping_address_1(),
+            ],
             'bill1' => [
                 'status'  => $order->get_meta( '_bill1_status' ) ?: 'pending',
                 'amount'  => (float) $order->get_meta( '_bill1_amount' ),

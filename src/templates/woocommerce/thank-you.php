@@ -9,16 +9,36 @@
 
 get_header();
 ?>
-<main x-data="billTabs()" class="w-full mx-auto px-4 py-6 my-4 md:px-12 md:py-12 md:my-12 rounded-xl bg-[#ffffff]">
+<style>
+  body { overflow-x: hidden !important; }
+  @media (min-width: 1280px) {
+    .breakout-desktop {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      margin-left: calc(50% - 50vw) !important;
+      margin-right: calc(50% - 50vw) !important;
+    }
+  }
+</style>
+<div class="w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+  
+  <!-- Full Width Background Container -->
+  <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
+    <!-- Decorative background blobs -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 2s;"></div>
+  </div>
+
+  <main x-data="billTabs()" class="relative z-10 w-full max-w-[1200px] mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]">
 
   <?php
     $color = '#FB5FAB';
     include get_stylesheet_directory() . '/src/templates/spinner.php';
   ?>
 
-  <div class="text-center pt-4 mb-8">
-    <h2 class="text-2xl font-medium text-gray-900">ขอบคุณสำหรับคำสั่งซื้อ</h2>
-    <p class="text-sm text-gray-500 mt-1">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
+  <div class="text-center pt-2 mb-10">
+    <h2 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FB5FAB] to-purple-600 tracking-tight">ขอบคุณสำหรับคำสั่งซื้อ</h2>
+    <p class="text-base text-gray-500 mt-3 font-medium">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
     <?php
       $order_id     = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
       $order        = $order_id ? wc_get_order($order_id) : null;
@@ -57,6 +77,31 @@ get_header();
       $bill2_paid      = $bill2_status === 'paid';
       $bill1_submitted = $bill1_status === 'submitted';
       $bill2_submitted = $bill2_status === 'submitted';
+
+      // Shipping Data
+      $shipping_first_name = $order ? $order->get_shipping_first_name() : '';
+      $shipping_last_name  = $order ? $order->get_shipping_last_name() : '';
+      $shipping_name       = trim($shipping_first_name . ' ' . $shipping_last_name);
+      if (empty($shipping_name)) {
+          $shipping_name = $order ? trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()) : '';
+      }
+      $shipping_phone = $order ? $order->get_billing_phone() : '';
+      
+      $addr1 = $order ? $order->get_shipping_address_1() : '';
+      $addr2 = $order ? $order->get_shipping_address_2() : '';
+      $city  = $order ? $order->get_shipping_city() : '';
+      $state = $order ? $order->get_shipping_state() : '';
+      $post  = $order ? $order->get_shipping_postcode() : '';
+      
+      $shipping_address = trim("$addr1 $addr2 $city $state $post");
+      if (empty($shipping_address)) {
+          $addr1 = $order ? $order->get_billing_address_1() : '';
+          $addr2 = $order ? $order->get_billing_address_2() : '';
+          $city  = $order ? $order->get_billing_city() : '';
+          $state = $order ? $order->get_billing_state() : '';
+          $post  = $order ? $order->get_billing_postcode() : '';
+          $shipping_address = trim("$addr1 $addr2 $city $state $post");
+      }
     ?>
     <span class="inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
       Order #<?= $order ? $order->get_order_number() : $order_id ?>
@@ -71,27 +116,27 @@ get_header();
 
   <div>
     <!-- {{-- Tabs --}} -->
-    <div class="flex border-b border-gray-200 mb-6">
+    <div class="flex p-1.5 bg-gray-100/60 backdrop-blur-md rounded-[1.25rem] mb-8 shadow-inner border border-gray-200/50">
       <div
         @click="switchTab(1)"
-        :class="activeTab === 1 ? 'border-b-2 border-gray-900 text-gray-900 font-medium' : 'text-gray-400'"
-        class="flex-1 flex items-center justify-center gap-1 md:gap-2 pb-3 text-xs md:text-sm text-center leading-snug transition-colors cursor-pointer"
+        :class="activeTab === 1 ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
+        class="flex-1 flex items-center justify-center gap-2 py-3.5 px-2 md:px-4 text-xs md:text-sm text-center leading-snug transition-all duration-300 rounded-xl cursor-pointer"
       >
-        <span :class="bill1Paid ? 'bg-emerald-500' : (bill1Submitted ? 'bg-blue-400' : 'bg-amber-400')" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
+        <span :class="bill1Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]')" class="inline-block shrink-0 w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
         Chinees invoice (🇨🇳 บิลจีน)
       </div>
 
       <div
         @click="switchTab(2)"
         :class="[
-          activeTab === 2 ? 'border-b-2 border-gray-900 text-gray-900 font-medium' : 'text-gray-400',
+          activeTab === 2 ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50',
           (!bill1Paid || !bill2HasMeta) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
         ]"
-        class="flex-1 flex items-center justify-center gap-1 md:gap-2 pb-3 text-xs md:text-sm text-center leading-snug transition-colors"
+        class="flex-1 flex items-center justify-center gap-2 py-3.5 px-2 md:px-4 text-xs md:text-sm text-center leading-snug transition-all duration-300 rounded-xl"
       >
-        <span :class="bill2Paid ? 'bg-emerald-500' : (bill1Paid ? (bill2Submitted ? 'bg-blue-400' : 'bg-amber-400') : 'bg-gray-300')" class="inline-block shrink-0 w-2 h-2 rounded-full"></span>
+        <span :class="bill2Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Paid ? (bill2Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]') : 'bg-gray-300')" class="inline-block shrink-0 w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
         Thai invoice (🇹🇭 บิลไทย)
-        <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
           <path d="M7 11V7a5 5 0 0110 0v4"/>
         </svg>
@@ -99,7 +144,12 @@ get_header();
     </div>
 
     <!-- {{-- Bill 1 --}} -->
-    <div x-show="activeTab === 1">
+    <div 
+      x-show="activeTab === 1"
+      x-transition:enter="transition ease-out duration-500" 
+      x-transition:enter-start="opacity-0 translate-y-4 scale-95" 
+      x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+    >
 
       <div x-show="!bill1Paid && !bill1Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
         <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
@@ -114,13 +164,13 @@ get_header();
         ชำระเงินแล้ว
       </div>
 
-      <div class="border border-gray-100 rounded-xl p-4 md:p-6">
+      <div class="bg-white/50 backdrop-blur-lg border border-white/80 rounded-[1.5rem] p-5 md:p-8 shadow-sm">
         <p class="text-base font-medium text-gray-900">ค่ามัดจำ</p>
         <p class="text-sm text-gray-400 mt-1 mb-6">ชำระครึ่งหนึ่งของยอดรวม</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- {{-- รายการสินค้า --}} -->
-          <div class="bg-gray-50 rounded-lg p-4">
+          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
             <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
             <?php if ( $order ) : ?>
               <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
@@ -166,7 +216,7 @@ get_header();
           <!-- {{-- QR --}} -->
           <div class="flex flex-col gap-4">
             <!-- {{-- QR Code --}} -->
-            <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
+            <div class="flex flex-col items-center gap-3 bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
               <div class="relative w-full max-w-[240px] h-full">
                 <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                 <?php
@@ -179,15 +229,22 @@ get_header();
                     <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
                 </div>
 
-                <!-- Watermark ชำระแล้ว -->
+                <!-- Watermark ชำระแล้ว (Pinned Note) -->
                 <div
                     x-show="bill1Paid"
-                    class="absolute inset-0 flex items-center justify-center"
-                    style="background: rgba(255,255,255,0.75);"
+                    class="absolute inset-0 flex items-center justify-center z-10 bg-white/40 backdrop-blur-[3px] rounded-lg"
                 >
-                    <div class="rotate-[-20deg] border-5 border-emerald-500 rounded-lg px-4 py-2 text-center">
-                        <p class="text-emerald-600 !font-bold !text-3xl tracking-widest !mb-0 !mt-[1.75em]">ชำระแล้ว</p>
-                        <p class="text-emerald-500 !font-bold !text-xl">PAID</p>
+                    <div class="relative rotate-[-6deg] bg-gradient-to-br from-yellow-50 to-amber-100 px-6 py-4 shadow-[2px_4px_16px_rgba(0,0,0,0.15)] border border-amber-200 transform hover:scale-105 transition-transform duration-300">
+                        <!-- Red Push Pin -->
+                        <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-red-500 shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.3),_1px_2px_4px_rgba(0,0,0,0.4)] z-20">
+                            <div class="absolute top-[2px] left-[3px] w-1.5 h-1.5 rounded-full bg-white/60"></div>
+                        </div>
+                        
+                        <!-- Text Content -->
+                        <div class="text-center mt-1 border-2 border-dashed border-emerald-500/30 p-2 rounded">
+                            <p class="text-emerald-600 font-extrabold text-2xl tracking-widest drop-shadow-sm mb-0">ชำระแล้ว</p>
+                            <p class="text-emerald-600/80 font-bold text-sm tracking-[0.3em] mb-0">PAID</p>
+                        </div>
                     </div>
                 </div>
               </div>
@@ -205,40 +262,43 @@ get_header();
               <input type="file" class="hidden" accept="image/*" x-ref="file1" @change="handleFile($event, 1)">
 
               <div
-                @click="bill1Paid && viewBill1 ? openSlip(viewBill1) : $refs.file1.click()"
-                class="relative border-[2.5px] border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
+                @click="(preview1 || viewBill1) ? openSlip(preview1 || viewBill1) : $refs.file1.click()"
+                class="relative border-[2.5px] border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors group"
                 style="height: 140px;"
               >
                 <template x-if="!preview1 && !viewBill1">
-                  <div class="flex flex-col items-center justify-center h-full gap-2">
-                    <svg class="w-6 h-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <div class="flex flex-col items-center justify-center h-full gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
+                    <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
                     </svg>
-                    <p class="text-sm text-gray-400">แนบสลิปโอนเงิน</p>
+                    <p class="text-sm text-gray-500 font-medium">แนบสลิปโอนเงิน</p>
                   </div>
                 </template>
-                <template x-if="preview1">
-                  <img :src="preview1" class="w-full h-full object-cover">
-                </template>
 
-                <template x-if="!preview1 && viewBill1">
+                <template x-if="preview1 || viewBill1">
                   <div class="relative w-full h-full">
-                    <img :src="viewBill1" class="w-full h-full object-cover" />
-                    <!-- Badge: รอตรวจสอบ (submitted for manual review) -->
-                    <div x-show="bill1Submitted && slip1Verify === false" class="absolute top-2 right-2 bg-blue-400 text-white text-xs px-2 py-1 rounded-full">
-                      🕐 รอตรวจ
-                    </div>
-                    <!-- Badge: ตรวจสอบ (SlipOK rejected) -->
-                    <div x-show="!bill1Submitted && slip1Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
-                      ⚠︎ ตรวจสอบ
-                    </div>
-                    <!-- Badge: ชำระแล้ว -->
-                    <div x-show="slip1Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
-                      ✓ ชำระแล้ว
-                    </div>
-                    <!-- คลิกเพื่อขยาย -->
-                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
-                      <svg class="w-8 h-8 text-white opacity-0 hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <img :src="preview1 || viewBill1" class="w-full h-full object-cover" />
+                    
+                    <template x-if="!preview1 && viewBill1">
+                      <div>
+                        <!-- Badge: รอตรวจสอบ (submitted for manual review) -->
+                        <div x-show="bill1Submitted && slip1Verify === false" class="absolute top-2 right-2 bg-blue-400 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                          🕐 รอตรวจ
+                        </div>
+                        <!-- Badge: ตรวจสอบ (SlipOK rejected) -->
+                        <div x-show="!bill1Submitted && slip1Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                          ⚠︎ ตรวจสอบ
+                        </div>
+                        <!-- Badge: ชำระแล้ว -->
+                        <div x-show="slip1Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                          ✓ ชำระแล้ว
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- คลิกเพื่อขยาย (Hover Overlay) -->
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors duration-300">
+                      <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
                       </svg>
                     </div>
@@ -250,14 +310,14 @@ get_header();
               <template x-if="!bill1Paid && !bill1Submitted">
                   <div class="flex flex-col gap-2">
                       <button @click="$refs.file1.click()"
-                              class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700">
+                              class="w-full py-2.5 text-sm bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-gray-700 font-medium transition-colors shadow-sm">
                           <span x-text="preview1 ? 'เปลี่ยนรูป' : 'เลือกไฟล์'"></span>
                       </button>
                       <button
                           @click="payBill1()"
                           :disabled="!preview1"
-                          :class="preview1 ? '!bg-gray-900 !text-white' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
-                          class="w-full py-2.5 text-sm font-medium rounded-lg transition-colors"
+                          :class="preview1 ? '!bg-gradient-to-r !from-[#FB5FAB] !to-purple-500 !text-white shadow-[0_4px_14px_0_rgba(251,95,171,0.39)] hover:shadow-[0_6px_20px_rgba(251,95,171,0.23)] hover:-translate-y-0.5' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
+                          class="w-full py-3 text-sm font-bold rounded-xl transition-all duration-300"
                       >
                           ยืนยันการชำระเงิน
                       </button>
@@ -289,7 +349,13 @@ get_header();
     </div>
 
     <!-- {{-- Bill 2 --}} -->
-    <div x-show="activeTab === 2">
+    <div 
+      x-show="activeTab === 2"
+      x-transition:enter="transition ease-out duration-500" 
+      x-transition:enter-start="opacity-0 translate-y-4 scale-95" 
+      x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+      style="display: none;"
+    >
 
       <div x-show="!bill1Paid" class="flex flex-col items-center justify-center py-16 text-gray-400">
         <svg class="w-8 h-8 mb-3 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -314,14 +380,44 @@ get_header();
           ชำระเงินแล้ว
         </div>
 
-        <div class="border border-gray-100 rounded-xl p-4 md:p-6">
+        <!-- {{-- Shipping Info (ข้อมูลจัดส่ง) --}} -->
+        <div class="bg-white/50 backdrop-blur-lg border border-white/80 rounded-[1.5rem] p-5 md:p-8 shadow-sm mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <p class="text-base font-medium text-gray-900">ข้อมูลการจัดส่ง</p>
+              <p class="text-sm text-gray-400 mt-1">กรุณาตรวจสอบและระบุข้อมูลสำหรับจัดส่งสินค้า</p>
+            </div>
+            <button @click="openShippingModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+              <span x-text="(shippingName && shippingPhone && shippingAddress) ? 'แก้ไขข้อมูล' : 'กรอกข้อมูล'"></span>
+            </button>
+          </div>
+          
+          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+            <template x-if="!shippingName || !shippingPhone || !shippingAddress">
+              <div class="flex items-center gap-2 text-amber-600 text-sm">
+                <svg class="w-5 h-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <span>กรุณาระบุที่อยู่สำหรับจัดส่งสินค้า เพื่อดำเนินการชำระบิลที่สอง</span>
+              </div>
+            </template>
+            <template x-if="shippingName && shippingPhone && shippingAddress">
+              <div class="space-y-1 text-sm text-gray-700">
+                <p><span class="font-medium text-gray-900" x-text="shippingName"></span> <span class="text-gray-300 mx-2">|</span> <span x-text="shippingPhone"></span></p>
+                <p class="whitespace-pre-line" x-text="shippingAddress"></p>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="bg-white/50 backdrop-blur-lg border border-white/80 rounded-[1.5rem] p-5 md:p-8 shadow-sm">
           <p class="text-base font-medium text-gray-900">ค่าส่วนที่เหลือ</p>
           <p class="text-sm text-gray-400 mt-1 mb-6">ยอดคงเหลือทั้งหมด</p>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <!-- {{-- รายการสินค้า --}} -->
-            <div class="bg-gray-50 rounded-lg p-4">
+            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
               <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
               <?php if ( $order ) : ?>
                 <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
@@ -371,7 +467,7 @@ get_header();
             <!-- {{-- QR --}} -->
             <div class="flex flex-col gap-4">
               <!-- {{-- QR Code --}} -->
-              <div class="flex flex-col items-center gap-3 bg-gray-50 rounded-lg p-4">
+              <div class="flex flex-col items-center gap-3 bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
                 <div class="relative w-full max-w-[240px] h-full">
                   <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                   <?php
@@ -384,15 +480,22 @@ get_header();
                       <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
                   </div>
 
-                  <!-- Watermark ชำระแล้ว -->
+                  <!-- Watermark ชำระแล้ว (Pinned Note) -->
                   <div
                       x-show="bill2Paid"
-                      class="absolute inset-0 flex items-center justify-center"
-                      style="background: rgba(255,255,255,0.75);"
+                      class="absolute inset-0 flex items-center justify-center z-10 bg-white/40 backdrop-blur-[3px] rounded-lg"
                   >
-                      <div class="rotate-[-20deg] border-5 border-emerald-500 rounded-lg px-4 py-2 text-center">
-                          <p class="text-emerald-600 !font-bold !text-3xl tracking-widest !mb-0 !mt-[1.75em]">ชำระแล้ว</p>
-                          <p class="text-emerald-500 !font-bold !text-xl">PAID</p>
+                      <div class="relative rotate-[4deg] bg-gradient-to-br from-yellow-50 to-amber-100 px-6 py-4 shadow-[2px_4px_16px_rgba(0,0,0,0.15)] border border-amber-200 transform hover:scale-105 transition-transform duration-300">
+                          <!-- Red Push Pin -->
+                          <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-red-500 shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.3),_1px_2px_4px_rgba(0,0,0,0.4)] z-20">
+                              <div class="absolute top-[2px] left-[3px] w-1.5 h-1.5 rounded-full bg-white/60"></div>
+                          </div>
+                          
+                          <!-- Text Content -->
+                          <div class="text-center mt-1 border-2 border-dashed border-emerald-500/30 p-2 rounded">
+                              <p class="text-emerald-600 font-extrabold text-2xl tracking-widest drop-shadow-sm mb-0">ชำระแล้ว</p>
+                              <p class="text-emerald-600/80 font-bold text-sm tracking-[0.3em] mb-0">PAID</p>
+                          </div>
                       </div>
                   </div>
                 </div>
@@ -410,40 +513,43 @@ get_header();
                 <input type="file" class="hidden" accept="image/*" x-ref="file2" @change="handleFile($event, 2)">
 
                 <div
-                  @click="bill2Paid && viewBill2 ? openSlip(viewBill2) : $refs.file2.click()"
-                  class="relative border-[2.5px] border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors"
+                  @click="(preview2 || viewBill2) ? openSlip(preview2 || viewBill2) : $refs.file2.click()"
+                  class="relative border-[2.5px] border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors group"
                   style="height: 140px;"
                 >
                   <template x-if="!preview2 && !viewBill2">
-                    <div class="flex flex-col items-center justify-center h-full gap-2">
-                      <svg class="w-6 h-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <div class="flex flex-col items-center justify-center h-full gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
+                      <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
                       </svg>
-                      <p class="text-sm text-gray-400">แนบสลิปโอนเงิน</p>
+                      <p class="text-sm text-gray-500 font-medium">แนบสลิปโอนเงิน</p>
                     </div>
                   </template>
-                  <template x-if="preview2">
-                    <img :src="preview2" class="w-full h-full object-cover">
-                  </template>
 
-                  <template x-if="!preview2 && viewBill2">
+                  <template x-if="preview2 || viewBill2">
                     <div class="relative w-full h-full">
-                      <img :src="viewBill2" class="w-full h-full object-cover" />
-                      <!-- Badge: รอตรวจสอบ (submitted for manual review) -->
-                      <div x-show="bill2Submitted && slip2Verify === false" class="absolute top-2 right-2 bg-blue-400 text-white text-xs px-2 py-1 rounded-full">
-                        🕐 รอตรวจ
-                      </div>
-                      <!-- Badge: ตรวจสอบ (SlipOK rejected) -->
-                      <div x-show="!bill2Submitted && slip2Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full">
-                        ⚠︎ ตรวจสอบ
-                      </div>
-                      <!-- Badge: ชำระแล้ว -->
-                      <div x-show="slip2Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">
-                        ✓ ชำระแล้ว
-                      </div>
-                      <!-- คลิกเพื่อขยาย -->
-                      <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
-                        <svg class="w-8 h-8 text-white opacity-0 hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <img :src="preview2 || viewBill2" class="w-full h-full object-cover" />
+                      
+                      <template x-if="!preview2 && viewBill2">
+                        <div>
+                          <!-- Badge: รอตรวจสอบ (submitted for manual review) -->
+                          <div x-show="bill2Submitted && slip2Verify === false" class="absolute top-2 right-2 bg-blue-400 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                            🕐 รอตรวจ
+                          </div>
+                          <!-- Badge: ตรวจสอบ (SlipOK rejected) -->
+                          <div x-show="!bill2Submitted && slip2Verify === false" class="absolute top-2 right-2 bg-amber-400 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                            ⚠︎ ตรวจสอบ
+                          </div>
+                          <!-- Badge: ชำระแล้ว -->
+                          <div x-show="slip2Verify !== false" class="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                            ✓ ชำระแล้ว
+                          </div>
+                        </div>
+                      </template>
+
+                      <!-- คลิกเพื่อขยาย (Hover Overlay) -->
+                      <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors duration-300">
+                        <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
                         </svg>
                       </div>
@@ -455,14 +561,14 @@ get_header();
                 <template x-if="!bill2Paid && !bill2Submitted">
                     <div class="flex flex-col gap-2">
                         <button @click="$refs.file2.click()"
-                                class="w-full py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-700">
+                                class="w-full py-2.5 text-sm bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-gray-700 font-medium transition-colors shadow-sm">
                             <span x-text="preview2 ? 'เปลี่ยนรูป' : 'เลือกไฟล์'"></span>
                         </button>
                         <button
                             @click="payBill2()"
                             :disabled="!preview2"
-                            :class="preview2 ? '!bg-gray-900 !text-white' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
-                            class="w-full py-2.5 text-sm font-medium rounded-lg transition-colors"
+                            :class="preview2 ? '!bg-gradient-to-r !from-[#FB5FAB] !to-purple-500 !text-white shadow-[0_4px_14px_0_rgba(251,95,171,0.39)] hover:shadow-[0_6px_20px_rgba(251,95,171,0.23)] hover:-translate-y-0.5' : '!bg-gray-200 !text-gray-400 cursor-not-allowed'"
+                            class="w-full py-3 text-sm font-bold rounded-xl transition-all duration-300"
                         >
                             ยืนยันการชำระเงิน
                         </button>
@@ -499,14 +605,53 @@ get_header();
   <!-- Modal ดูสลิป -->
   <div
       x-show="slipModal"
+      style="display: none;"
       x-transition
       @click="slipModal = false"
-      class="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 cursor-pointer"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 cursor-pointer"
   >
     <img :src="slipModalUrl" class="max-w-sm max-h-[80vh] rounded-xl shadow-xl object-contain" @click.stop>
   </div>
 
+  <!-- Modal แก้ไขข้อมูลจัดส่ง -->
+  <div x-show="shippingModal" style="display: none;" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+    <div @click.outside="!savingShipping && (shippingModal = false)" class="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl" x-transition.scale.95>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-lg font-medium text-gray-900">แก้ไขข้อมูลจัดส่ง</h3>
+        <button @click="!savingShipping && (shippingModal = false)" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-gray-600">ชื่อ-นามสกุล ผู้รับ <span class="text-red-500">*</span></label>
+          <input type="text" x-model="shippingNameInput" placeholder="ระบุชื่อผู้รับ" class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all">
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-gray-600">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
+          <input type="tel" x-model="shippingPhoneInput" placeholder="08X-XXX-XXXX" class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all">
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-medium text-gray-600">ที่อยู่จัดส่งแบบครบถ้วน <span class="text-red-500">*</span></label>
+          <textarea x-model="shippingAddressInput" rows="3" placeholder="บ้านเลขที่, หมู่, ซอย, ถนน, ตำบล/แขวง, อำเภอ/เขต, จังหวัด, รหัสไปรษณีย์" class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"></textarea>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2 border-t border-gray-100">
+        <button @click="shippingModal = false" :disabled="savingShipping" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+          ยกเลิก
+        </button>
+        <button @click="saveShipping()" :disabled="savingShipping" class="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
+          <span x-show="!savingShipping">บันทึกข้อมูล</span>
+          <span x-show="savingShipping">กำลังบันทึก...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
 </main>
+</div>
 <script>
 function billTabs() {
   return {
@@ -531,6 +676,16 @@ function billTabs() {
 
     slipModal: false,
     slipModalUrl: null,
+
+    shippingModal: false,
+    shippingNameInput: '',
+    shippingPhoneInput: '',
+    shippingAddressInput: '',
+
+    shippingName: '<?= esc_js($shipping_name) ?>',
+    shippingPhone: '<?= esc_js($shipping_phone) ?>',
+    shippingAddress: '<?= esc_js($shipping_address) ?>',
+    savingShipping: false,
 
     async init() {
       try {
@@ -585,6 +740,69 @@ function billTabs() {
         if (bill === 2) this.preview2 = ev.target.result;
       };
       reader.readAsDataURL(file);
+    },
+    openShippingModal() {
+        this.shippingNameInput = this.shippingName;
+        this.shippingPhoneInput = this.shippingPhone;
+        this.shippingAddressInput = this.shippingAddress;
+        this.shippingModal = true;
+    },
+    async saveShipping() {
+        if (!this.shippingNameInput || !this.shippingPhoneInput || !this.shippingAddressInput) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณากรอกข้อมูลให้ครบถ้วน',
+                text: 'ชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่งห้ามเว้นว่าง',
+                confirmButtonColor: '#111827',
+            });
+            return;
+        }
+
+        this.savingShipping = true;
+        
+        try {
+            const res = await fetch(`/wp-json/jaonaichan/v1/orders/<?= $order_id ?>/shipping`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': '<?= wp_create_nonce("wp_rest") ?>'
+                },
+                body: JSON.stringify({
+                    shipping_name: this.shippingNameInput,
+                    shipping_phone: this.shippingPhoneInput,
+                    shipping_address: this.shippingAddressInput
+                })
+            });
+            
+            const json = await res.json();
+            
+            if (res.ok && json.success) {
+                this.shippingName = this.shippingNameInput;
+                this.shippingPhone = this.shippingPhoneInput;
+                this.shippingAddress = this.shippingAddressInput;
+                this.shippingModal = false;
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกข้อมูลสำเร็จ',
+                    text: 'บันทึกข้อมูลจัดส่งลงในคำสั่งซื้อเรียบร้อยแล้ว',
+                    confirmButtonColor: '#111827',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                throw new Error(json.message || 'Update failed');
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: err.message,
+                confirmButtonColor: '#111827',
+            });
+        } finally {
+            this.savingShipping = false;
+        }
     },
     async payBill1() {
       if (!this.preview1) return;
@@ -661,6 +879,15 @@ function billTabs() {
     },
     async payBill2() {
       if (!this.preview2) return;
+      if (!this.shippingName || !this.shippingPhone || !this.shippingAddress) {
+          Swal.fire({
+              icon: 'warning',
+              title: 'ข้อมูลจัดส่งไม่ครบถ้วน',
+              text: 'กรุณาระบุข้อมูลสำหรับจัดส่งสินค้าให้เรียบร้อยก่อนยืนยันการชำระเงิน',
+              confirmButtonColor: '#111827',
+          });
+          return;
+      }
 
       try {
         this.loading = true;
