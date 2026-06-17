@@ -45,6 +45,7 @@ class Invoices_API {
                 'args'                => [
                     'page'     => [ 'default' => 1,  'type' => 'integer', 'minimum' => 1 ],
                     'per_page' => [ 'default' => 20, 'type' => 'integer', 'minimum' => 1, 'maximum' => 100 ],
+                    'search'   => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
                 ],
             ],
             [
@@ -86,17 +87,39 @@ class Invoices_API {
         $table    = $wpdb->prefix . 'jaonaichan_invoices';
         $page     = intval( $request->get_param( 'page' ) );
         $per_page = intval( $request->get_param( 'per_page' ) );
+        $search   = sanitize_text_field( $request->get_param( 'search' ) );
         $offset   = ( $page - 1 ) * $per_page;
 
-        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
-        $rows  = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d OFFSET %d",
-                $per_page,
-                $offset
-            ),
-            ARRAY_A
-        );
+        $where = "1=1";
+        $args = [];
+
+        if ( ! empty( $search ) ) {
+            $where .= " AND invoice_number LIKE %s";
+            $args[] = '%' . $wpdb->esc_like( $search ) . '%';
+        }
+
+        if ( empty( $args ) ) {
+            $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE {$where}" );
+            $rows  = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                    $per_page,
+                    $offset
+                ),
+                ARRAY_A
+            );
+        } else {
+            $total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE {$where}", $args ) );
+            $args[] = $per_page;
+            $args[] = $offset;
+            $rows  = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                    ...$args
+                ),
+                ARRAY_A
+            );
+        }
 
         return new WP_REST_Response( [
             'data'        => array_map( [ self::class, 'format_invoice' ], $rows ),

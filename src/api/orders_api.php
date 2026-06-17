@@ -188,6 +188,20 @@ class Orders_API {
                 'unit_prices_id' => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
             ],
         ]);
+
+        // PATCH /wp-json/jaonaichan/v1/orders/{id}/invoice-items
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/invoice-items', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'update_order_invoice_items' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'items' => [
+                    'required'    => true,
+                    'type'        => 'array',
+                    'description' => 'Array of custom invoice items',
+                ],
+            ],
+        ]);
     }
 
     // =========================================================================
@@ -815,6 +829,24 @@ class Orders_API {
         ], 200);
     }
 
+    public static function update_order_invoice_items( WP_REST_Request $request ): WP_REST_Response {
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
+
+        $items = $request->get_param('items');
+        if ( ! is_array( $items ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'Items must be an array' ], 400);
+        }
+
+        $order->update_meta_data( '_custom_invoice_items', wp_json_encode( $items ) );
+        $order->save();
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'อัปเดตรายการ Invoice แล้ว',
+        ], 200);
+    }
+
     // =========================================================================
     // Format helpers
     // =========================================================================
@@ -924,6 +956,7 @@ class Orders_API {
                 'unit_prices'    => self::get_bill2_unit_prices( $order ),
                 'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
             ],
+            'invoice_items' => self::get_custom_invoice_items( $order ),
         ];
 
         if ( $with_items ) {
@@ -971,6 +1004,13 @@ class Orders_API {
 
     private static function get_bill2_unit_prices( WC_Order $order ): array {
         $raw = $order->get_meta( '_bill2_unit_prices' );
+        if ( ! $raw ) return [];
+        $decoded = json_decode( $raw, true );
+        return is_array( $decoded ) ? $decoded : [];
+    }
+
+    private static function get_custom_invoice_items( WC_Order $order ): array {
+        $raw = $order->get_meta( '_custom_invoice_items' );
         if ( ! $raw ) return [];
         $decoded = json_decode( $raw, true );
         return is_array( $decoded ) ? $decoded : [];
