@@ -30,6 +30,32 @@ class Customers_API {
             ],
         ]);
 
+        // POST /wp-json/jaonaichan/v1/customers
+        register_rest_route( 'jaonaichan/v1', '/customers', [
+            'methods'             => 'POST',
+            'callback'            => [ self::class, 'create_customer' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'email'      => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_email' ],
+                'first_name' => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'last_name'  => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'phone'      => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+            ],
+        ]);
+
+        // POST /wp-json/jaonaichan/v1/customers/{id}
+        register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)', [
+            'methods'             => 'POST',
+            'callback'            => [ self::class, 'update_customer' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'email'      => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_email' ],
+                'first_name' => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'last_name'  => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'phone'      => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+            ],
+        ]);
+
         // GET /wp-json/jaonaichan/v1/customers/{id}/orders
         //   ?page=1&per_page=20
         register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/orders', [
@@ -91,6 +117,144 @@ class Customers_API {
                 'total'       => (int) $total,
                 'total_pages' => (int) ceil( $total / $per_page ),
             ],
+        ], 200);
+    }
+
+    // =========================================================================
+    // POST /customers
+    // =========================================================================
+
+    public static function create_customer( WP_REST_Request $request ): WP_REST_Response {
+        $email      = $request->get_param('email');
+        $first_name = $request->get_param('first_name');
+        $last_name  = $request->get_param('last_name');
+        $phone      = $request->get_param('phone');
+
+        if ( empty( $phone ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'กรุณากรอกเบอร์โทรศัพท์' ], 400);
+        }
+
+        // Generate username JNC{YY}9999
+        $year = date('y');
+        $prefix = "JNC{$year}";
+        
+        global $wpdb;
+        $latest_username = $wpdb->get_var( $wpdb->prepare( "
+            SELECT user_login FROM {$wpdb->users} 
+            WHERE user_login LIKE %s 
+            ORDER BY user_login DESC LIMIT 1
+        ", $prefix . '%' ) );
+        
+        if ( $latest_username ) {
+            $num = (int) str_replace( $prefix, '', $latest_username );
+            $next_num = $num + 1;
+        } else {
+            $next_num = 1;
+        }
+        $username = $prefix . str_pad( $next_num, 4, '0', STR_PAD_LEFT );
+
+        $password = $phone;
+
+        if ( empty( $email ) ) {
+            $email = strtolower($username) . '@jaonaichan.local';
+        } else {
+            if ( ! is_email( $email ) ) {
+                return new WP_REST_Response([ 'success' => false, 'message' => 'รูปแบบอีเมลไม่ถูกต้อง' ], 400);
+            }
+            if ( email_exists( $email ) ) {
+                return new WP_REST_Response([ 'success' => false, 'message' => 'อีเมลนี้มีอยู่ในระบบแล้ว' ], 400);
+            }
+        }
+
+        // wc_create_new_customer creates the user and triggers new customer email if WC is configured to do so
+        $customer_id = wc_create_new_customer( $email, $username, $password );
+
+        if ( is_wp_error( $customer_id ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => $customer_id->get_error_message() ], 400);
+        }
+
+        // Update additional info
+        update_user_meta( $customer_id, 'billing_first_name', $first_name );
+        update_user_meta( $customer_id, 'billing_last_name', $last_name );
+        update_user_meta( $customer_id, 'billing_phone', $phone );
+
+        // Also update standard WP name fields
+        wp_update_user([
+            'ID'           => $customer_id,
+            'first_name'   => $first_name,
+            'last_name'    => $last_name,
+            'display_name' => trim( "$first_name $last_name" )
+        ]);
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'สร้างลูกค้าใหม่สำเร็จ',
+            'data'    => [
+                'id'    => $customer_id,
+                'email' => $email,
+                'name'  => trim( "$first_name $last_name" )
+            ]
+        ], 201);
+    }
+
+    // =========================================================================
+    // POST /customers/{id} (Update)
+    // =========================================================================
+
+    public static function update_customer( WP_REST_Request $request ): WP_REST_Response {
+        $customer_id = absint( $request->get_param('id') );
+        $email       = $request->get_param('email');
+        $first_name  = $request->get_param('first_name');
+        $last_name   = $request->get_param('last_name');
+        $phone       = $request->get_param('phone');
+
+        if ( empty( $phone ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'กรุณากรอกเบอร์โทรศัพท์' ], 400);
+        }
+
+        $user = get_userdata( $customer_id );
+        if ( ! $user ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบลูกค้า' ], 404);
+        }
+
+        if ( ! empty( $email ) ) {
+            if ( ! is_email( $email ) ) {
+                return new WP_REST_Response([ 'success' => false, 'message' => 'รูปแบบอีเมลไม่ถูกต้อง' ], 400);
+            }
+            $existing_user = get_user_by( 'email', $email );
+            if ( $existing_user && $existing_user->ID !== $customer_id ) {
+                return new WP_REST_Response([ 'success' => false, 'message' => 'อีเมลนี้ถูกใช้งานโดยผู้ใช้อื่นแล้ว' ], 400);
+            }
+        }
+
+        // Update main user fields
+        $update_args = [
+            'ID'           => $customer_id,
+            'first_name'   => $first_name,
+            'last_name'    => $last_name,
+            'display_name' => trim( "$first_name $last_name" )
+        ];
+
+        if ( ! empty( $email ) ) {
+            $update_args['user_email'] = $email;
+        }
+        
+        $updated_id = wp_update_user( $update_args );
+        if ( is_wp_error( $updated_id ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => $updated_id->get_error_message() ], 400);
+        }
+
+        // Update meta fields
+        update_user_meta( $customer_id, 'billing_first_name', $first_name );
+        update_user_meta( $customer_id, 'billing_last_name', $last_name );
+        if ( ! empty( $email ) ) {
+            update_user_meta( $customer_id, 'billing_email', $email );
+        }
+        update_user_meta( $customer_id, 'billing_phone', $phone );
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'อัปเดตข้อมูลลูกค้าสำเร็จ',
         ], 200);
     }
 

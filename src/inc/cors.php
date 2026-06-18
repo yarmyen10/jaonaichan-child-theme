@@ -1,6 +1,6 @@
 <?php
 /**
- * CORS Headers สำหรับ REST API
+ * CORS Headers สำหรับ REST API v1
  */
 
 function jaonaichan_emit_cors(): void {
