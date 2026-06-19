@@ -30,6 +30,10 @@ class Barcode_Import_API {
                 return self::get_variations( $body );
             case 'save_barcode':
                 return self::save_barcode( $body );
+            case 'get_barcodes':
+                return self::get_barcodes( $body );
+            case 'delete_barcode':
+                return self::delete_barcode( $body );
             default:
                 return new WP_Error( 'invalid_action', 'Invalid action.', [ 'status' => 400 ] );
         }
@@ -173,6 +177,79 @@ class Barcode_Import_API {
         }
 
         return new WP_REST_Response( [ 'success' => false, 'message' => 'เกิดข้อผิดพลาดในการบันทึก' ], 200 );
+    }
+
+    private static function get_barcodes( array $body ) {
+        global $wpdb;
+
+        $page     = max( 1, intval( $body['page'] ?? 1 ) );
+        $per_page = max( 1, intval( $body['per_page'] ?? 20 ) );
+        $search   = sanitize_text_field( $body['search'] ?? '' );
+        
+        $t = $wpdb->prefix . 'product_barcodes';
+        
+        $where = "1=1";
+        $args  = [];
+        if ( $search !== '' ) {
+            $where .= " AND barcode LIKE %s";
+            $args[] = '%' . $wpdb->esc_like( $search ) . '%';
+        }
+
+        $query = "SELECT SQL_CALC_FOUND_ROWS * FROM {$t} WHERE {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d";
+        $args[] = $per_page;
+        $args[] = ( $page - 1 ) * $per_page;
+
+        $results = $wpdb->get_results( $wpdb->prepare( $query, ...$args ), ARRAY_A );
+        $total   = (int) $wpdb->get_var( "SELECT FOUND_ROWS()" );
+
+        $barcodes = [];
+        foreach ( $results as $row ) {
+            $product_id = (int) $row['product_id'];
+            $product    = wc_get_product( $product_id );
+
+            $barcodes[] = [
+                'id'           => (int) $row['id'],
+                'barcode'      => $row['barcode'],
+                'product_id'   => $product_id,
+                'product_name' => $product ? $product->get_name() : 'ไม่พบสินค้า (ID: ' . $product_id . ')',
+                'status'       => $row['status'],
+                'created_at'   => $row['created_at'],
+            ];
+        }
+
+        return new WP_REST_Response( [
+            'barcodes'    => $barcodes,
+            'total'       => $total,
+            'total_pages' => ceil( $total / $per_page ),
+        ], 200 );
+    }
+
+    private static function delete_barcode( array $body ) {
+        global $wpdb;
+
+        $id = intval( $body['id'] ?? 0 );
+        if ( ! $id ) {
+            return new WP_Error( 'missing_id', 'Barcode ID is required.', [ 'status' => 400 ] );
+        }
+
+        $t = $wpdb->prefix . 'product_barcodes';
+        
+        $row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t} WHERE id = %d", $id ) );
+        if ( ! $row ) {
+            return new WP_Error( 'not_found', 'Barcode not found.', [ 'status' => 404 ] );
+        }
+
+        if ( $row->status === 'packed' ) {
+            return new WP_Error( 'cannot_delete', 'Cannot delete a barcode that is already packed.', [ 'status' => 403 ] );
+        }
+
+        $deleted = $wpdb->delete( $t, [ 'id' => $id ], [ '%d' ] );
+
+        if ( $deleted ) {
+            return new WP_REST_Response( [ 'success' => true, 'message' => 'ลบ Barcode สำเร็จ' ], 200 );
+        }
+
+        return new WP_REST_Response( [ 'success' => false, 'message' => 'เกิดข้อผิดพลาดในการลบ' ], 500 );
     }
 }
 
