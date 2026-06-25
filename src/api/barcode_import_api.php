@@ -153,6 +153,7 @@ class Barcode_Import_API {
     private static function save_barcode( array $body ) {
         $product_id = intval( $body['product_id'] ?? 0 );
         $barcode    = sanitize_text_field( $body['barcode'] ?? '' );
+        $image      = isset( $body['image'] ) ? $body['image'] : null;
 
         if ( ! $product_id || $barcode === '' ) {
             return new WP_Error( 'missing_params', 'product_id and barcode are required.', [ 'status' => 400 ] );
@@ -166,7 +167,7 @@ class Barcode_Import_API {
             return new WP_Error( 'plugin_missing', 'Barcode Pack plugin is not active.', [ 'status' => 503 ] );
         }
 
-        $result = Barcode_Pack_DB::insert_barcodes( [ $barcode ], $product_id );
+        $result = Barcode_Pack_DB::insert_barcodes( [ $barcode ], $product_id, $image );
 
         if ( $result['inserted'] > 0 ) {
             return new WP_REST_Response( [ 'success' => true, 'message' => 'บันทึก Barcode สำเร็จ' ], 200 );
@@ -182,9 +183,10 @@ class Barcode_Import_API {
     private static function get_barcodes( array $body ) {
         global $wpdb;
 
-        $page     = max( 1, intval( $body['page'] ?? 1 ) );
-        $per_page = max( 1, intval( $body['per_page'] ?? 20 ) );
-        $search   = sanitize_text_field( $body['search'] ?? '' );
+        $page       = max( 1, intval( $body['page'] ?? 1 ) );
+        $per_page   = max( 1, intval( $body['per_page'] ?? 20 ) );
+        $search     = sanitize_text_field( $body['search'] ?? '' );
+        $product_id = intval( $body['product_id'] ?? 0 );
         
         $t = $wpdb->prefix . 'product_barcodes';
         
@@ -193,6 +195,10 @@ class Barcode_Import_API {
         if ( $search !== '' ) {
             $where .= " AND barcode LIKE %s";
             $args[] = '%' . $wpdb->esc_like( $search ) . '%';
+        }
+        if ( $product_id > 0 ) {
+            $where .= " AND product_id = %d";
+            $args[] = $product_id;
         }
 
         $query = "SELECT SQL_CALC_FOUND_ROWS * FROM {$t} WHERE {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d";
@@ -214,6 +220,7 @@ class Barcode_Import_API {
                 'product_name' => $product ? $product->get_name() : 'ไม่พบสินค้า (ID: ' . $product_id . ')',
                 'status'       => $row['status'],
                 'created_at'   => $row['created_at'],
+                'image_base64' => $row['image_base64'] ?? null,
             ];
         }
 
