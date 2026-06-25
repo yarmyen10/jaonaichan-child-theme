@@ -120,6 +120,11 @@ class Orders_API {
                     'minimum'     => 2000,
                     'description' => 'ปี (yyyy) — ใช้ร่วมกับ create_date_m ได้',
                 ],
+                'unit_prices_id' => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
             ],
         ]);
 
@@ -641,6 +646,12 @@ class Orders_API {
             'order'   => 'DESC',
             'status'  => $status,
         ];
+
+        $unit_prices_id = sanitize_text_field( $request->get_param('unit_prices_id') );
+        if ( ! empty( $unit_prices_id ) ) {
+            $base_args['meta_key']   = '_bill2_unit_prices_id';
+            $base_args['meta_value'] = $unit_prices_id;
+        }
 
         $date_query = self::build_date_query( $request );
         if ( $date_query ) {
