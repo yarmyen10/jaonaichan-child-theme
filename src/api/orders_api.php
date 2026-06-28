@@ -142,6 +142,13 @@ class Orders_API {
             'permission_callback' => [ self::class, 'check_permission' ],
         ]);        
 
+        // DELETE /wp-json/jaonaichan/v1/orders/{id}
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)', [
+            'methods'             => 'DELETE',
+            'callback'            => [ self::class, 'delete_order' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);        
+
         // PATCH /wp-json/jaonaichan/v1/orders/{id}/status
         register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/status', [
             'methods'             => 'PATCH',
@@ -191,6 +198,9 @@ class Orders_API {
                 'paid_at'     => [ 'required' => false, 'type' => 'string' ],
                 'unit_prices'    => [ 'required' => false, 'type' => 'object' ],
                 'unit_prices_id' => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'china_shipping' => [ 'required' => false, 'type' => 'number' ],
+                'import_fee'     => [ 'required' => false, 'type' => 'number' ],
+                'local_shipping' => [ 'required' => false, 'type' => 'number' ],
             ],
         ]);
 
@@ -206,6 +216,13 @@ class Orders_API {
                     'description' => 'Array of custom invoice items',
                 ],
             ],
+        ]);
+
+        // DELETE /wp-json/jaonaichan/v1/bill2-batch/{batch_id}
+        register_rest_route( 'jaonaichan/v1', '/bill2-batch/(?P<batch_id>\d+)', [
+            'methods'             => 'DELETE',
+            'callback'            => [ self::class, 'delete_bill2_batch' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
         ]);
     }
 
@@ -697,10 +714,30 @@ class Orders_API {
     }
 
     public static function get_order_detail( WP_REST_Request $request ): WP_REST_Response {
-        $order = self::get_order_or_fail( $request['id'] );
-        if ( $order instanceof WP_REST_Response ) return $order;
+        $id    = (int) $request->get_param( 'id' );
+        $order = wc_get_order( $id );
+        if ( ! $order ) {
+            return new WP_REST_Response( [ 'error' => 'Order not found' ], 404 );
+        }
+        return new WP_REST_Response( self::format_order( $order, true ) );
+    }
 
-        return new WP_REST_Response( self::format_order( $order, true ), 200 );
+    public static function delete_order( WP_REST_Request $request ): WP_REST_Response {
+        $id    = (int) $request->get_param( 'id' );
+        $order = wc_get_order( $id );
+        if ( ! $order ) {
+            return new WP_REST_Response( [ 'error' => 'Order not found' ], 404 );
+        }
+
+        // Force delete order (cascades to items and meta)
+        // Compatible with both CPT and HPOS
+        $deleted = $order->delete( true );
+
+        if ( ! $deleted ) {
+            return new WP_REST_Response( [ 'error' => 'Failed to delete order' ], 500 );
+        }
+
+        return new WP_REST_Response( [ 'success' => true, 'id' => $id ] );
     }
 
     // =========================================================================
@@ -771,6 +808,48 @@ class Orders_API {
         ], 200);
     }
 
+    public static function delete_bill2_batch( WP_REST_Request $request ): WP_REST_Response {
+        $batch_id = sanitize_text_field( $request['batch_id'] );
+        if ( empty( $batch_id ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'Invalid batch ID' ], 400);
+        }
+
+        $orders = wc_get_orders([
+            'limit'      => -1,
+            'meta_key'   => '_bill2_unit_prices_id',
+            'meta_value' => $batch_id,
+        ]);
+
+        if ( empty( $orders ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบออเดอร์ในรอบบิลนี้' ], 404);
+        }
+
+        $updated_count = 0;
+        foreach ( $orders as $order ) {
+            $order->delete_meta_data( '_bill2_status' );
+            $order->delete_meta_data( '_bill2_amount' );
+            $order->delete_meta_data( '_bill2_paid_at' );
+            $order->delete_meta_data( '_bill2_unit_prices' );
+            $order->delete_meta_data( '_bill2_unit_prices_id' );
+            $order->delete_meta_data( '_bill2_china_shipping' );
+            $order->delete_meta_data( '_bill2_import_fee' );
+            $order->delete_meta_data( '_bill2_local_shipping' );
+            
+            if ( $order->get_status() === 'pending-payment-2' ) {
+                $order->set_status( 'paid-1', 'ลบรอบบิล 2 ถอยสถานะกลับ' );
+            }
+            
+            $order->save();
+            $updated_count++;
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => "ลบรอบบิลสำเร็จ (อัปเดต $updated_count orders)",
+            'updated' => $updated_count,
+        ], 200);
+    }
+
     public static function update_order_bill( WP_REST_Request $request ): WP_REST_Response {
         $order = self::get_order_or_fail( $request['id'] );
         if ( $order instanceof WP_REST_Response ) return $order;
@@ -780,9 +859,12 @@ class Orders_API {
         $updated     = [];
 
         $field_map = [
-            'status'  => "_bill{$bill_number}_status",
-            'amount'  => "_bill{$bill_number}_amount",
-            'paid_at' => "_bill{$bill_number}_paid_at",
+            'status'         => "_bill{$bill_number}_status",
+            'amount'         => "_bill{$bill_number}_amount",
+            'paid_at'        => "_bill{$bill_number}_paid_at",
+            'china_shipping' => "_bill{$bill_number}_china_shipping",
+            'import_fee'     => "_bill{$bill_number}_import_fee",
+            'local_shipping' => "_bill{$bill_number}_local_shipping",
         ];
 
         foreach ( $field_map as $param => $meta_key ) {
@@ -966,6 +1048,9 @@ class Orders_API {
                 'paid_at'        => $order->get_meta( '_bill2_paid_at' ),
                 'unit_prices'    => self::get_bill2_unit_prices( $order ),
                 'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
+                'china_shipping' => (float) $order->get_meta( '_bill2_china_shipping' ),
+                'import_fee'     => (float) $order->get_meta( '_bill2_import_fee' ),
+                'local_shipping' => (float) $order->get_meta( '_bill2_local_shipping' ),
             ],
             'invoice_items' => self::get_custom_invoice_items( $order ),
         ];
