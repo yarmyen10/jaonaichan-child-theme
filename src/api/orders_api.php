@@ -198,8 +198,9 @@ class Orders_API {
                 'paid_at'     => [ 'required' => false, 'type' => 'string' ],
                 'unit_prices'    => [ 'required' => false, 'type' => 'object' ],
                 'unit_prices_id' => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
-                'china_shipping' => [ 'required' => false, 'type' => 'number' ],
-                'import_fee'     => [ 'required' => false, 'type' => 'number' ],
+                // Per-product breakdown, same shape as unit_prices — {product_id: amount}
+                'china_shipping' => [ 'required' => false, 'type' => 'object' ],
+                'import_fee'     => [ 'required' => false, 'type' => 'object' ],
                 'local_shipping' => [ 'required' => false, 'type' => 'number' ],
             ],
         ]);
@@ -749,7 +750,103 @@ class Orders_API {
         if ( $order instanceof WP_REST_Response ) return $order;
 
         $new_status = $request->get_param('status');
+        $clean      = str_replace( 'wc-', '', $new_status );
+
         $order->update_status( $new_status, '', true );
+
+        // Sync bill metadata to stay consistent with the target status.
+        // We only roll back "forward" bill state — we never force bills to paid/submitted.
+        $b1         = (string) $order->get_meta( '_bill1_status', true );
+        $b2         = (string) $order->get_meta( '_bill2_status', true );
+        $needs_save = false;
+
+        // Manual override: picking "paid-1"/"paid-2" is an explicit settlement confirmation,
+        // so this is the one place we push bill state forward instead of rolling it back.
+        if ( $clean === 'paid-1' && $b1 !== 'paid' ) {
+            $order->update_meta_data( '_bill1_status', 'paid' );
+            $order->update_meta_data( '_bill1_paid_at', current_time( 'mysql' ) );
+            $needs_save = true;
+        }
+        if ( $clean === 'paid-2' ) {
+            if ( $b1 !== 'paid' ) {
+                $order->update_meta_data( '_bill1_status', 'paid' );
+                $order->update_meta_data( '_bill1_paid_at', current_time( 'mysql' ) );
+                $needs_save = true;
+            }
+            if ( $b2 !== 'paid' ) {
+                $order->update_meta_data( '_bill2_status', 'paid' );
+                $order->update_meta_data( '_bill2_paid_at', current_time( 'mysql' ) );
+                $needs_save = true;
+            }
+        }
+
+        // Status where bill2 is created but not yet submitted by the customer:
+        // roll back bill2_status if it somehow jumped to paid/submitted (e.g. admin rollback
+        // from wait-verify-2/paid-2), but keep unit_prices_id since Manage Orders already
+        // assigned this order to a batch. NOTE: 'wait-verify-2' is deliberately excluded —
+        // 'submitted' is the correct/expected bill2_status for that status, not something to reset.
+        $before_bill2 = [ 'pending-payment-2' ];
+
+        // Statuses that belong BEFORE bill2 is created (Manage Orders hasn't run yet):
+        // roll back bill2_status AND clear unit_prices_id so the order is re-batchable.
+        $before_bill2_create = [ 'paid-1', 'wait-verify-1' ];
+
+        // Statuses that belong BEFORE bill1 is even submitted:
+        // reset both bills and clear unit_prices_id.
+        $before_bill1 = [ 'waiting-transfer', 'pending-payment-1', 'pending', 'checkout-draft' ];
+
+        // Rolling back to "wait-verify-N" from a confirmed-paid state should downgrade the bill
+        // one step (paid → submitted), not wipe it to pending — the slip is still on file, only
+        // the payment confirmation is being undone. Keeps the Progress column (25%/75%) accurate.
+        if ( $clean === 'wait-verify-1' && $b1 === 'paid' ) {
+            $order->update_meta_data( '_bill1_status', 'submitted' );
+            $order->delete_meta_data( '_bill1_paid_at' );
+            $needs_save = true;
+        }
+        if ( $clean === 'wait-verify-2' && $b2 === 'paid' ) {
+            $order->update_meta_data( '_bill2_status', 'submitted' );
+            $order->delete_meta_data( '_bill2_paid_at' );
+            $needs_save = true;
+        }
+
+        if ( in_array( $clean, $before_bill2, true ) ) {
+            if ( in_array( $b2, [ 'paid', 'submitted' ], true ) ) {
+                $order->update_meta_data( '_bill2_status', 'pending' );
+                $order->delete_meta_data( '_bill2_paid_at' );
+                $needs_save = true;
+            }
+        } elseif ( in_array( $clean, $before_bill2_create, true ) ) {
+            if ( in_array( $b2, [ 'paid', 'submitted' ], true ) ) {
+                $order->update_meta_data( '_bill2_status', 'pending' );
+                $order->delete_meta_data( '_bill2_paid_at' );
+                $needs_save = true;
+            }
+            // Clear batch ID — order hasn't entered Manage Orders yet (or is being rolled back
+            // before bill2 creation), so unit_prices_id must be cleared to allow re-batching.
+            if ( $order->get_meta( '_bill2_unit_prices_id', true ) ) {
+                $order->delete_meta_data( '_bill2_unit_prices_id' );
+                $needs_save = true;
+            }
+        } elseif ( in_array( $clean, $before_bill1, true ) ) {
+            if ( in_array( $b1, [ 'paid', 'submitted' ], true ) ) {
+                $order->update_meta_data( '_bill1_status', 'pending' );
+                $order->delete_meta_data( '_bill1_paid_at' );
+                $needs_save = true;
+            }
+            if ( in_array( $b2, [ 'paid', 'submitted' ], true ) ) {
+                $order->update_meta_data( '_bill2_status', 'pending' );
+                $order->delete_meta_data( '_bill2_paid_at' );
+                $needs_save = true;
+            }
+            if ( $order->get_meta( '_bill2_unit_prices_id', true ) ) {
+                $order->delete_meta_data( '_bill2_unit_prices_id' );
+                $needs_save = true;
+            }
+        }
+
+        if ( $needs_save ) {
+            $order->save();
+        }
 
         return new WP_REST_Response([
             'success' => true,
@@ -862,8 +959,6 @@ class Orders_API {
             'status'         => "_bill{$bill_number}_status",
             'amount'         => "_bill{$bill_number}_amount",
             'paid_at'        => "_bill{$bill_number}_paid_at",
-            'china_shipping' => "_bill{$bill_number}_china_shipping",
-            'import_fee'     => "_bill{$bill_number}_import_fee",
             'local_shipping' => "_bill{$bill_number}_local_shipping",
         ];
 
@@ -891,6 +986,21 @@ class Orders_API {
                 $order->update_meta_data( '_bill2_unit_prices_id', sanitize_text_field( $prices_id ) );
                 $updated['unit_prices_id'] = $prices_id;
             }
+
+            // china_shipping / import_fee — per-product breakdown, same shape as unit_prices.
+            // Stored this way (instead of one summed number) so we can see which product
+            // contributed how much to an order's shipping/import cost.
+            foreach ( [ 'china_shipping', 'import_fee' ] as $param ) {
+                $raw = $request->get_param( $param );
+                if ( is_array( $raw ) ) {
+                    $clean = [];
+                    foreach ( $raw as $pid => $amount ) {
+                        $clean[ absint( $pid ) ] = (float) $amount;
+                    }
+                    $order->update_meta_data( "_bill2_{$param}", wp_json_encode( $clean ) );
+                    $updated[ $param ] = $clean;
+                }
+            }
         }
 
         if ( empty( $updated ) ) {
@@ -904,7 +1014,7 @@ class Orders_API {
             $b1 = (string) $order->get_meta( '_bill1_status', true );
             $b2 = (string) $order->get_meta( '_bill2_status', true );
 
-            if ( $b2 === 'paid' ) {
+            if ( $b1 === 'paid' && $b2 === 'paid' ) {
                 $order->update_status( 'paid-2', 'ชำระครบทั้ง 2 บิลแล้ว' );
             } elseif ( $b1 === 'paid' ) {
                 $order->update_status( 'paid-1', 'ชำระบิลแรกแล้ว' );
@@ -1048,8 +1158,10 @@ class Orders_API {
                 'paid_at'        => $order->get_meta( '_bill2_paid_at' ),
                 'unit_prices'    => self::get_bill2_unit_prices( $order ),
                 'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
-                'china_shipping' => (float) $order->get_meta( '_bill2_china_shipping' ),
-                'import_fee'     => (float) $order->get_meta( '_bill2_import_fee' ),
+                'china_shipping'           => array_sum( self::get_bill2_breakdown( $order, 'china_shipping' ) ),
+                'import_fee'               => array_sum( self::get_bill2_breakdown( $order, 'import_fee' ) ),
+                'china_shipping_by_product' => self::get_bill2_breakdown( $order, 'china_shipping' ),
+                'import_fee_by_product'     => self::get_bill2_breakdown( $order, 'import_fee' ),
                 'local_shipping' => (float) $order->get_meta( '_bill2_local_shipping' ),
             ],
             'invoice_items' => self::get_custom_invoice_items( $order ),
@@ -1103,6 +1215,19 @@ class Orders_API {
         if ( ! $raw ) return [];
         $decoded = json_decode( $raw, true );
         return is_array( $decoded ) ? $decoded : [];
+    }
+
+    /**
+     * china_shipping / import_fee — {product_id: amount}. Falls back to treating the raw
+     * value as one legacy flat number (orders saved before this was per-product), keyed
+     * '_legacy' so array_sum() still gives the right order total either way.
+     */
+    private static function get_bill2_breakdown( WC_Order $order, string $field ): array {
+        $raw = $order->get_meta( "_bill2_{$field}" );
+        if ( ! $raw ) return [];
+        $decoded = json_decode( $raw, true );
+        if ( is_array( $decoded ) ) return $decoded;
+        return is_numeric( $raw ) ? [ '_legacy' => (float) $raw ] : [];
     }
 
     private static function get_custom_invoice_items( WC_Order $order ): array {

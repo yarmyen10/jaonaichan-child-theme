@@ -11,6 +11,10 @@ get_header();
 ?>
 <style>
   body { overflow-x: hidden !important; }
+  .product-scroll::-webkit-scrollbar { width: 4px; }
+  .product-scroll::-webkit-scrollbar-track { background: transparent; }
+  .product-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 9999px; }
+  .product-scroll::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
   @media (min-width: 1280px) {
     .breakout-desktop {
       width: 100vw !important;
@@ -59,7 +63,13 @@ get_header();
               $bill2_total += $unit * $item->get_quantity();
           }
       }
-      $bill2_amount = $bill2_unit_prices ? $bill2_total : ( $order ? (float) $order->get_total() : 0.0 );
+      $bill2_china_shipping = $order ? (array) json_decode($order->get_meta('_bill2_china_shipping', true), true) : [];
+      $bill2_import_fee     = $order ? (array) json_decode($order->get_meta('_bill2_import_fee', true), true) : [];
+
+      $bill2_local_shipping = $order ? (float) $order->get_meta('_bill2_local_shipping', true) : 0.0;
+
+      $bill2_meta_amount = $order ? (float) $order->get_meta('_bill2_amount', true) : 0.0;
+      $bill2_amount = $bill2_meta_amount ?: ( $bill2_unit_prices ? $bill2_total : ( $order ? (float) $order->get_total() : 0.0 ) );
 
       if ( current_user_can('manage_options') && isset($_GET['mock_result']) ) {
         $mock = sanitize_key($_GET['mock_result']);
@@ -71,6 +81,31 @@ get_header();
         elseif ( $mock === 'bill1_paid' )   { $bill1_status = 'paid';    $bill2_status = 'pending';    $order_status = 'paid-1';        $bill2_has_meta = false; }
         elseif ( $mock === 'wait_verify_2') { $bill1_status = 'paid';    $bill2_status = 'submitted';  $order_status = 'wait-verify-2'; $bill2_has_meta = true;  }
         elseif ( $mock === 'both_paid' )    { $bill1_status = 'paid';    $bill2_status = 'paid';    $order_status = 'paid-2';           $bill2_has_meta = true;  }
+      }
+
+      if ( current_user_can('manage_options') && isset($_GET['mock_bill2']) && $order ) {
+        $bill2_has_meta       = true;
+        $bill2_status         = 'pending';
+        $bill2_unit_prices    = [];
+        $bill2_china_shipping = [];
+        $bill2_import_fee     = [];
+        $bill2_total          = 0.0;
+        foreach ( $order->get_items() as $item ) {
+          $p = $item->get_product();
+          if ( ! $p ) continue;
+          $pid  = (string) $p->get_id();
+          $qty  = $item->get_quantity();
+          $unit = (float) $p->get_price() ?: 199.0;
+          $bill2_unit_prices[$pid]    = $unit;
+          $bill2_china_shipping[$pid] = round( $unit * 0.12 );  // ~12% of unit
+          $bill2_import_fee[$pid]     = round( $unit * 0.08 );  // ~8% of unit
+          $bill2_total += $unit * $qty;
+        }
+        $bill2_local_shipping = 50.0;
+        $bill2_amount = $bill2_total
+          + array_sum($bill2_china_shipping)
+          + array_sum($bill2_import_fee)
+          + $bill2_local_shipping;
       }
 
       $bill1_paid      = $bill1_status === 'paid';
@@ -110,6 +145,12 @@ get_header();
       <div class="inline-flex items-center gap-1.5 mt-2 px-3 py-1 text-xs font-mono text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
         <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
         mock: <?= esc_html($mock) ?>
+      </div>
+    <?php endif; ?>
+    <?php if ( current_user_can('manage_options') && isset($_GET['mock_bill2']) ) : ?>
+      <div class="inline-flex items-center gap-1.5 mt-2 px-3 py-1 text-xs font-mono text-purple-700 bg-purple-50 border border-purple-200 rounded-lg">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+        mock_bill2: unit=250 · ส่งจีน=30 · import=20 · ส่งไทย=50
       </div>
     <?php endif; ?>
   </div>
@@ -168,12 +209,12 @@ get_header();
         <p class="text-base font-medium text-gray-900">ค่ามัดจำ</p>
         <p class="text-sm text-gray-400 mt-1 mb-6">ชำระครึ่งหนึ่งของยอดรวม</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex flex-col gap-6">
           <!-- {{-- รายการสินค้า --}} -->
           <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
             <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
             <?php if ( $order ) : ?>
-              <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
+              <div class="product-scroll flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80 pr-3">
                 <?php foreach ( $order->get_items() as $item ) :
                   $product = $item->get_product();
                   // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
@@ -414,13 +455,13 @@ get_header();
           <p class="text-base font-medium text-gray-900">ค่าส่วนที่เหลือ</p>
           <p class="text-sm text-gray-400 mt-1 mb-6">ยอดคงเหลือทั้งหมด</p>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-6">
 
             <!-- {{-- รายการสินค้า --}} -->
             <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
               <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
               <?php if ( $order ) : ?>
-                <div class="flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80">
+                <div class="product-scroll flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80 pr-3">
                   <?php foreach ( $order->get_items() as $item ) :
                     $product = $item->get_product();
                     // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
@@ -433,6 +474,8 @@ get_header();
 
                     $pid2        = (string) $product->get_id();
                     $unit2       = isset( $bill2_unit_prices[$pid2] ) ? (float) $bill2_unit_prices[$pid2] : null;
+                    $china_ship2 = isset( $bill2_china_shipping[$pid2] ) ? (float) $bill2_china_shipping[$pid2] : null;
+                    $import_fee2 = isset( $bill2_import_fee[$pid2] )     ? (float) $bill2_import_fee[$pid2]     : null;
                     $line_total2 = $unit2 !== null ? $unit2 * $item->get_quantity() : (float) $item->get_total();
                   ?>
                     <div class="flex items-center gap-3">
@@ -447,6 +490,13 @@ get_header();
                           <p class="text-xs text-gray-400">
                               x<?= $item->get_quantity() ?>
                           </p>
+                          <?php if ( $china_ship2 !== null || $import_fee2 !== null ) : ?>
+                          <p class="text-xs text-gray-400 mt-0.5">
+                              <?php if ( $unit2 !== null ) : ?>ราคา/ชิ้น ฿<?= number_format($unit2, 2) ?><?php endif; ?>
+                              <?php if ( $china_ship2 !== null ) : ?> · ส่งจีน ฿<?= number_format($china_ship2, 2) ?><?php endif; ?>
+                              <?php if ( $import_fee2 !== null ) : ?> · Import ฿<?= number_format($import_fee2, 2) ?><?php endif; ?>
+                          </p>
+                          <?php endif; ?>
                       </div>
                       <p class="text-sm font-medium text-gray-900">
                           ฿<?= number_format( $line_total2, 2 ) ?>
@@ -455,11 +505,40 @@ get_header();
                   <?php endforeach; ?>
                 </div>
 
-                <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
-                  <span class="text-sm text-gray-500">รวมทั้งหมด</span>
-                  <span class="text-sm font-semibold text-gray-900">
-                      ฿<?= number_format( $bill2_amount, 2 ) ?>
-                  </span>
+                <?php
+                  $bill2_china_total  = $bill2_china_shipping ? array_sum($bill2_china_shipping) : 0.0;
+                  $bill2_import_total = $bill2_import_fee    ? array_sum($bill2_import_fee)    : 0.0;
+                  $has_breakdown      = $bill2_china_shipping || $bill2_import_fee || $bill2_local_shipping;
+                ?>
+                <div class="border-t border-gray-200 mt-3 pt-3 space-y-1.5">
+                  <?php if ( $has_breakdown ) : ?>
+                    <div class="flex justify-between text-xs text-gray-400">
+                      <span>ค่าสินค้า</span>
+                      <span>฿<?= number_format($bill2_total, 2) ?></span>
+                    </div>
+                    <?php if ( $bill2_china_total > 0 ) : ?>
+                    <div class="flex justify-between text-xs text-gray-400">
+                      <span>ค่าส่งจีน</span>
+                      <span>฿<?= number_format($bill2_china_total, 2) ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $bill2_import_total > 0 ) : ?>
+                    <div class="flex justify-between text-xs text-gray-400">
+                      <span>ค่า Import</span>
+                      <span>฿<?= number_format($bill2_import_total, 2) ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $bill2_local_shipping > 0 ) : ?>
+                    <div class="flex justify-between text-xs text-gray-400">
+                      <span>ค่าส่งไทย</span>
+                      <span>฿<?= number_format($bill2_local_shipping, 2) ?></span>
+                    </div>
+                    <?php endif; ?>
+                  <?php endif; ?>
+                  <div class="flex justify-between <?= $has_breakdown ? 'pt-1.5 border-t border-gray-100' : '' ?>">
+                    <span class="text-sm text-gray-500">รวมทั้งหมด</span>
+                    <span class="text-sm font-semibold text-gray-900">฿<?= number_format($bill2_amount, 2) ?></span>
+                  </div>
                 </div>
               <?php endif; ?>
             </div>
@@ -603,15 +682,18 @@ get_header();
   </div>
 
   <!-- Modal ดูสลิป -->
-  <div
-      x-show="slipModal"
-      style="display: none;"
-      x-transition
-      @click="slipModal = false"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 cursor-pointer"
-  >
-    <img :src="slipModalUrl" class="max-w-sm max-h-[80vh] rounded-xl shadow-xl object-contain" @click.stop>
-  </div>
+  <template x-teleport="body">
+    <div
+        x-show="slipModal"
+        x-transition
+        @click="slipModal = false"
+        style="position:fixed; top:0; left:0; right:0; bottom:0; z-index:100000; background:rgba(0,0,0,0.85); cursor:zoom-out;"
+    >
+      <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+        <img :src="slipModalUrl" style="max-width:80vw; max-height:85vh; object-fit:contain;" @click.stop>
+      </div>
+    </div>
+  </template>
 
   <!-- Modal แก้ไขข้อมูลจัดส่ง -->
   <div x-show="shippingModal" style="display: none;" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -688,6 +770,7 @@ function billTabs() {
     savingShipping: false,
 
     async init() {
+      this.$watch('slipModal', val => { document.body.style.overflow = val ? 'hidden' : ''; });
       try {
         this.loading = true;
 
