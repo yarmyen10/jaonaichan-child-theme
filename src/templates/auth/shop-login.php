@@ -13,10 +13,8 @@ add_action( 'wp_enqueue_scripts', function () {
 }, PHP_INT_MAX );
 
 $shop_login_image = [
-    'src'    => get_stylesheet_directory_uri() . '/assets/imgs/login-maow.png',
-    'width'  => '112%',
-    'height' => '110%',
-    'alt'    => '',
+    'src' => get_stylesheet_directory_uri() . '/assets/imgs/cat-hero.gif',
+    'alt' => '',
 ];
 
 // Normalize action — only the four we handle
@@ -241,7 +239,7 @@ nocache_headers();
   <?php wp_head(); ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Mali:wght@600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       /* Original Base Colors */
@@ -251,7 +249,7 @@ nocache_headers();
       
       /* Text */
       --jn-text: #6B3FA0;
-      --jn-text-muted: #8865B3;
+      --jn-text-muted: #7A4FAE;
       
       /* Accents */
       --jn-accent-1: #E5298E;
@@ -268,7 +266,8 @@ nocache_headers();
       --jn-blob-3: #FFFBE6;
       --jn-blob-4: #8EF8E0;
       
-      --jn-error: #E5298E;
+      --jn-error: #B8156F;
+      --jn-success: #087048;
     }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
@@ -279,7 +278,7 @@ nocache_headers();
       min-height: 100dvh;
       background: var(--jn-bg-main);
       background-attachment: fixed;
-      font-family: 'Inter', 'Prompt', sans-serif;
+      font-family: 'Prompt', 'Mali', sans-serif;
       color: var(--jn-text);
       display: flex;
       align-items: center;
@@ -304,7 +303,25 @@ nocache_headers();
     .jn-blob-3 { top: 30%; left: 45%; width: 120px; height: 120px; background: var(--jn-blob-3); opacity: .35; animation: jn-blob-a 19s ease-in-out infinite; animation-delay: -9s; }
     .jn-blob-4 { top: -60px; right: 0px; width: 150px; height: 150px; background: var(--jn-blob-4); opacity: .55; animation: jn-blob-b 11s ease-in-out infinite; animation-delay: -2s; }
     @media (prefers-reduced-motion: reduce) {
-      .jn-blob { animation: none; }
+      .jn-blob,
+      .jn-login-wrapper,
+      .jn-login-title,
+      .jn-login-sub,
+      .jn-login-notice,
+      .jn-social-row,
+      .jn-divider,
+      .jn-login-left form,
+      .jn-login-foot,
+      .jn-login-body-text,
+      .jn-login-art,
+      .jn-login-art-ring {
+        animation: none;
+      }
+    }
+
+    @keyframes jn-rise-in {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .jn-login-wrapper {
@@ -312,16 +329,20 @@ nocache_headers();
       z-index: 1;
       width: 100%;
       max-width: 1100px;
-      min-height: 600px;
       display: flex;
+      flex-direction: column;
       align-items: stretch;
       background: var(--jn-glass-bg);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--jn-glass-border);
+      border: 2px solid var(--jn-glass-border);
       border-radius: 32px;
-      box-shadow: 0 20px 40px var(--jn-glass-shadow);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 20px 40px var(--jn-glass-shadow),
+        0 3px 10px rgba(107, 63, 160, 0.08);
       overflow: hidden;
+      animation: jn-rise-in .6s cubic-bezier(.16,1,.3,1) both;
     }
 
     .jn-login-left {
@@ -335,45 +356,94 @@ nocache_headers();
     }
 
     .jn-login-right {
-      flex: 1;
-      display: none;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 130px;
+      order: -1;
       position: relative;
       overflow: hidden;
       background: var(--jn-panel);
     }
+    .jn-login-right .jn-login-art-ring,
+    .jn-login-right .jn-login-art-overlay {
+      display: none;
+    }
 
     @media (min-width: 900px) {
-      .jn-login-right { display: block; }
-      .jn-login-wrapper { flex-direction: row; }
+      .jn-login-wrapper { flex-direction: row; min-height: 600px; }
+      .jn-login-right { display: flex; flex: 1; min-height: 0; order: 0; }
+      .jn-login-right .jn-login-art-ring,
+      .jn-login-right .jn-login-art-overlay {
+        display: block;
+      }
+      .jn-login-art { max-height: none; max-width: min(70%, 380px); }
     }
 
     .jn-login-art {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      position: absolute;
-      top: 0; left: 0;
-      mix-blend-mode: multiply; /* Helps blend the image with the pastel background */
+      position: relative;
+      z-index: 2;
+      width: auto;
+      height: auto;
+      max-height: 96px;
+      object-fit: contain;
+      filter: drop-shadow(0 16px 24px rgba(107, 63, 160, .22));
+      animation: jn-mascot-bob 5s ease-in-out infinite;
     }
+    @keyframes jn-mascot-bob {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-14px); }
+    }
+    .jn-login-art-glow {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(78%, 420px);
+      aspect-ratio: 1;
+      border-radius: 9999px;
+      background: radial-gradient(circle, var(--jn-card-base) 0%, transparent 70%);
+      opacity: .55;
+      z-index: 1;
+    }
+    .jn-login-art-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(60%, 320px);
+      aspect-ratio: 1;
+      border-radius: 9999px;
+      border: 3px dashed rgba(255, 255, 255, .6);
+      z-index: 1;
+      animation: jn-ring-spin 40s linear infinite;
+    }
+    @keyframes jn-ring-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
     .jn-login-art-overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
       background: linear-gradient(to right, rgba(250, 227, 209, 0.4) 0%, rgba(250, 227, 209, 0) 100%);
+      z-index: 1;
     }
 
     .jn-login-title {
+      font-family: 'Mali', sans-serif;
       font-size: clamp(2.5rem, 4.5vw, 3.5rem);
-      font-weight: 800;
+      font-weight: 700;
       color: var(--jn-accent-1);
       margin: 0 0 0.2rem;
       letter-spacing: -0.02em;
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .05s;
     }
 
     .jn-login-sub {
+      font-family: 'Mali', sans-serif;
       font-weight: 600;
       color: var(--jn-text);
       font-size: clamp(1rem, 1.2vw, 1.1rem);
       margin: 0 0 2rem;
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .1s;
     }
 
     .jn-login-body-text {
@@ -381,23 +451,37 @@ nocache_headers();
       font-size: 0.95rem;
       line-height: 1.6;
       margin: 0 0 1.5rem;
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .1s;
     }
 
-    .jn-login-error {
-      background: rgba(229, 41, 142, 0.1);
-      border-left: 4px solid var(--jn-error);
-      color: var(--jn-error);
+    .jn-login-notice {
       padding: 0.8rem 1rem;
       border-radius: 8px;
       font-size: 0.9rem;
       margin-bottom: 1.5rem;
       font-weight: 500;
+      border-left: 4px solid transparent;
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .15s;
+    }
+    .jn-login-notice--error {
+      background: rgba(184, 21, 111, 0.1);
+      border-left-color: var(--jn-error);
+      color: var(--jn-error);
+    }
+    .jn-login-notice--success {
+      background: rgba(8, 112, 72, 0.1);
+      border-left-color: var(--jn-success);
+      color: var(--jn-success);
     }
 
     .jn-social-row {
       display: flex;
       gap: 12px;
       margin-bottom: 2rem;
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .15s;
     }
     
     .jn-social-btn {
@@ -406,16 +490,21 @@ nocache_headers();
       align-items: center;
       justify-content: center;
       height: 48px;
-      border-radius: 12px;
+      border-radius: 14px;
       text-decoration: none !important;
       background: rgba(255, 255, 255, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.8);
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 2px 6px rgba(107, 63, 160, 0.06);
       transition: all 0.2s ease;
     }
     .jn-social-btn:hover {
       background: #fff;
       transform: translateY(-2px);
       box-shadow: 0 8px 16px rgba(107, 63, 160, 0.08);
+    }
+    .jn-social-btn:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 5px rgba(107, 63, 160, 0.12);
     }
     .jn-social-btn svg { width: 24px; height: 24px; }
     
@@ -427,6 +516,8 @@ nocache_headers();
       font-size: 0.85rem;
       margin-bottom: 2rem;
       font-weight: 500;
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .2s;
     }
     .jn-divider::before, .jn-divider::after {
       content: '';
@@ -435,6 +526,11 @@ nocache_headers();
     }
     .jn-divider:not(:empty)::before { margin-right: .5em; }
     .jn-divider:not(:empty)::after { margin-left: .5em; }
+
+    .jn-login-left form {
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .22s;
+    }
 
     .jn-login-input-group {
       margin-bottom: 1.2rem;
@@ -445,21 +541,25 @@ nocache_headers();
       display: block;
       width: 100%;
       background: rgba(255, 255, 255, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.8);
+      border: 2px solid rgba(255, 255, 255, 0.8);
       color: var(--jn-text);
       font-size: 1rem;
       font-weight: 500;
       padding: 1rem 1.2rem;
-      border-radius: 16px;
+      border-radius: 20px;
       outline: none;
       transition: all 0.2s ease;
       font-family: inherit;
+      box-shadow: inset 0 2px 5px rgba(107, 63, 160, 0.07), inset 0 -1px 0 rgba(255, 255, 255, 0.5);
     }
-    .jn-login-input::placeholder { color: var(--jn-text-muted); opacity: 0.6; font-weight: 400; }
+    .jn-login-input::placeholder { color: var(--jn-text-muted); opacity: 0.8; font-weight: 400; }
     .jn-login-input:focus {
       background: #fff;
       border-color: var(--jn-accent-1);
-      box-shadow: 0 0 0 4px rgba(229, 41, 142, 0.15);
+      box-shadow:
+        inset 0 2px 5px rgba(107, 63, 160, 0.05),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.6),
+        0 0 0 4px rgba(229, 41, 142, 0.15);
     }
 
     .jn-login-btn {
@@ -467,20 +567,22 @@ nocache_headers();
       align-items: center;
       justify-content: center;
       width: 100%;
-      background: linear-gradient(135deg, var(--jn-accent-1), var(--jn-accent-2));
+      background: linear-gradient(135deg, var(--jn-accent-1) 0%, var(--jn-accent-1) 55%, var(--jn-accent-2) 100%);
       color: #fff;
       font-weight: 600;
       font-size: 1.05rem;
       letter-spacing: 0.05em;
       padding: 1rem;
-      border-radius: 16px;
+      border-radius: 20px;
       border: none;
       cursor: pointer;
       margin-top: 0.5rem;
-      transition: all 0.2s ease;
+      transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease-out;
       font-family: inherit;
       position: relative;
       overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 10px 20px -6px rgba(229,41,142,.45), 0 3px 8px rgba(229,41,142,.25);
+      text-shadow: 0 1px 2px rgba(107,44,90,.3);
     }
     .jn-login-btn::before {
       content: '';
@@ -491,10 +593,13 @@ nocache_headers();
     }
     .jn-login-btn:hover::before { left: 100%; }
     .jn-login-btn:hover {
-      box-shadow: 0 10px 20px -5px rgba(229, 41, 142, 0.4);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 14px 24px -6px rgba(229, 41, 142, 0.45), 0 4px 10px rgba(229,41,142,.3);
       transform: translateY(-2px);
     }
-    .jn-login-btn:active { transform: translateY(1px); }
+    .jn-login-btn:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 6px rgba(107,20,70,.35);
+    }
     .jn-login-btn[disabled] { opacity: .7; cursor: wait; filter: grayscale(50%); }
     
     .jn-login-btn-spin {
@@ -512,6 +617,8 @@ nocache_headers();
       color: var(--jn-text-muted);
       text-align: center;
       font-weight: 500;
+      animation: jn-rise-in .5s ease-out both;
+      animation-delay: .25s;
     }
     .jn-login-foot a {
       color: var(--jn-text);
@@ -521,6 +628,16 @@ nocache_headers();
     .jn-login-foot a:hover { color: var(--jn-accent-1); text-decoration: underline; }
 
     [x-cloak] { display: none !important; }
+
+    .jn-sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </head>
@@ -537,10 +654,10 @@ nocache_headers();
         <h2 class="jn-login-sub"><?= esc_html__( 'ยินดีต้อนรับสู่ประสบการณ์พรีเมียม', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></h2>
 
         <?php if ( $jn_notice ) : ?>
-          <div class="jn-login-error" style="border-left-color: #48bb78; color: #9ae6b4; background: rgba(72,187,120,0.1);"><?= esc_html( $jn_notice ) ?></div>
+          <div class="jn-login-notice jn-login-notice--success"><?= esc_html( $jn_notice ) ?></div>
         <?php endif; ?>
         <?php if ( $login_error ) : ?>
-          <div class="jn-login-error"><?= esc_html( $login_error ) ?></div>
+          <div class="jn-login-notice jn-login-notice--error"><?= esc_html( $login_error ) ?></div>
         <?php endif; ?>
 
         <?php
@@ -572,10 +689,12 @@ nocache_headers();
           <?php wp_nonce_field( 'shop_login', 'shop_login_nonce' ); ?>
           
           <div class="jn-login-input-group">
-            <input type="text" name="log" class="jn-login-input" placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="username" :readonly="loading" required>
+            <label for="jn-log" class="jn-sr-only"><?= esc_html__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></label>
+            <input id="jn-log" type="text" name="log" class="jn-login-input" placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="username" :readonly="loading" required>
           </div>
           <div class="jn-login-input-group">
-            <input type="password" name="pwd" class="jn-login-input" placeholder="<?= esc_attr__( 'Password', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" :readonly="loading" autocomplete="current-password" required>
+            <label for="jn-pwd" class="jn-sr-only"><?= esc_html__( 'Password', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></label>
+            <input id="jn-pwd" type="password" name="pwd" class="jn-login-input" placeholder="<?= esc_attr__( 'Password', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" :readonly="loading" autocomplete="current-password" required>
           </div>
           <input type="hidden" name="redirect_to" value="<?= esc_attr( $redirect_to ) ?>">
 
@@ -601,13 +720,14 @@ nocache_headers();
         <?php else : ?>
           <p class="jn-login-body-text"><?= esc_html__( 'กรอก Username หรือ Email เพื่อรับลิงก์รีเซ็ตรหัสผ่าน', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></p>
           <?php if ( $lp_error ) : ?>
-            <div class="jn-login-error"><?= esc_html( $lp_error ) ?></div>
+            <div class="jn-login-notice jn-login-notice--error"><?= esc_html( $lp_error ) ?></div>
           <?php endif; ?>
 
           <form method="post" action="" x-data="{ loading: false }" @submit="loading = true" @pageshow.window="if ($event.persisted) loading = false">
             <?php wp_nonce_field( 'jn_lostpassword', 'jn_lostpass_nonce' ); ?>
             <div class="jn-login-input-group">
-              <input type="text" name="user_login" class="jn-login-input" placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="username email" :readonly="loading" required>
+              <label for="jn-user-login" class="jn-sr-only"><?= esc_html__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></label>
+              <input id="jn-user-login" type="text" name="user_login" class="jn-login-input" placeholder="<?= esc_attr__( 'Username or Email', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="username email" :readonly="loading" required>
             </div>
             <button type="submit" class="jn-login-btn" :class="{ 'is-loading': loading }" :disabled="loading">
               <svg class="jn-login-btn-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity:.75"></path></svg>
@@ -626,16 +746,18 @@ nocache_headers();
         <p class="jn-login-body-text"><?= esc_html__( 'กรอกรหัสผ่านใหม่สำหรับบัญชีของคุณ', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></p>
 
         <?php if ( $rp_error ) : ?>
-          <div class="jn-login-error"><?= esc_html( $rp_error ) ?></div>
+          <div class="jn-login-notice jn-login-notice--error"><?= esc_html( $rp_error ) ?></div>
         <?php endif; ?>
 
         <form method="post" action="" x-data="{ loading: false }" @submit="loading = true" @pageshow.window="if ($event.persisted) loading = false">
           <?php wp_nonce_field( 'jn_reset_password', 'jn_reset_nonce' ); ?>
           <div class="jn-login-input-group">
-            <input type="password" name="pass1" class="jn-login-input" placeholder="<?= esc_attr__( 'รหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="new-password" :readonly="loading" required>
+            <label for="jn-pass1" class="jn-sr-only"><?= esc_html__( 'รหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></label>
+            <input id="jn-pass1" type="password" name="pass1" class="jn-login-input" placeholder="<?= esc_attr__( 'รหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="new-password" :readonly="loading" required>
           </div>
           <div class="jn-login-input-group">
-            <input type="password" name="pass2" class="jn-login-input" placeholder="<?= esc_attr__( 'ยืนยันรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="new-password" :readonly="loading" required>
+            <label for="jn-pass2" class="jn-sr-only"><?= esc_html__( 'ยืนยันรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></label>
+            <input id="jn-pass2" type="password" name="pass2" class="jn-login-input" placeholder="<?= esc_attr__( 'ยืนยันรหัสผ่านใหม่', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?>" autocomplete="new-password" :readonly="loading" required>
           </div>
           <button type="submit" class="jn-login-btn" :class="{ 'is-loading': loading }" :disabled="loading">
             <svg class="jn-login-btn-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity:.75"></path></svg>
@@ -643,11 +765,17 @@ nocache_headers();
           </button>
         </form>
       <?php endif; ?>
+
+      <p class="jn-login-foot">
+        <a href="<?= esc_url( home_url( '/' ) ) ?>">&larr; <?= esc_html__( 'กลับหน้าแรก', $_ENV['TEXTDOMAIN_NAME'] ?? 'jaonaichan' ) ?></a>
+      </p>
     </div>
 
     <div class="jn-login-right" aria-hidden="<?= empty( $shop_login_image['src'] ) ? 'true' : 'false' ?>">
       <?php if ( ! empty( $shop_login_image['src'] ) ) : ?>
-        <img class="jn-login-art" src="<?= esc_url( $shop_login_image['src'] ) ?>" alt="<?= esc_attr( $shop_login_image['alt'] ) ?>" style="width: <?= esc_attr( $shop_login_image['width'] ) ?>; height: <?= esc_attr( $shop_login_image['height'] ) ?>;">
+        <span class="jn-login-art-glow"></span>
+        <span class="jn-login-art-ring"></span>
+        <img class="jn-login-art" src="<?= esc_url( $shop_login_image['src'] ) ?>" alt="<?= esc_attr( $shop_login_image['alt'] ) ?>">
         <div class="jn-login-art-overlay"></div>
       <?php endif; ?>
     </div>

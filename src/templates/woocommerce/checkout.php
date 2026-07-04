@@ -16,6 +16,15 @@ add_filter( 'astra_get_option', function ( $val, $option ) {
     return $val;
 }, 10, 2 );
 
+add_action( 'wp_enqueue_scripts', function () {
+	wp_enqueue_style(
+		'jn-kawaii-fonts',
+		'https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap',
+		[],
+		null
+	);
+} );
+
 get_header();
 
 if ( ! WC()->cart || WC()->cart->is_empty() ) {
@@ -63,7 +72,43 @@ $cart_total_raw = (float) $cart->get_total( 'edit' );
   .jn-items-scroll  { max-height: 200px !important; }
 }
 
-.cart-item:last-child { border-bottom: none; }
+.jn-checkout-wrap { font-family: 'Prompt', sans-serif; }
+
+.jn-checkout-card {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 20px -8px rgba(107,63,160,.10);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* Blob float animations */
+@keyframes jn-co-blob-drift-1 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(calc(-50% + 16px), calc(-50% - 12px)) scale(1.08); }
+}
+@keyframes jn-co-blob-drift-2 {
+  0%, 100% { transform: translate(50%, 50%) scale(1); }
+  50%      { transform: translate(calc(50% - 14px), calc(50% + 10px)) scale(1.1); }
+}
+.jn-co-blob-1 { animation: jn-co-blob-drift-1 7s ease-in-out infinite; will-change: transform; }
+.jn-co-blob-2 { animation: jn-co-blob-drift-2 9s ease-in-out infinite; animation-delay: 2s; will-change: transform; }
+
+/* Entrance fade-in — main card only, kept light on a task-focused checkout flow */
+@keyframes jn-rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.jn-rise-in { animation: jn-rise-in .5s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .jn-co-blob-1,
+  .jn-co-blob-2,
+  .jn-rise-in {
+    animation: none;
+  }
+}
 
 /* Force no-sidebar: hide sidebar + make content area fill 100% */
 #secondary,
@@ -84,18 +129,18 @@ aside.widget-area { display: none !important; }
 }
 </style>
 
-<div class="w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
-  
+<div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+
   <!-- Full Width Background Container -->
   <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
     <!-- Decorative background blobs -->
-    <div class="absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
-    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 2s;"></div>
+    <div class="jn-co-blob-1 absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl"></div>
+    <div class="jn-co-blob-2 absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl"></div>
   </div>
 
   <main
       x-data="jaoCheckout()"
-      class="relative z-10 w-full max-w-6xl mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
+      class="jn-rise-in relative z-10 w-full max-w-6xl mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
   >
   <?php $color = '#FB5FAB'; include get_stylesheet_directory() . '/src/templates/spinner.php'; ?>
 
@@ -118,24 +163,25 @@ aside.widget-area { display: none !important; }
       <div class="jn-left-col">
 
         <!-- Order Summary -->
-        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+        <div class="jn-checkout-card">
           <h3 class="jn-checkout-heading font-semibold text-gray-800" style="margin-bottom:1rem;">
             <?= __( 'สรุปคำสั่งซื้อ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
           </h3>
 
           <!-- scrollable items container -->
           <div class="jn-items-scroll" style="max-height:260px; overflow-y:auto; margin:0 -0.25rem; padding:0 0.25rem;">
-            <?php foreach ( $cart->get_cart() as $cart_item ) :
+            <?php
+              $cart_items = $cart->get_cart();
+              $last_item  = end( $cart_items );
+              foreach ( $cart_items as $cart_item ) :
               $product   = $cart_item['data'];
               $qty       = $cart_item['quantity'];
               $image_id  = $product->get_image_id();
               $image_url = $image_id
                 ? wp_get_attachment_image_url( $image_id, 'custom-100' )
                 : wc_placeholder_img_src( 'custom-100' );
-              $items     = $cart->get_cart();
-              $last_key  = array_key_last( $items );
             ?>
-              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom: <?= $cart_item === end($items) ? 'none' : '1px solid #f3f4f6' ?>;">
+              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom: <?= $cart_item === $last_item ? 'none' : '1px solid #f3f4f6' ?>;">
                 <img
                   src="<?= esc_url( $image_url ) ?>"
                   alt="<?= esc_attr( $product->get_name() ) ?>"
@@ -185,7 +231,7 @@ aside.widget-area { display: none !important; }
         </div>
 
         <!-- Additional Info -->
-        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+        <div class="jn-checkout-card">
           <h3 class="jn-checkout-heading font-semibold text-gray-800" style="margin-bottom:1rem;">
             <?= __( 'ข้อมูลเพิ่มเติม', $_ENV['TEXTDOMAIN_NAME'] ) ?>
           </h3>
@@ -202,7 +248,7 @@ aside.widget-area { display: none !important; }
       <div class="jn-right-col">
 
         <!-- Payment -->
-        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+        <div class="jn-checkout-card">
           <h3 class="jn-checkout-heading font-semibold text-gray-800" style="margin-bottom:1rem;">
             <?= __( 'Payment', $_ENV['TEXTDOMAIN_NAME'] ) ?>
           </h3>
@@ -250,7 +296,7 @@ aside.widget-area { display: none !important; }
         </div>
 
         <!-- Coupon -->
-        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem; overflow:hidden;">
+        <div class="jn-checkout-card" style="overflow:hidden;">
           <div style="display:flex; gap:0.5rem; min-width:0;">
             <input
               type="text"
@@ -282,7 +328,7 @@ aside.widget-area { display: none !important; }
         ></div>
 
         <!-- Submit + Privacy -->
-        <div class="jn-checkout-card" style="background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:1.25rem; margin-bottom:1rem;">
+        <div class="jn-checkout-card">
           <p class="text-xs text-gray-400 mb-4">
             <?= sprintf(
               __( 'Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our %s.', $_ENV['TEXTDOMAIN_NAME'] ),

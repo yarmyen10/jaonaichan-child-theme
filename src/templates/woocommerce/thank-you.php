@@ -7,6 +7,15 @@
 // $color = 'bg-indigo-600 dark:bg-indigo-300';
 // include get_stylesheet_directory() . '/src/templates/spinner.php';
 
+add_action( 'wp_enqueue_scripts', function () {
+	wp_enqueue_style(
+		'jn-kawaii-fonts',
+		'https://fonts.googleapis.com/css2?family=Mali:wght@600;700&family=Prompt:wght@400;500;600;700&display=swap',
+		[],
+		null
+	);
+} );
+
 get_header();
 ?>
 <style>
@@ -23,17 +32,47 @@ get_header();
       margin-right: calc(50% - 50vw) !important;
     }
   }
+  .jn-thankyou-wrap { font-family: 'Prompt', sans-serif; }
+  .jn-thankyou-wrap h2 { font-family: 'Mali', sans-serif; }
+  /* Blob float animations */
+  @keyframes jn-ty-blob-drift-1 {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50%      { transform: translate(calc(-50% + 16px), calc(-50% - 12px)) scale(1.08); }
+  }
+  @keyframes jn-ty-blob-drift-2 {
+    0%, 100% { transform: translate(50%, 50%) scale(1); }
+    50%      { transform: translate(calc(50% - 14px), calc(50% + 10px)) scale(1.1); }
+  }
+  .jn-ty-blob-1 { animation: jn-ty-blob-drift-1 7s ease-in-out infinite; will-change: transform; }
+  .jn-ty-blob-2 { animation: jn-ty-blob-drift-2 9s ease-in-out infinite; animation-delay: 2s; will-change: transform; }
+  /* Entrance stagger — static header content only, Alpine-driven panels keep their own x-transition */
+  @keyframes jn-rise-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .jn-rise-in { animation: jn-rise-in .5s ease-out both; }
+  .jn-delay-1 { animation-delay: .05s; }
+  .jn-delay-2 { animation-delay: .1s;  }
+  .jn-delay-3 { animation-delay: .15s; }
+  .jn-delay-4 { animation-delay: .2s;  }
+  @media (prefers-reduced-motion: reduce) {
+    .jn-ty-blob-1,
+    .jn-ty-blob-2,
+    .jn-rise-in {
+      animation: none;
+    }
+  }
 </style>
-<div class="w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+<div class="jn-thankyou-wrap w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
   
   <!-- Full Width Background Container -->
   <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
     <!-- Decorative background blobs -->
-    <div class="absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
-    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 2s;"></div>
+    <div class="jn-ty-blob-1 absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl"></div>
+    <div class="jn-ty-blob-2 absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl"></div>
   </div>
 
-  <main x-data="billTabs()" class="relative z-10 w-full max-w-[1200px] mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]">
+  <main x-data="billTabs()" class="jn-rise-in relative z-10 w-full max-w-[1200px] mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]">
 
   <?php
     $color = '#FB5FAB';
@@ -41,8 +80,8 @@ get_header();
   ?>
 
   <div class="text-center pt-2 mb-10">
-    <h2 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FB5FAB] to-purple-600 tracking-tight">ขอบคุณสำหรับคำสั่งซื้อ</h2>
-    <p class="text-base text-gray-500 mt-3 font-medium">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
+    <h2 class="jn-rise-in jn-delay-1 text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FB5FAB] to-purple-600 tracking-tight">ขอบคุณสำหรับคำสั่งซื้อ</h2>
+    <p class="jn-rise-in jn-delay-2 text-base text-gray-500 mt-3 font-medium">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
     <?php
       $order_id     = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
       $order        = $order_id ? wc_get_order($order_id) : null;
@@ -138,7 +177,7 @@ get_header();
           $shipping_address = trim("$addr1 $addr2 $city $state $post");
       }
     ?>
-    <span class="inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
+    <span class="jn-rise-in jn-delay-3 inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
       Order #<?= $order ? $order->get_order_number() : $order_id ?>
     </span>
     <?php if ( current_user_can('manage_options') && isset($mock) && $mock ) : ?>
@@ -157,7 +196,7 @@ get_header();
 
   <div>
     <!-- {{-- Tabs --}} -->
-    <div class="flex p-1.5 bg-gray-100/60 backdrop-blur-md rounded-[1.25rem] mb-8 shadow-inner border border-gray-200/50">
+    <div class="jn-rise-in jn-delay-4 flex p-1.5 bg-gray-100/60 backdrop-blur-md rounded-[1.25rem] mb-8 shadow-inner border border-gray-200/50">
       <div
         @click="switchTab(1)"
         :class="activeTab === 1 ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
@@ -478,10 +517,10 @@ get_header();
                     $import_fee2 = isset( $bill2_import_fee[$pid2] )     ? (float) $bill2_import_fee[$pid2]     : null;
                     $line_total2 = $unit2 !== null ? $unit2 * $item->get_quantity() : (float) $item->get_total();
                   ?>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-start gap-3">
                       <?php if ( $img_url ) : ?>
                           <img src="<?= esc_url($img_url) ?>"
-                              class="object-cover rounded-lg border border-gray-200" />
+                              class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
                       <?php endif; ?>
                       <div class="flex-1">
                           <p class="text-sm font-medium text-gray-900">
@@ -490,15 +529,16 @@ get_header();
                           <p class="text-xs text-gray-400">
                               x<?= $item->get_quantity() ?>
                           </p>
-                          <?php if ( $china_ship2 !== null || $import_fee2 !== null ) : ?>
-                          <p class="text-xs text-gray-400 mt-0.5">
-                              <?php if ( $unit2 !== null ) : ?>ราคา/ชิ้น ฿<?= number_format($unit2, 2) ?><?php endif; ?>
-                              <?php if ( $china_ship2 !== null ) : ?> · ส่งจีน ฿<?= number_format($china_ship2, 2) ?><?php endif; ?>
-                              <?php if ( $import_fee2 !== null ) : ?> · Import ฿<?= number_format($import_fee2, 2) ?><?php endif; ?>
-                          </p>
-                          <?php endif; ?>
+                          <?php
+                              $bill2_line_parts = [
+                                  'ราคา/ชิ้น ฿' . number_format( (float) $unit2, 2 ),
+                                  'ส่งจีน ฿' . number_format( (float) $china_ship2, 2 ),
+                                  'Import ฿' . number_format( (float) $import_fee2, 2 ),
+                              ];
+                          ?>
+                          <p class="text-xs text-gray-400 mt-0.5"><?= implode( ' · ', $bill2_line_parts ) ?></p>
                       </div>
-                      <p class="text-sm font-medium text-gray-900">
+                      <p class="text-sm font-medium text-gray-900 shrink-0">
                           ฿<?= number_format( $line_total2, 2 ) ?>
                       </p>
                     </div>

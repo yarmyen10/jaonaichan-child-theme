@@ -14,6 +14,15 @@ add_filter( 'astra_get_option', function ( $val, $option ) {
 add_filter( 'astra_the_title_enabled', '__return_false' );
 add_filter( 'astra_breadcrumb_enabled', '__return_false' );
 
+add_action( 'wp_enqueue_scripts', function () {
+	wp_enqueue_style(
+		'jn-home-fonts',
+		'https://fonts.googleapis.com/css2?family=Mali:wght@600;700&family=Prompt:wght@400;500;600;700&display=swap',
+		[],
+		null
+	);
+} );
+
 get_header();
 
 // Set up global $post so thumbnail / content helpers work
@@ -73,16 +82,16 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 .jn-product-card .price { color: #ec4899 !important; font-weight: 700; }
 .jn-product-card ins { text-decoration: none; }
 /* Blob float animations */
-@keyframes jn-blob-a {
-  0%, 100% { transform: translate(35%, -35%) scale(1); }
-  50%       { transform: translate(30%, -42%) scale(1.08); }
+@keyframes jn-home-blob-drift-1 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(calc(-50% + 16px), calc(-50% - 12px)) scale(1.08); }
 }
-@keyframes jn-blob-b {
-  0%, 100% { transform: translate(-35%, 35%) scale(1); }
-  50%       { transform: translate(-40%, 28%) scale(1.1); }
+@keyframes jn-home-blob-drift-2 {
+  0%, 100% { transform: translate(50%, 50%) scale(1); }
+  50%      { transform: translate(calc(50% - 14px), calc(50% + 10px)) scale(1.1); }
 }
-.jn-blob-a { animation: jn-blob-a 7s ease-in-out infinite; }
-.jn-blob-b { animation: jn-blob-b 9s ease-in-out infinite; }
+.jn-home-blob-1 { animation: jn-home-blob-drift-1 7s ease-in-out infinite; will-change: transform; }
+.jn-home-blob-2 { animation: jn-home-blob-drift-2 9s ease-in-out infinite; animation-delay: 2s; will-change: transform; }
 /* Cat wiggle animation */
 @keyframes jn-wiggle {
   0%, 100% { transform: rotate(0deg); }
@@ -112,6 +121,91 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
   line-height: 1.35rem;
   white-space: nowrap;
 }
+.jn-home-wrap { font-family: 'Prompt', sans-serif; }
+.jn-home-wrap h1,
+.jn-home-wrap h2 { font-family: 'Mali', sans-serif; }
+/* Claymorphism buttons */
+.jn-btn-clay {
+  background: #ec4899;
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 10px 20px -6px rgba(236,72,153,.45),
+    0 3px 8px rgba(236,72,153,.25);
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease-out, background-color .2s ease;
+}
+.jn-btn-clay:hover {
+  background: #db2777;
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 14px 24px -6px rgba(219,39,119,.45),
+    0 4px 10px rgba(219,39,119,.3);
+}
+.jn-btn-clay:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 6px rgba(219,39,119,.35);
+}
+.jn-btn-outline {
+  background: #fff;
+  color: #ec4899;
+  border: 2px solid #fbcfe8;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.6),
+    0 6px 14px -4px rgba(236,72,153,.18),
+    0 2px 6px rgba(236,72,153,.12);
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease-out, background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.jn-btn-outline:hover {
+  background: #ec4899;
+  color: #fff;
+  border-color: #ec4899;
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.25),
+    0 10px 20px -6px rgba(236,72,153,.35),
+    0 3px 8px rgba(236,72,153,.22);
+}
+.jn-btn-outline:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 6px rgba(219,39,119,.35);
+}
+/* Hero mascot glow backdrop */
+.jn-hero-art-wrap::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #fce7f3 0%, #fbcfe8 35%, transparent 70%);
+  opacity: .6;
+  z-index: -1;
+  pointer-events: none;
+}
+/* Entrance stagger */
+@keyframes jn-rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.jn-rise-in { animation: jn-rise-in .5s ease-out both; }
+.jn-delay-1 { animation-delay: .05s; }
+.jn-delay-2 { animation-delay: .1s;  }
+.jn-delay-3 { animation-delay: .15s; }
+.jn-delay-4 { animation-delay: .2s;  }
+.jn-delay-5 { animation-delay: .25s; }
+.jn-delay-6 { animation-delay: .3s;  }
+.jn-delay-7 { animation-delay: .35s; }
+@media (prefers-reduced-motion: reduce) {
+  .jn-home-blob-1,
+  .jn-home-blob-2,
+  .jn-cat-wiggle,
+  .jn-rise-in,
+  .jn-badge-track {
+    animation: none;
+  }
+}
 </style>
 
 <div class="jn-home-wrap w-full min-h-[calc(100vh-80px)] font-sans relative z-10 breakout-desktop">
@@ -119,8 +213,8 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
   <!-- Full Width Background Container -->
   <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
     <!-- Decorative background blobs -->
-    <div class="absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
-    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 2s;"></div>
+    <div class="jn-home-blob-1 absolute top-0 left-0 w-96 h-96 bg-[#FB5FAB] opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl"></div>
+    <div class="jn-home-blob-2 absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl"></div>
   </div>
 
 	<!-- ═══════════════════════════════════════════
@@ -133,37 +227,33 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 
 				<!-- ── Text ── -->
 				<div class="flex-1 text-center md:text-left">
-					<span class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full mb-5"
+					<span class="jn-rise-in jn-delay-1 inline-flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full mb-5"
 					      style="background:#fce7f3; color:#db2777;">
 						🐾 ร้านอาหารแมวแสนรัก
 					</span>
 
-					<h1 class="text-4xl md:text-6xl font-bold leading-tight mb-5" style="color:#1f2937;">
+					<h1 class="jn-rise-in jn-delay-2 text-4xl md:text-6xl font-bold leading-tight mb-5" style="color:#1f2937;">
 						ของดีสำหรับ<br>
 						<span style="color:#ec4899;">เจ้านายขนฟู</span>
 					</h1>
 
-					<p class="text-lg mb-8 max-w-md mx-auto md:mx-0" style="color:#9ca3af;">
+					<p class="jn-rise-in jn-delay-3 text-lg mb-8 max-w-md mx-auto md:mx-0" style="color:#9ca3af;">
 						อาหารและขนมคุณภาพดี คัดสรรมาเพื่อแมวที่คุณรัก&nbsp;ส่งตรงถึงบ้าน
 					</p>
 
-					<div class="flex flex-wrap gap-3 justify-center md:justify-start">
+					<div class="jn-rise-in jn-delay-4 flex flex-wrap gap-3 justify-center md:justify-start">
 						<a href="<?php echo esc_url( $shop_url ); ?>"
-						   class="inline-flex items-center gap-2 !text-white font-semibold px-7 py-3 rounded-full transition-all duration-200"
-						   style="background:#ec4899; box-shadow: 0 8px 24px rgba(236,72,153,.35);"
-						   onmouseover="this.style.background='#db2777'" onmouseout="this.style.background='#ec4899'">
+						   class="jn-btn-clay inline-flex items-center gap-2 font-semibold px-7 py-3 rounded-full">
 							ช้อปเลย 🛒
 						</a>
 						<a href="#jn-categories"
-						   class="inline-flex items-center gap-2 font-semibold px-7 py-3 rounded-full border-2 transition-all duration-200"
-						   style="color:#ec4899; border-color:#fbcfe8; background:#fff;"
-						   onmouseover="this.style.background='#fdf2f8'" onmouseout="this.style.background='#fff'">
+						   class="jn-btn-outline inline-flex items-center gap-2 font-semibold px-7 py-3 rounded-full">
 							ดูหมวดหมู่
 						</a>
 					</div>
 
 					<!-- Stats -->
-					<div class="flex gap-6 mt-10 justify-center md:justify-start" style="color:#6b7280;">
+					<div class="jn-rise-in jn-delay-5 flex gap-6 mt-10 justify-center md:justify-start" style="color:#6b7280;">
 						<div class="text-center">
 							<div class="text-2xl font-bold" style="color:#1f2937;">100%</div>
 							<div class="text-xs mt-0.5">คุณภาพดี</div>
@@ -183,7 +273,7 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 
 				<!-- ── Hero image ── -->
 				<div class="flex-1 flex justify-center">
-					<div class="relative">
+					<div class="relative jn-hero-art-wrap jn-rise-in jn-delay-3">
 						<?php if ( has_post_thumbnail() ) : ?>
 							<div class="w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden"
 							     style="box-shadow: 0 25px 60px rgba(236,72,153,.28);">
@@ -192,11 +282,11 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 						<?php else : ?>
 							<img src="<?php echo esc_url( get_stylesheet_directory_uri() . '/assets/imgs/cat-hero.gif' ); ?>"
 							     alt="แมวน้อย"
-							     class="w-52 md:w-64 drop-shadow-2xl">
+							     class="w-52 md:w-64 drop-shadow-2xl jn-cat-wiggle">
 						<?php endif; ?>
 
 						<!-- Floating badges -->
-						<div class="absolute -top-5 -left-12 flex items-center bg-white rounded-2xl px-4 py-3"
+						<div class="jn-rise-in jn-delay-6 absolute -top-5 -left-12 flex items-center bg-white rounded-2xl px-4 py-3"
 						     style="box-shadow:0 4px 20px rgba(0,0,0,.12);">
 							<div style="overflow:hidden; height:1.35rem;">
 								<div class="jn-badge-track">
@@ -207,7 +297,7 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 								</div>
 							</div>
 						</div>
-						<div class="absolute -bottom-5 -right-12 rounded-2xl px-4 py-3"
+						<div class="jn-rise-in jn-delay-7 absolute -bottom-5 -right-12 rounded-2xl px-4 py-3"
 						     style="background:#ec4899; box-shadow:0 4px 20px rgba(236,72,153,.45);">
 							<span class="text-sm font-semibold text-white">🚚 ส่งฟรีทั่วไทย</span>
 						</div>
@@ -225,21 +315,22 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 	<section class="py-16">
 		<div class="mx-auto max-w-6xl px-6">
 
-			<div class="text-center mb-10">
+			<div class="jn-rise-in jn-delay-1 text-center mb-10">
 				<span class="text-sm font-semibold tracking-widest uppercase" style="color:#ec4899;">สินค้าแนะนำ</span>
 				<h2 class="text-3xl font-bold mt-2" style="color:#1f2937;">เมนูโปรดของเจ้านาย 🐟</h2>
 				<p class="mt-2" style="color:#9ca3af;">คัดมาเฉพาะของที่แมวชอบและดีต่อสุขภาพ</p>
 			</div>
 
 			<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-				<?php foreach ( $featured as $product ) :
+				<?php foreach ( $featured as $i => $product ) :
 					$img_id  = $product->get_image_id();
 					$img_src = $img_id
 						? wp_get_attachment_image_url( $img_id, 'woocommerce_thumbnail' )
 						: wc_placeholder_img_src( 'woocommerce_thumbnail' );
 					$on_sale = $product->is_on_sale();
+					$rise_delay_class = 'jn-delay-' . min( $i + 1, 7 );
 				?>
-				<article class="jn-product-card group rounded-[1.5rem] overflow-hidden border transition-all duration-300 bg-white/70 backdrop-blur-xl border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
+				<article class="jn-rise-in <?php echo esc_attr( $rise_delay_class ); ?> jn-product-card group rounded-[1.5rem] overflow-hidden border transition-all duration-300 bg-white/70 backdrop-blur-xl border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
 				         onmouseover="this.style.boxShadow='0 8px 32px rgba(236,72,153,.2)';"
 				         onmouseout="this.style.boxShadow='';">
 					<a href="<?php echo esc_url( $product->get_permalink() ); ?>" class="block">
@@ -288,10 +379,7 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 
 			<div class="text-center mt-10">
 				<a href="<?php echo esc_url( $shop_url ); ?>"
-				   class="inline-flex items-center gap-2 font-semibold px-8 py-3 rounded-full border-2 transition-all duration-200"
-				   style="color:#ec4899; border-color:#f9a8d4;"
-				   onmouseover="this.style.background='#ec4899'; this.style.color='#fff'; this.style.borderColor='#ec4899';"
-				   onmouseout="this.style.background='transparent'; this.style.color='#ec4899'; this.style.borderColor='#f9a8d4';">
+				   class="jn-btn-outline inline-flex items-center gap-2 font-semibold px-8 py-3 rounded-full">
 					ดูสินค้าทั้งหมด →
 				</a>
 			</div>
@@ -306,7 +394,7 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 	<section id="jn-categories" class="py-16">
 		<div class="mx-auto max-w-6xl px-6">
 
-			<div class="text-center mb-10">
+			<div class="jn-rise-in jn-delay-1 text-center mb-10">
 				<span class="text-sm font-semibold tracking-widest uppercase" style="color:#ec4899;">หมวดหมู่สินค้า</span>
 				<h2 class="text-3xl font-bold mt-2" style="color:#1f2937;">เลือกช้อปตามใจแมว 🐾</h2>
 			</div>
@@ -328,10 +416,11 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 					];
 					static $cat_idx = 0;
 					$fallback_bg = $fallbacks[ $cat_idx % count( $fallbacks ) ];
+					$cat_delay_class = 'jn-delay-' . min( $cat_idx + 1, 7 );
 					$cat_idx++;
 				?>
 				<a href="<?php echo esc_url( $cat_url ); ?>"
-				   class="group relative overflow-hidden rounded-2xl flex items-end p-5 transition-all duration-300"
+				   class="jn-rise-in <?php echo esc_attr( $cat_delay_class ); ?> group relative overflow-hidden rounded-2xl flex items-end p-5 transition-all duration-300"
 				   style="aspect-ratio:4/3; background:<?php echo $thumb_url ? "url('" . esc_url( $thumb_url ) . "') center/cover" : $fallback_bg; ?>; box-shadow:0 2px 8px rgba(0,0,0,.07);"
 				   onmouseover="this.style.boxShadow='0 12px 32px rgba(236,72,153,.2)'; this.style.transform='translateY(-2px)';"
 				   onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,.07)'; this.style.transform='none';">

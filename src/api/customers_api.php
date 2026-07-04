@@ -56,6 +56,24 @@ class Customers_API {
             ],
         ]);
 
+        // POST /wp-json/jaonaichan/v1/customers/{id}/reset-password
+        register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/reset-password', [
+            'methods'             => 'POST',
+            'callback'            => [ self::class, 'reset_password' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'mode'     => [ 'required' => true, 'type' => 'string', 'enum' => [ 'phone', 'manual' ] ],
+                'password' => [ 'required' => false, 'type' => 'string' ],
+            ],
+        ]);
+
+        // GET /wp-json/jaonaichan/v1/customers/{id}/cart
+        register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/cart', [
+            'methods'             => 'GET',
+            'callback'            => [ self::class, 'get_customer_cart' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);
+
         // GET /wp-json/jaonaichan/v1/customers/{id}/orders
         //   ?page=1&per_page=20
         register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/orders', [
@@ -151,9 +169,9 @@ class Customers_API {
         } else {
             $next_num = 1;
         }
-        $username = $prefix . str_pad( $next_num, 4, '0', STR_PAD_LEFT );
+        $username = $prefix . str_pad( $next_num, 5, '0', STR_PAD_LEFT );
 
-        $password = $phone;
+        $password = preg_replace( '/\D/', '', $phone );
 
         if ( empty( $email ) ) {
             $email = strtolower($username) . '@jaonaichan.local';
@@ -255,6 +273,82 @@ class Customers_API {
         return new WP_REST_Response([
             'success' => true,
             'message' => 'อัปเดตข้อมูลลูกค้าสำเร็จ',
+        ], 200);
+    }
+
+    // =========================================================================
+    // POST /customers/{id}/reset-password
+    // =========================================================================
+
+    public static function reset_password( WP_REST_Request $request ): WP_REST_Response {
+        $customer_id = absint( $request->get_param('id') );
+        $mode        = $request->get_param('mode');
+
+        $user = get_userdata( $customer_id );
+        if ( ! $user ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบลูกค้า' ], 404);
+        }
+
+        if ( $mode === 'phone' ) {
+            $phone = get_user_meta( $customer_id, 'billing_phone', true );
+            if ( empty( $phone ) ) {
+                return new WP_REST_Response([ 'success' => false, 'message' => 'ลูกค้าไม่มีเบอร์โทรศัพท์' ], 400);
+            }
+            $new_password = preg_replace( '/\D/', '', $phone );
+        } else {
+            $new_password = $request->get_param('password');
+            if ( empty( $new_password ) || mb_strlen( $new_password ) < 6 ) {
+                return new WP_REST_Response([ 'success' => false, 'message' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' ], 400);
+            }
+        }
+
+        wp_set_password( $new_password, $customer_id );
+
+        return new WP_REST_Response([ 'success' => true, 'message' => 'รีเซ็ตรหัสผ่านสำเร็จ' ], 200);
+    }
+
+    // =========================================================================
+    // GET /customers/{id}/cart
+    // =========================================================================
+
+    public static function get_customer_cart( WP_REST_Request $request ): WP_REST_Response {
+        $user_id = absint( $request->get_param('id') );
+
+        global $wpdb;
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT session_value FROM {$wpdb->prefix}woocommerce_sessions WHERE session_key = %s",
+            (string) $user_id
+        ) );
+
+        $empty = [ 'items' => [], 'subtotal' => 0.0, 'total' => 0.0 ];
+
+        if ( ! $row ) {
+            return new WP_REST_Response([ 'data' => $empty ], 200);
+        }
+
+        $session   = maybe_unserialize( $row->session_value );
+        $raw_cart  = $session['cart'] ?? [];
+        $totals    = $session['cart_totals'] ?? [];
+
+        $items = [];
+        foreach ( $raw_cart as $item ) {
+            $product = wc_get_product( $item['product_id'] );
+            if ( ! $product ) continue;
+            $items[] = [
+                'product_id' => $item['product_id'],
+                'name'       => $product->get_name(),
+                'quantity'   => (int) $item['quantity'],
+                'price'      => (float) $product->get_price(),
+                'line_total' => (float) ( $item['line_total'] ?? 0 ),
+            ];
+        }
+
+        return new WP_REST_Response([
+            'data' => [
+                'items'    => $items,
+                'subtotal' => (float) ( $totals['subtotal'] ?? array_sum( array_column( $items, 'line_total' ) ) ),
+                'total'    => (float) ( $totals['total'] ?? array_sum( array_column( $items, 'line_total' ) ) ),
+            ],
         ], 200);
     }
 

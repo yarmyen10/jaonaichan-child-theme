@@ -651,12 +651,15 @@ class Orders_API {
         $per_page = min( 50, (int) $request->get_param('per_page') ?: 10 );
         $status_raw = sanitize_text_field( $request->get_param('status') ?: 'any' );
 
-        // Support comma-separated statuses e.g. "paid-1,paid-2,completed"
+        // Normalize status: ensure wc- prefix so wc_get_orders can match registered statuses.
+        // wc_get_orders strips wc- internally for HPOS, but CPT mode needs it present.
+        $normalize = fn( $s ) => 'wc-' . str_replace( 'wc-', '', trim( $s ) );
+
         if ( str_contains( $status_raw, ',' ) ) {
             $parts  = array_filter( array_map( 'trim', explode( ',', $status_raw ) ) );
-            $status = array_map( fn( $s ) => str_replace( 'wc-', '', $s ), $parts );
+            $status = array_map( $normalize, $parts );
         } else {
-            $status = $status_raw === 'any' ? 'any' : str_replace( 'wc-', '', $status_raw );
+            $status = $status_raw === 'any' ? 'any' : $normalize( $status_raw );
         }
 
         $base_args = [
@@ -669,6 +672,12 @@ class Orders_API {
         if ( ! empty( $unit_prices_id ) ) {
             $base_args['meta_key']   = '_bill2_unit_prices_id';
             $base_args['meta_value'] = $unit_prices_id;
+        }
+
+        $lot_id = intval( $request->get_param('lot_id') );
+        if ( $lot_id > 0 ) {
+            $base_args['meta_key']   = '_lot_id';
+            $base_args['meta_value'] = $lot_id;
         }
 
         $date_query = self::build_date_query( $request );

@@ -30,6 +30,8 @@ class Barcode_Pack_API {
                 return self::validate_barcode( $body );
             case 'confirm_pack':
                 return self::confirm_pack( $body );
+            case 'save_tracking':
+                return self::save_tracking( $body );
             default:
                 return new WP_Error( 'invalid_action', 'Invalid action.', [ 'status' => 400 ] );
         }
@@ -50,7 +52,7 @@ class Barcode_Pack_API {
         foreach ( $order->get_items() as $item_id => $item ) {
             /** @var WC_Order_Item_Product $item */
             $items[] = [
-                'product_id'    => $item->get_product_id(),
+                'product_id'    => $item->get_variation_id() ?: $item->get_product_id(),
                 'order_item_id' => $item_id,
                 'name'          => $item->get_name(),
                 'qty'           => $item->get_quantity(),
@@ -85,6 +87,7 @@ class Barcode_Pack_API {
 
     private static function confirm_pack( array $body ) {
         $order_id = intval( $body['order_id'] ?? 0 );
+        $lot_id   = intval( $body['lot_id'] ?? 0 );
         $scanned  = $body['scanned'] ?? [];
 
         if ( ! $order_id || ! is_array( $scanned ) ) {
@@ -100,11 +103,11 @@ class Barcode_Pack_API {
             return new WP_Error( 'order_not_found', 'Order not found.', [ 'status' => 404 ] );
         }
 
-        // Build product_id → order_item_id map
+        // Build product_id → order_item_id map — variation_id ?: parent_id, same as get_order_items
         $product_to_item = [];
         foreach ( $order->get_items() as $item_id => $item ) {
             /** @var WC_Order_Item_Product $item */
-            $product_to_item[ $item->get_product_id() ] = $item_id;
+            $product_to_item[ $item->get_variation_id() ?: $item->get_product_id() ] = $item_id;
         }
 
         $user_id     = get_current_user_id();
@@ -146,8 +149,45 @@ class Barcode_Pack_API {
         }
 
         if ( $all_packed ) {
-            $order->update_status( 'completed', 'All items packed via Barcode Pack.' );
+            $order->update_status( 'packed', 'All items packed via Barcode Pack.' );
         }
+
+        if ( $lot_id ) {
+            $order->update_meta_data( '_lot_id', $lot_id );
+            $order->save();
+        }
+
+        return new WP_REST_Response( [ 'success' => true ], 200 );
+    }
+
+    private static function save_tracking( array $body ) {
+        $order_id = intval( $body['order_id'] ?? 0 );
+        $parcels  = $body['parcels'] ?? [];
+
+        if ( ! $order_id || ! is_array( $parcels ) || empty( $parcels ) ) {
+            return new WP_Error( 'missing_params', 'order_id and parcels required.', [ 'status' => 400 ] );
+        }
+
+        $order = wc_get_order( $order_id );
+        if ( ! $order ) {
+            return new WP_Error( 'order_not_found', 'Order not found.', [ 'status' => 404 ] );
+        }
+
+        $clean = [];
+        foreach ( $parcels as $p ) {
+            $carrier = sanitize_text_field( $p['carrier'] ?? '' );
+            $number  = sanitize_text_field( $p['number']  ?? '' );
+            if ( $carrier && $number ) {
+                $clean[] = [ 'carrier' => $carrier, 'number' => $number ];
+            }
+        }
+
+        if ( empty( $clean ) ) {
+            return new WP_Error( 'no_valid_parcels', 'No valid parcels provided.', [ 'status' => 400 ] );
+        }
+
+        $order->update_meta_data( '_tracking_parcels', $clean );
+        $order->update_status( 'shipped', 'Tracking added via Barcode Pack.' );
 
         return new WP_REST_Response( [ 'success' => true ], 200 );
     }

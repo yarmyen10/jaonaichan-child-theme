@@ -20,6 +20,7 @@ function jaonaichan_block_social_registration( int $user_id ): void {
 function jaonaichan_block_new_user_register( int $user_id ): void {
     if ( is_admin() ) return;
     if ( defined( 'DOING_CRON' ) && DOING_CRON ) return;
+    if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return;
     jaonaichan_block_social_registration( $user_id );
 }
 add_action( 'user_register', 'jaonaichan_block_new_user_register', 1 );
