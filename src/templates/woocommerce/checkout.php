@@ -38,6 +38,12 @@ $gateways       = WC()->payment_gateways->get_available_payment_gateways();
 $user           = wp_get_current_user();
 $first_gw       = ! empty( $gateways ) ? array_key_first( $gateways ) : '';
 $cart_total_raw = (float) $cart->get_total( 'edit' );
+
+$has_rts = $has_normal = false;
+foreach ( $cart->get_cart() as $ci ) {
+    jn_product_is_rts( $ci['data']->get_id() ) ? ( $has_rts = true ) : ( $has_normal = true );
+}
+$is_mixed_cart = $has_rts && $has_normal;
 ?>
 
 <style>
@@ -229,6 +235,21 @@ aside.widget-area { display: none !important; }
 
           </div>
         </div>
+
+        <?php if ( $is_mixed_cart ) : ?>
+        <div class="jn-checkout-card" style="border-color:#d1fae5; background:#f0fdf4;">
+          <div style="display:flex; gap:0.625rem; align-items:flex-start;">
+            <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
+            <div style="font-size:0.8125rem; color:#065f46; line-height:1.55;">
+              <p style="font-weight:600; margin:0 0 0.25rem;">ตะกร้ามีสินค้า 2 ประเภท</p>
+              <p style="margin:0; color:#047857;">
+                สินค้า <strong>พร้อมส่ง (RTS)</strong> จะถูกแยกเป็นอีก order หนึ่งโดยอัตโนมัติ
+                และจ่ายแค่บิลเดียว — สินค้าที่เหลือใช้ระบบ 2 บิลตามปกติ
+              </p>
+            </div>
+          </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Additional Info -->
         <div class="jn-checkout-card">

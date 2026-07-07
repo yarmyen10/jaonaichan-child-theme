@@ -176,6 +176,10 @@ get_header();
           $post  = $order ? $order->get_billing_postcode() : '';
           $shipping_address = trim("$addr1 $addr2 $city $state $post");
       }
+
+      $is_rts_order        = $order && $order->get_meta( '_is_rts_order', true ) === '1';
+      $linked_rts_order_id = $order ? (int) $order->get_meta( '_linked_rts_order_id', true ) : 0;
+      $linked_rts_order    = $linked_rts_order_id ? wc_get_order( $linked_rts_order_id ) : null;
     ?>
     <span class="jn-rise-in jn-delay-3 inline-block mt-3 px-4 py-1.5 text-sm text-gray-500 bg-gray-100 rounded-lg">
       Order #<?= $order ? $order->get_order_number() : $order_id ?>
@@ -195,6 +199,19 @@ get_header();
   </div>
 
   <div>
+
+    <?php if ( $linked_rts_order ) : ?>
+    <div class="jn-rise-in jn-delay-1 flex items-center justify-between gap-3 px-4 py-3 mb-6 bg-emerald-50 border border-emerald-200 rounded-2xl text-sm">
+      <div class="flex items-center gap-2 text-emerald-800">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+        <span>มีสินค้าพร้อมส่ง (RTS) แยกออกเป็นอีก order หนึ่ง</span>
+      </div>
+      <a href="<?= esc_url( home_url( '/thank-you-slave/?wcf-order=' . $linked_rts_order_id ) ) ?>" class="shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
+        ชำระสินค้า RTS →
+      </a>
+    </div>
+    <?php endif; ?>
+
     <!-- {{-- Tabs --}} -->
     <div class="jn-rise-in jn-delay-4 flex p-1.5 bg-gray-100/60 backdrop-blur-md rounded-[1.25rem] mb-8 shadow-inner border border-gray-200/50">
       <div
@@ -203,9 +220,15 @@ get_header();
         class="flex-1 flex items-center justify-center gap-2 py-3.5 px-2 md:px-4 text-xs md:text-sm text-center leading-snug transition-all duration-300 rounded-xl cursor-pointer"
       >
         <span :class="bill1Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]')" class="inline-block shrink-0 w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
-        Chinees invoice (🇨🇳 บิลจีน)
+        <?php if ( $is_rts_order ) : ?>
+          <!-- TODO: tab names — RTS Bill 1 tab label -->
+          ชำระเงิน (พร้อมส่ง)
+        <?php else : ?>
+          Chinees invoice (🇨🇳 บิลจีน)
+        <?php endif; ?>
       </div>
 
+      <?php if ( ! $is_rts_order ) : ?>
       <div
         @click="switchTab(2)"
         :class="[
@@ -215,12 +238,14 @@ get_header();
         class="flex-1 flex items-center justify-center gap-2 py-3.5 px-2 md:px-4 text-xs md:text-sm text-center leading-snug transition-all duration-300 rounded-xl"
       >
         <span :class="bill2Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Paid ? (bill2Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]') : 'bg-gray-300')" class="inline-block shrink-0 w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
+        <!-- TODO: tab names — normal Bill 2 tab label -->
         Thai invoice (🇹🇭 บิลไทย)
         <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
           <path d="M7 11V7a5 5 0 0110 0v4"/>
         </svg>
       </div>
+      <?php endif; ?>
     </div>
 
     <!-- {{-- Bill 1 --}} -->
@@ -245,8 +270,13 @@ get_header();
       </div>
 
       <div class="bg-white/50 backdrop-blur-lg border border-white/80 rounded-[1.5rem] p-5 md:p-8 shadow-sm">
+        <?php if ( $is_rts_order ) : ?>
+        <p class="text-base font-medium text-gray-900">ยอดชำระ</p>
+        <p class="text-sm text-gray-400 mt-1 mb-6">สินค้าพร้อมส่ง ชำระครั้งเดียว</p>
+        <?php else : ?>
         <p class="text-base font-medium text-gray-900">ค่ามัดจำ</p>
         <p class="text-sm text-gray-400 mt-1 mb-6">ชำระครึ่งหนึ่งของยอดรวม</p>
+        <?php endif; ?>
 
         <div class="flex flex-col gap-6">
           <!-- {{-- รายการสินค้า --}} -->
@@ -428,8 +458,9 @@ get_header();
       </div>
     </div>
 
+    <?php if ( ! $is_rts_order ) : ?>
     <!-- {{-- Bill 2 --}} -->
-    <div 
+    <div
       x-show="activeTab === 2"
       x-transition:enter="transition ease-out duration-500" 
       x-transition:enter-start="opacity-0 translate-y-4 scale-95" 
@@ -718,6 +749,7 @@ get_header();
         </div>
       </div>
     </div>
+    <?php endif; ?>
 
   </div>
 
@@ -789,6 +821,7 @@ function billTabs() {
     bill2Submitted: <?= $bill2_submitted ? 'true' : 'false' ?>,
     bill2HasMeta: <?= $bill2_has_meta ? 'true' : 'false' ?>,
     bill2Amount:  <?= (float) $bill2_amount ?>,
+    isRtsOrder:   <?= $is_rts_order ? 'true' : 'false' ?>,
     preview1: null,
     preview2: null,
     viewBill1: null,

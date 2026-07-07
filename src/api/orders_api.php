@@ -1152,9 +1152,10 @@ class Orders_API {
                 'address' => $order->get_formatted_billing_address(),
             ],
             'shipping' => [
-                'name'    => trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() ),
-                'phone'   => (string) $order->get_meta( '_shipping_phone', true ),
-                'address' => $order->get_shipping_address_1(),
+                'name'     => trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() ),
+                'phone'    => (string) $order->get_meta( '_shipping_phone', true ),
+                'address'  => $order->get_shipping_address_1(),
+                'tracking' => json_decode( (string) ( $order->get_meta( '_tracking_parcels', true ) ?: '[]' ), true ) ?: [],
             ],
             'bill1' => [
                 'status'  => $order->get_meta( '_bill1_status' ) ?: 'pending',
@@ -1173,7 +1174,10 @@ class Orders_API {
                 'import_fee_by_product'     => self::get_bill2_breakdown( $order, 'import_fee' ),
                 'local_shipping' => (float) $order->get_meta( '_bill2_local_shipping' ),
             ],
-            'invoice_items' => self::get_custom_invoice_items( $order ),
+            'invoice_items'        => self::get_custom_invoice_items( $order ),
+            'is_rts'               => $order->get_meta( '_is_rts_order', true ) === '1',
+            'linked_rts_order_id'  => (int) $order->get_meta( '_linked_rts_order_id', true ) ?: null,
+            'parent_order_id'      => (int) $order->get_meta( '_parent_order_id', true ) ?: null,
         ];
 
         if ( $with_items ) {
