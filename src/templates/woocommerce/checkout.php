@@ -39,6 +39,34 @@ $user           = wp_get_current_user();
 $first_gw       = ! empty( $gateways ) ? array_key_first( $gateways ) : '';
 $cart_total_raw = (float) $cart->get_total( 'edit' );
 
+// Custom checkout ไม่มี address form — ดึงจาก WC user meta (บันทึกจาก order ก่อนหน้า)
+// billing_country บังคับ TH ไว้เสมอเพื่อให้ WC zone matching ทำงานได้และ validate ผ่าน
+$billing = [
+    'first_name' => get_user_meta( $user->ID, 'billing_first_name', true ) ?: $user->first_name,
+    'last_name'  => get_user_meta( $user->ID, 'billing_last_name',  true ) ?: $user->last_name,
+    'phone'      => get_user_meta( $user->ID, 'billing_phone',      true ) ?: '',
+    'address_1'  => get_user_meta( $user->ID, 'billing_address_1',  true ) ?: '',
+    'city'       => get_user_meta( $user->ID, 'billing_city',       true ) ?: '',
+    'postcode'   => get_user_meta( $user->ID, 'billing_postcode',   true ) ?: '',
+    'country'    => 'TH',
+];
+
+// ทำให้ address fields ไม่ required เพราะ checkout นี้ไม่เก็บ address จากผู้ใช้โดยตรง
+add_filter( 'woocommerce_checkout_fields', function ( $fields ) {
+    $optional = [ 'billing_address_1', 'billing_city', 'billing_postcode', 'billing_phone', 'billing_state' ];
+    foreach ( $optional as $key ) {
+        if ( isset( $fields['billing'][ $key ] ) ) {
+            $fields['billing'][ $key ]['required'] = false;
+        }
+    }
+    return $fields;
+} );
+
+// Shipping behaviour (ดู src/inc/woocommerce/rts-order-split.php):
+// - ตะกร้ามี RTS อย่างน้อย 1 ชิ้น → WC คำนวณ shipping ตามปกติ (flat_rate จาก zone "rts")
+// - ตะกร้าไม่มี RTS เลย → woocommerce_cart_shipping_packages คืน [] → ไม่มี shipping line
+// - Mixed cart → ที่ checkout WC เห็น shipping แต่ order split hook จะ remove ออกจาก main order
+//   และย้าย shipping ไปใส่ RTS sub-order แทน
 $has_rts = $has_normal = false;
 foreach ( $cart->get_cart() as $ci ) {
     jn_product_is_rts( $ci['data']->get_id() ) ? ( $has_rts = true ) : ( $has_normal = true );
@@ -159,9 +187,14 @@ aside.widget-area { display: none !important; }
     <?php wp_nonce_field( 'woocommerce-process_checkout', 'woocommerce-process-checkout-nonce' ); ?>
     <input type="hidden" name="ship_to_different_address" value="0">
     <input type="hidden" name="payment_method" :value="selectedMethod">
-    <?php if ( is_user_logged_in() ) : ?>
-      <input type="hidden" name="billing_email" value="<?= esc_attr( $user->user_email ) ?>">
-    <?php endif; ?>
+    <input type="hidden" name="billing_email"      value="<?= esc_attr( $user->user_email ) ?>">
+    <input type="hidden" name="billing_first_name" value="<?= esc_attr( $billing['first_name'] ) ?>">
+    <input type="hidden" name="billing_last_name"  value="<?= esc_attr( $billing['last_name'] ) ?>">
+    <input type="hidden" name="billing_phone"      value="<?= esc_attr( $billing['phone'] ) ?>">
+    <input type="hidden" name="billing_address_1"  value="<?= esc_attr( $billing['address_1'] ) ?>">
+    <input type="hidden" name="billing_city"       value="<?= esc_attr( $billing['city'] ) ?>">
+    <input type="hidden" name="billing_postcode"   value="<?= esc_attr( $billing['postcode'] ) ?>">
+    <input type="hidden" name="billing_country"    value="TH">
 
     <div class="jn-checkout-grid">
 
@@ -214,6 +247,7 @@ aside.widget-area { display: none !important; }
               <span><?= wc_price( $cart->get_subtotal() ) ?></span>
             </div>
 
+            <?php // shipping แสดงเฉพาะเมื่อมี RTS ในตะกร้า (ควบคุมโดย woocommerce_cart_shipping_packages filter) ?>
             <?php if ( $cart->get_shipping_total() > 0 ) : ?>
             <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#6b7280;">
               <span><?= __( 'ค่าจัดส่ง', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
@@ -236,6 +270,44 @@ aside.widget-area { display: none !important; }
           </div>
         </div>
 
+        <?php
+        // Lookup RTS shipping once — ใช้ทั้ง mixed และ all-RTS notice
+        $rts_ship_cost  = 0.0;
+        $rts_ship_label = '';
+        if ( $has_rts ) {
+            foreach ( WC_Shipping_Zones::get_zones() as $zone ) {
+                if ( strtolower( $zone['zone_name'] ) === 'rts' ) {
+                    foreach ( $zone['shipping_methods'] as $method ) {
+                        if ( $method->is_enabled() ) {
+                            $rts_ship_cost  = (float) $method->cost;
+                            $rts_ship_label = $method->get_title();
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        ?>
+
+        <?php if ( $has_rts && ! $has_normal ) : ?>
+        <div class="jn-checkout-card" style="border-color:#d1fae5; background:#f0fdf4;">
+          <div style="display:flex; gap:0.625rem; align-items:flex-start;">
+            <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
+            <div style="font-size:0.8125rem; color:#065f46; line-height:1.55;">
+              <p style="font-weight:600; margin:0 0 0.25rem;">สินค้าพร้อมส่ง (RTS)</p>
+              <p style="margin:0; color:#047857;">จ่ายแค่บิลเดียว — ไม่ต้องรอของเข้า</p>
+              <?php if ( $rts_ship_cost > 0 ) : ?>
+              <p style="margin:0.375rem 0 0; color:#065f46;">
+                ค่าจัดส่ง<?= $rts_ship_label ? ' (' . esc_html( $rts_ship_label ) . ')' : '' ?>:
+                <strong><?= wc_price( $rts_ship_cost ) ?></strong>
+              </p>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+        <?php endif; ?>
+
         <?php if ( $is_mixed_cart ) : ?>
         <div class="jn-checkout-card" style="border-color:#d1fae5; background:#f0fdf4;">
           <div style="display:flex; gap:0.625rem; align-items:flex-start;">
@@ -246,6 +318,12 @@ aside.widget-area { display: none !important; }
                 สินค้า <strong>พร้อมส่ง (RTS)</strong> จะถูกแยกเป็นอีก order หนึ่งโดยอัตโนมัติ
                 และจ่ายแค่บิลเดียว — สินค้าที่เหลือใช้ระบบ 2 บิลตามปกติ
               </p>
+              <?php if ( $rts_ship_cost > 0 ) : ?>
+              <p style="margin:0.375rem 0 0; color:#065f46;">
+                ค่าจัดส่ง RTS<?= $rts_ship_label ? ' (' . esc_html( $rts_ship_label ) . ')' : '' ?>:
+                <strong><?= wc_price( $rts_ship_cost ) ?></strong>
+              </p>
+              <?php endif; ?>
             </div>
           </div>
         </div>

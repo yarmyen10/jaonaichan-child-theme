@@ -388,6 +388,9 @@
   .z-\[9999\] {
     z-index: 9999;
   }
+  .z-\[99999\] {
+    z-index: 99999;
+  }
   .container {
     width: 100%;
     @media (width >= 40rem) {
@@ -454,8 +457,14 @@
   .\!mb-0 {
     margin-bottom: calc(var(--spacing) * 0) !important;
   }
+  .\!mb-0\.5 {
+    margin-bottom: calc(var(--spacing) * 0.5) !important;
+  }
   .mb-0 {
     margin-bottom: calc(var(--spacing) * 0);
+  }
+  .mb-0\.5 {
+    margin-bottom: calc(var(--spacing) * 0.5);
   }
   .mb-1\.5 {
     margin-bottom: calc(var(--spacing) * 1.5);
@@ -1354,6 +1363,9 @@
   }
   .pt-0\.5 {
     padding-top: calc(var(--spacing) * 0.5);
+  }
+  .pt-1 {
+    padding-top: calc(var(--spacing) * 1);
   }
   .pt-1\.5 {
     padding-top: calc(var(--spacing) * 1.5);

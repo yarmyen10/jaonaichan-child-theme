@@ -153,28 +153,90 @@ get_header();
       $bill2_submitted = $bill2_status === 'submitted';
 
       // Shipping Data
-      $shipping_first_name = $order ? $order->get_shipping_first_name() : '';
-      $shipping_last_name  = $order ? $order->get_shipping_last_name() : '';
-      $shipping_name       = trim($shipping_first_name . ' ' . $shipping_last_name);
-      if (empty($shipping_name)) {
-          $shipping_name = $order ? trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()) : '';
-      }
-      $shipping_phone = $order ? $order->get_billing_phone() : '';
-      
-      $addr1 = $order ? $order->get_shipping_address_1() : '';
-      $addr2 = $order ? $order->get_shipping_address_2() : '';
-      $city  = $order ? $order->get_shipping_city() : '';
-      $state = $order ? $order->get_shipping_state() : '';
-      $post  = $order ? $order->get_shipping_postcode() : '';
-      
-      $shipping_address = trim("$addr1 $addr2 $city $state $post");
-      if (empty($shipping_address)) {
-          $addr1 = $order ? $order->get_billing_address_1() : '';
-          $addr2 = $order ? $order->get_billing_address_2() : '';
-          $city  = $order ? $order->get_billing_city() : '';
-          $state = $order ? $order->get_billing_state() : '';
-          $post  = $order ? $order->get_billing_postcode() : '';
-          $shipping_address = trim("$addr1 $addr2 $city $state $post");
+      $order_completed = $order && $order->has_status('completed');
+      $cid = $order ? (int) $order->get_customer_id() : 0;
+
+      if ($order_completed) {
+          // Locked: อ่านจาก order meta ตรงๆ ไม่ fallback — แก้ไขไม่ได้แล้ว
+          $fn = $order->get_shipping_first_name();
+          $ln = $order->get_shipping_last_name();
+          $shipping_name    = trim("$fn $ln");
+          $shipping_phone   = (string) ($order->get_shipping_phone() ?: $order->get_billing_phone());
+          $shipping_address = trim(implode(' ', array_filter([
+              $order->get_shipping_address_1(),
+              $order->get_shipping_address_2(),
+              $order->get_shipping_city(),
+              $order->get_shipping_state(),
+              $order->get_shipping_postcode(),
+          ])));
+      } else {
+          // order fields → billing fields → user meta → lazy migration จาก order เก่า
+          $fn = $order ? $order->get_shipping_first_name() : '';
+          $ln = $order ? $order->get_shipping_last_name() : '';
+          $shipping_name = trim("$fn $ln");
+          if (empty($shipping_name)) {
+              $shipping_name = $order ? trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()) : '';
+          }
+
+          $shipping_phone = $order ? ((string) ($order->get_shipping_phone() ?: $order->get_billing_phone())) : '';
+
+          $addr1 = $order ? $order->get_shipping_address_1() : '';
+          $shipping_address = trim(implode(' ', array_filter([
+              $addr1,
+              $order ? $order->get_shipping_address_2() : '',
+              $order ? $order->get_shipping_city() : '',
+              $order ? $order->get_shipping_state() : '',
+              $order ? $order->get_shipping_postcode() : '',
+          ])));
+          if (empty($shipping_address)) {
+              $shipping_address = trim(implode(' ', array_filter([
+                  $order ? $order->get_billing_address_1() : '',
+                  $order ? $order->get_billing_address_2() : '',
+                  $order ? $order->get_billing_city() : '',
+                  $order ? $order->get_billing_state() : '',
+                  $order ? $order->get_billing_postcode() : '',
+              ])));
+          }
+
+          if ($cid) {
+              if (empty($shipping_name)) {
+                  $shipping_name = trim(get_user_meta($cid, 'shipping_first_name', true) . ' ' . get_user_meta($cid, 'shipping_last_name', true));
+              }
+              if (empty($shipping_phone)) {
+                  $shipping_phone = (string) get_user_meta($cid, 'billing_phone', true);
+              }
+              if (empty($shipping_address)) {
+                  $shipping_address = (string) get_user_meta($cid, 'shipping_address_1', true);
+              }
+
+              // Lazy migration: user meta ว่าง → ดึงจาก order เก่า + เขียน user meta
+              if (empty($shipping_address)) {
+                  $past_orders = wc_get_orders([
+                      'customer_id' => $cid,
+                      'limit'       => 5,
+                      'orderby'     => 'date',
+                      'order'       => 'DESC',
+                      'status'      => 'any',
+                  ]);
+                  foreach ($past_orders as $po) {
+                      if ($po->get_id() === ($order ? $order->get_id() : 0)) continue;
+                      $pa = $po->get_shipping_address_1();
+                      if (empty($pa)) continue;
+                      $pfn = $po->get_shipping_first_name();
+                      $pln = $po->get_shipping_last_name();
+                      $pph = $po->get_shipping_phone() ?: $po->get_billing_phone();
+                      if (empty($shipping_name))  $shipping_name  = trim("$pfn $pln");
+                      if (empty($shipping_phone)) $shipping_phone = $pph;
+                      $shipping_address = $pa;
+                      update_user_meta($cid, 'shipping_first_name', $pfn);
+                      update_user_meta($cid, 'shipping_last_name',  $pln);
+                      update_user_meta($cid, 'shipping_address_1',  $pa);
+                      update_user_meta($cid, 'shipping_country',    'TH');
+                      if (!empty($pph)) update_user_meta($cid, 'billing_phone', $pph);
+                      break;
+                  }
+              }
+          }
       }
 
       $is_rts_order        = $order && $order->get_meta( '_is_rts_order', true ) === '1';
@@ -279,6 +341,36 @@ get_header();
         <?php endif; ?>
 
         <div class="flex flex-col gap-6">
+
+          <?php if ( $is_rts_order ) : ?>
+          <!-- Shipping address — RTS orders need delivery address before payment -->
+          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-sm font-medium text-gray-700">ข้อมูลการจัดส่ง</p>
+                <p class="text-xs text-gray-400 mt-0.5">กรุณาระบุที่อยู่สำหรับจัดส่งสินค้าพร้อมส่ง</p>
+              </div>
+              <button x-show="canEditShipping" @click="openShippingModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                <span x-text="(shippingName && shippingPhone && shippingAddress) ? 'แก้ไขข้อมูล' : 'กรอกข้อมูล'"></span>
+              </button>
+            </div>
+            <template x-if="!shippingName || !shippingPhone || !shippingAddress">
+              <div class="flex items-center gap-2 text-amber-600 text-sm">
+                <svg class="w-5 h-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <span>กรุณาระบุที่อยู่ก่อนชำระเงิน</span>
+              </div>
+            </template>
+            <template x-if="shippingName && shippingPhone && shippingAddress">
+              <div class="space-y-1 text-sm text-gray-700">
+                <p><span class="font-medium text-gray-900" x-text="shippingName"></span> <span class="text-gray-300 mx-2">|</span> <span x-text="shippingPhone"></span></p>
+                <p class="whitespace-pre-line" x-text="shippingAddress"></p>
+              </div>
+            </template>
+          </div>
+          <?php endif; ?>
+
           <!-- {{-- รายการสินค้า --}} -->
           <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
             <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
@@ -294,31 +386,41 @@ get_header();
                       $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
                   }
                 ?>
-                  <div class="flex items-center gap-3">
+                  <div class="flex items-start gap-3">
                     <?php if ( $img_url ) : ?>
                         <img src="<?= esc_url($img_url) ?>"
-                            class="object-cover rounded-lg border border-gray-200" />
+                            class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
                     <?php endif; ?>
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-900">
+                        <p class="text-sm font-medium text-gray-900 !mb-0.5">
                             <?= esc_html( $item->get_name() ) ?>
                         </p>
-                        <p class="text-xs text-gray-400">
-                            x<?= $item->get_quantity() ?>
-                        </p>
+                        <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
+                        <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
+                        <?php endforeach; ?>
+                        <p class="text-xs text-gray-400 !mb-0">x<?= $item->get_quantity() ?></p>
                     </div>
-                    <p class="text-sm font-medium text-gray-900">
+                    <p class="text-sm font-medium text-gray-900 shrink-0">
                         ฿<?= number_format( $item->get_total(), 2 ) ?>
                     </p>
                   </div>
                 <?php endforeach; ?>
               </div>
 
-              <div class="border-t border-gray-200 mt-3 pt-3 flex justify-between">
-                <span class="text-sm text-gray-500">รวมทั้งหมด</span>
-                <span class="text-sm font-semibold text-gray-900">
-                    ฿<?= number_format( $order->get_total(), 2 ) ?>
-                </span>
+              <?php $order_shipping = $order ? (float) $order->get_shipping_total() : 0.0; ?>
+              <div class="border-t border-gray-200 mt-3 pt-3 space-y-1.5">
+                <?php if ( $order_shipping > 0 ) : ?>
+                <div class="flex justify-between text-xs text-gray-400">
+                  <span>ค่าจัดส่ง</span>
+                  <span>฿<?= number_format( $order_shipping, 2 ) ?></span>
+                </div>
+                <?php endif; ?>
+                <div class="flex justify-between <?= $order_shipping > 0 ? 'pt-1 border-t border-gray-100' : '' ?>">
+                  <span class="text-sm text-gray-500">รวมทั้งหมด</span>
+                  <span class="text-sm font-semibold text-gray-900">
+                      ฿<?= number_format( $order->get_total(), 2 ) ?>
+                  </span>
+                </div>
               </div>
             <?php endif; ?>
           </div>
@@ -498,7 +600,7 @@ get_header();
               <p class="text-base font-medium text-gray-900">ข้อมูลการจัดส่ง</p>
               <p class="text-sm text-gray-400 mt-1">กรุณาตรวจสอบและระบุข้อมูลสำหรับจัดส่งสินค้า</p>
             </div>
-            <button @click="openShippingModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+            <button x-show="canEditShipping" @click="openShippingModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
               <span x-text="(shippingName && shippingPhone && shippingAddress) ? 'แก้ไขข้อมูล' : 'กรอกข้อมูล'"></span>
             </button>
           </div>
@@ -554,10 +656,13 @@ get_header();
                               class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
                       <?php endif; ?>
                       <div class="flex-1">
-                          <p class="text-sm font-medium text-gray-900">
+                          <p class="text-sm font-medium text-gray-900 !mb-0.5">
                               <?= esc_html( $item->get_name() ) ?>
                           </p>
-                          <p class="text-xs text-gray-400">
+                          <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
+                          <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
+                          <?php endforeach; ?>
+                          <p class="text-xs text-gray-400 !mb-0">
                               x<?= $item->get_quantity() ?>
                           </p>
                           <?php
@@ -767,9 +872,10 @@ get_header();
     </div>
   </template>
 
-  <!-- Modal แก้ไขข้อมูลจัดส่ง -->
-  <div x-show="shippingModal" style="display: none;" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-    <div @click.outside="!savingShipping && (shippingModal = false)" class="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl" x-transition.scale.95>
+  <!-- Modal แก้ไขข้อมูลจัดส่ง — x-teleport ย้ายไป body เพื่อหลีก backdrop-filter stacking context ของ <main> -->
+  <template x-teleport="body">
+  <div x-show="shippingModal" style="display: none;" x-transition.opacity x-effect="document.body.style.overflow = shippingModal ? 'hidden' : ''" @keydown.escape.window="shippingModal && $event.preventDefault()" class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+    <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl" x-transition.scale.95>
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h3 class="text-lg font-medium text-gray-900">แก้ไขข้อมูลจัดส่ง</h3>
         <button @click="!savingShipping && (shippingModal = false)" class="text-gray-400 hover:text-gray-600">
@@ -803,6 +909,7 @@ get_header();
       </div>
     </div>
   </div>
+  </template>
 
 </main>
 </div>
@@ -840,6 +947,7 @@ function billTabs() {
     shippingName: '<?= esc_js($shipping_name) ?>',
     shippingPhone: '<?= esc_js($shipping_phone) ?>',
     shippingAddress: '<?= esc_js($shipping_address) ?>',
+    canEditShipping: <?= $order_completed ? 'false' : 'true' ?>,
     savingShipping: false,
 
     async init() {
@@ -962,6 +1070,31 @@ function billTabs() {
     },
     async payBill1() {
       if (!this.preview1) return;
+      if (this.isRtsOrder && (!this.shippingName || !this.shippingPhone || !this.shippingAddress)) {
+          Swal.fire({
+              icon: 'warning',
+              title: 'ข้อมูลจัดส่งไม่ครบถ้วน',
+              text: 'กรุณาระบุชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่งก่อนชำระเงิน',
+              confirmButtonColor: '#111827',
+          });
+          return;
+      }
+
+      if (this.isRtsOrder) {
+          const confirmAddr = await Swal.fire({
+              title: 'ยืนยันที่อยู่จัดส่ง',
+              html: `<div style="text-align:left;font-size:0.875rem;line-height:1.5">
+                  <p style="margin:0"><strong>${this.shippingName}</strong> &nbsp;·&nbsp; ${this.shippingPhone}</p>
+                  <p style="margin:0.5rem 0 0;color:#6b7280">${this.shippingAddress}</p>
+              </div>`,
+              showCancelButton: true,
+              confirmButtonText: 'ถูกต้อง ยืนยัน',
+              cancelButtonText: 'แก้ไขที่อยู่',
+              confirmButtonColor: '#111827',
+              cancelButtonColor: '#6b7280',
+          });
+          if (!confirmAddr.isConfirmed) return;
+      }
 
       try {
         this.loading = true;
@@ -1044,6 +1177,20 @@ function billTabs() {
           });
           return;
       }
+
+      const confirmAddr = await Swal.fire({
+          title: 'ยืนยันที่อยู่จัดส่ง',
+          html: `<div style="text-align:left;font-size:0.875rem;line-height:1.5">
+              <p style="margin:0"><strong>${this.shippingName}</strong> &nbsp;·&nbsp; ${this.shippingPhone}</p>
+              <p style="margin:0.5rem 0 0;color:#6b7280">${this.shippingAddress}</p>
+          </div>`,
+          showCancelButton: true,
+          confirmButtonText: 'ถูกต้อง ยืนยัน',
+          cancelButtonText: 'แก้ไขที่อยู่',
+          confirmButtonColor: '#111827',
+          cancelButtonColor: '#6b7280',
+      });
+      if (!confirmAddr.isConfirmed) return;
 
       try {
         this.loading = true;

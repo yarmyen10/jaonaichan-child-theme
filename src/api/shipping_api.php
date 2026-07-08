@@ -55,12 +55,22 @@ class Shipping_API {
         $order->set_shipping_postcode( '' );
         $order->set_shipping_country( 'TH' );
 
-        $order->update_meta_data( '_shipping_phone', $phone );
+        $order->set_shipping_phone( $phone );
         if ( empty( $order->get_billing_phone() ) ) {
             $order->set_billing_phone( $phone );
         }
 
         $order->save();
+
+        // บันทึกลง user meta เพื่อให้ order ถัดไปโหลดข้อมูลได้อัตโนมัติ
+        $customer_id = $order->get_customer_id();
+        if ( $customer_id ) {
+            update_user_meta( $customer_id, 'shipping_first_name', $first_name );
+            update_user_meta( $customer_id, 'shipping_last_name',  $last_name );
+            update_user_meta( $customer_id, 'shipping_address_1',  $address );
+            update_user_meta( $customer_id, 'shipping_country',    'TH' );
+            update_user_meta( $customer_id, 'billing_phone',       $phone );
+        }
 
         return new WP_REST_Response([
             'success' => true,

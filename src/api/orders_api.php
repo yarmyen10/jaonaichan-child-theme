@@ -1153,7 +1153,7 @@ class Orders_API {
             ],
             'shipping' => [
                 'name'     => trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() ),
-                'phone'    => (string) $order->get_meta( '_shipping_phone', true ),
+                'phone'    => (string) $order->get_shipping_phone(),
                 'address'  => $order->get_shipping_address_1(),
                 'tracking' => json_decode( (string) ( $order->get_meta( '_tracking_parcels', true ) ?: '[]' ), true ) ?: [],
             ],
