@@ -35,3 +35,11 @@ function jaonaichan_login_redirect( $redirect_to, $requested_redirect_to, $user 
     return wp_validate_redirect( $candidate, home_url( JN_LOGIN_FALLBACK_PATH ) );
 }
 add_filter( 'login_redirect', 'jaonaichan_login_redirect', 10, 3 );
+
+// WooCommerce My Account page → /dashboard/ (ถ้า logged in)
+add_action( 'template_redirect', function () {
+    if ( function_exists( 'is_account_page' ) && is_account_page() && is_user_logged_in() ) {
+        wp_safe_redirect( home_url( '/dashboard/' ) );
+        exit;
+    }
+} );

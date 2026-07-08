@@ -278,15 +278,16 @@ get_header();
     <div class="jn-rise-in jn-delay-4 flex p-1.5 bg-gray-100/60 backdrop-blur-md rounded-[1.25rem] mb-8 shadow-inner border border-gray-200/50">
       <div
         @click="switchTab(1)"
-        :class="activeTab === 1 ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
-        class="flex-1 flex items-center justify-center gap-2 py-3.5 px-2 md:px-4 text-xs md:text-sm text-center leading-snug transition-all duration-300 rounded-xl cursor-pointer"
+        :class="activeTab === 1 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 text-center transition-all duration-300 rounded-xl cursor-pointer"
       >
-        <span :class="bill1Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]')" class="inline-block shrink-0 w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
+        <span :class="bill1Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]')" class="inline-block w-2 h-2 rounded-full transition-colors duration-300"></span>
         <?php if ( $is_rts_order ) : ?>
-          <!-- TODO: tab names — RTS Bill 1 tab label -->
-          ชำระเงิน (พร้อมส่ง)
+          <span class="text-xs font-semibold leading-tight">ชำระเงิน</span>
+          <span class="text-[10px] opacity-60 leading-tight">พร้อมส่ง</span>
         <?php else : ?>
-          Chinees invoice (🇨🇳 บิลจีน)
+          <span class="text-xs font-semibold leading-tight">Chinees invoice</span>
+          <span class="text-[10px] opacity-60 leading-tight">🇨🇳 บิลจีน</span>
         <?php endif; ?>
       </div>
 
@@ -294,18 +295,20 @@ get_header();
       <div
         @click="switchTab(2)"
         :class="[
-          activeTab === 2 ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50',
+          activeTab === 2 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50',
           (!bill1Paid || !bill2HasMeta) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
         ]"
-        class="flex-1 flex items-center justify-center gap-2 py-3.5 px-2 md:px-4 text-xs md:text-sm text-center leading-snug transition-all duration-300 rounded-xl"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 text-center transition-all duration-300 rounded-xl"
       >
-        <span :class="bill2Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Paid ? (bill2Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]') : 'bg-gray-300')" class="inline-block shrink-0 w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
-        <!-- TODO: tab names — normal Bill 2 tab label -->
-        Thai invoice (🇹🇭 บิลไทย)
-        <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="11" width="18" height="11" rx="2"/>
-          <path d="M7 11V7a5 5 0 0110 0v4"/>
-        </svg>
+        <span :class="bill2Paid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : (bill1Paid ? (bill2Submitted ? 'bg-blue-400' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]') : 'bg-gray-300')" class="inline-block w-2 h-2 rounded-full transition-colors duration-300"></span>
+        <span class="text-xs font-semibold leading-tight flex items-center gap-1">
+          Thai invoice
+          <svg x-show="!bill1Paid || !bill2HasMeta" class="w-3 h-3 opacity-60 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+        </span>
+        <span class="text-[10px] opacity-60 leading-tight">🇹🇭 บิลไทย</span>
       </div>
       <?php endif; ?>
     </div>

@@ -43,7 +43,7 @@ $allowed      = ['overview', 'orders', 'profile'];
     :class="darkMode ? 'dark bg-gray-900' : 'bg-gray-50'"
 >
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex overflow-hidden" style="height:100vh;height:100dvh">
 
     <!-- Sidebar -->
     <?php include __DIR__ . '/partials/sidebar.php'; ?>

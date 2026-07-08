@@ -38,7 +38,8 @@ $nav_items = [
 <!-- Sidebar -->
 <aside
     :class="sidebarToggle ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed top-0 left-0 z-50 flex h-screen w-[290px] flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform duration-300 ease-in-out lg:static lg:z-auto"
+    style="height:100vh;height:100dvh"
+    class="fixed top-0 left-0 z-50 flex w-[290px] flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform duration-300 ease-in-out lg:static lg:z-auto"
 >
 
     <!-- Logo -->

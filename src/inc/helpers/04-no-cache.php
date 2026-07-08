@@ -17,6 +17,7 @@ class Theme_No_Cache {
         '/cart',
         '/checkout',
         '/my-account',
+        '/dashboard',
     ];
 
     public static function init(): void {

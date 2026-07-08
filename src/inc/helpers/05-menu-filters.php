@@ -15,3 +15,11 @@ add_filter( 'wp_nav_menu_objects', function( $items, $args ) {
     }
     return $items;
 }, 10, 2 );
+
+// My Account → แสดงเฉพาะ hamburger menu (ซ่อนใน desktop nav bar)
+add_filter( 'nav_menu_css_class', function( $classes, $item ) {
+    if ( strpos( $item->url, '/dashboard/' ) !== false || strpos( $item->url, '/my-account/' ) !== false ) {
+        $classes[] = 'jn-hide-desktop';
+    }
+    return $classes;
+}, 10, 2 );

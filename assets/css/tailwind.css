@@ -463,9 +463,6 @@
   .mb-0 {
     margin-bottom: calc(var(--spacing) * 0);
   }
-  .mb-0\.5 {
-    margin-bottom: calc(var(--spacing) * 0.5);
-  }
   .mb-1\.5 {
     margin-bottom: calc(var(--spacing) * 1.5);
   }
@@ -595,6 +592,9 @@
   }
   .h-\[60px\] {
     height: 60px;
+  }
+  .h-\[100dvh\] {
+    height: 100dvh;
   }
   .h-full {
     height: 100%;
@@ -1453,6 +1453,9 @@
   .text-xs {
     font-size: var(--text-xs);
     line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+  .text-\[10px\] {
+    font-size: 10px;
   }
   .leading-relaxed {
     --tw-leading: var(--leading-relaxed);

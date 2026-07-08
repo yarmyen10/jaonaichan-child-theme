@@ -120,7 +120,7 @@ $orders_url = esc_js( rest_url( 'bigboss-auth/v1/my-orders' ) );
                             <p class="text-base font-extrabold text-gray-900 dark:text-white" x-text="fmtMoney(displayAmount(order))"></p>
                             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5" x-text="order.item_count + ' รายการ'"></p>
                             <a
-                                :href="'https://jaonaichan.com/thank-you-slave/?wcf-order=' + order.id"
+                                :href="'/thank-you-slave/?wcf-order=' + order.id"
                                 class="mt-2 inline-flex items-center gap-1 text-xs font-medium hover:underline"
                                 style="color:#ec4899;"
                             >
@@ -190,7 +190,7 @@ function ordersPage(apiUrl, nonce) {
                     per_page: 10,
                     status:   this.filterStatus,
                 });
-                const res  = await fetch(`${apiUrl}?${params}`, { headers: { 'X-WP-Nonce': nonce } });
+                const res  = await fetch(`${apiUrl}?${params}`, { headers: { 'X-WP-Nonce': nonce }, cache: 'no-store' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'โหลดไม่สำเร็จ');
                 this.orders     = data.data;
@@ -251,8 +251,8 @@ function ordersPage(apiUrl, nonce) {
         displayAmount(order) {
             const bill1 = ['pending-payment-1', 'wait-verify-1', 'paid-1'];
             const bill2 = ['pending-payment-2', 'wait-verify-2', 'paid-2'];
-            if (bill1.includes(order.status)) return order.bill1?.amount ?? order.total;
-            if (bill2.includes(order.status)) return order.bill2?.amount ?? order.total;
+            if (bill1.includes(order.status)) return order.bill1?.amount || order.total;
+            if (bill2.includes(order.status)) return order.bill2?.amount || order.total;
             return order.total;
         },
     };

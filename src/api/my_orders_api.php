@@ -42,29 +42,29 @@ class My_Orders_API {
         $user_id = get_current_user_id();
 
         $order_count = count( wc_get_orders([
-            'customer_id' => $user_id,
-            'status'      => 'any',
-            'type'        => 'shop_order',
-            'limit'       => -1,
-            'return'      => 'ids',
+            'customer' => $user_id,
+            'status'   => 'any',
+            'type'     => 'shop_order',
+            'limit'    => -1,
+            'return'   => 'ids',
         ]));
 
         $total_spent = (float) wc_get_customer_total_spent( $user_id );
 
         $recent = wc_get_orders([
-            'customer_id' => $user_id,
-            'status'      => 'any',
-            'type'        => 'shop_order',
-            'limit'       => 5,
-            'orderby'     => 'date',
-            'order'       => 'DESC',
+            'customer' => $user_id,
+            'status'   => 'any',
+            'type'     => 'shop_order',
+            'limit'    => 5,
+            'orderby'  => 'date',
+            'order'    => 'DESC',
         ]);
 
         $last_order_date = ! empty( $recent )
             ? $recent[0]->get_date_created()?->date( 'Y-m-d H:i:s' )
             : null;
 
-        return new WP_REST_Response([
+        $response = new WP_REST_Response([
             'order_count'     => $order_count,
             'total_spent'     => round( $total_spent, 2 ),
             'last_order_date' => $last_order_date,
@@ -73,6 +73,11 @@ class My_Orders_API {
                 $recent
             )),
         ], 200);
+
+        $response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate, private' );
+        $response->header( 'Pragma', 'no-cache' );
+
+        return $response;
     }
 
     // =========================================================================
@@ -86,11 +91,11 @@ class My_Orders_API {
         $status   = $request->get_param( 'status' );
 
         $base_args = [
-            'customer_id' => $user_id,
-            'status'      => $status,
-            'type'        => 'shop_order',
-            'orderby'     => 'date',
-            'order'       => 'DESC',
+            'customer' => $user_id,
+            'status'   => $status,
+            'type'     => 'shop_order',
+            'orderby'  => 'date',
+            'order'    => 'DESC',
         ];
 
         $orders = wc_get_orders( array_merge( $base_args, [
@@ -98,12 +103,15 @@ class My_Orders_API {
             'offset' => ( $page - 1 ) * $per_page,
         ]));
 
+        // Hard filter — กัน order ของคนอื่นไม่ว่า WC query จะ behave ยังไง
+        $orders = array_values( array_filter( $orders, fn( $o ) => (int) $o->get_customer_id() === $user_id ) );
+
         $total = count( wc_get_orders( array_merge( $base_args, [
             'limit'  => -1,
             'return' => 'ids',
         ])));
 
-        return new WP_REST_Response([
+        $response = new WP_REST_Response([
             'data'       => array_values( array_map(
                 [ self::class, 'format_order_brief' ],
                 $orders
@@ -115,6 +123,12 @@ class My_Orders_API {
                 'total_pages' => (int) ceil( $total / $per_page ),
             ],
         ], 200);
+
+        // ห้าม caching plugin เก็บ response นี้ — ข้อมูล user-specific
+        $response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate, private' );
+        $response->header( 'Pragma', 'no-cache' );
+
+        return $response;
     }
 
     // =========================================================================

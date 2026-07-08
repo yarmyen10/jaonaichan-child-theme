@@ -172,7 +172,7 @@ $orders_tab   = esc_url( add_query_arg( 'tab', 'orders', $base_url ) );
                                     <p class="text-sm font-bold text-gray-800 dark:text-white" x-text="fmtMoney(displayAmount(order))"></p>
                                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5" x-text="fmtDate(order.date)"></p>
                                     <a
-                                        :href="'https://jaonaichan.com/thank-you-slave/?wcf-order=' + order.id"
+                                        :href="'/thank-you-slave/?wcf-order=' + order.id"
                                         class="mt-1 inline-flex items-center gap-1 text-xs font-medium hover:underline"
                                         style="color:#ec4899;"
                                     >
@@ -205,7 +205,7 @@ function overviewPage(apiUrl, nonce) {
         async load() {
             this.status = 'loading';
             try {
-                const res  = await fetch(apiUrl, { headers: { 'X-WP-Nonce': nonce } });
+                const res  = await fetch(apiUrl, { headers: { 'X-WP-Nonce': nonce }, cache: 'no-store' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'โหลดไม่สำเร็จ');
                 this.summary = data;
@@ -277,8 +277,8 @@ function overviewPage(apiUrl, nonce) {
         displayAmount(order) {
             const bill1 = ['pending-payment-1', 'wait-verify-1', 'paid-1'];
             const bill2 = ['pending-payment-2', 'wait-verify-2', 'paid-2'];
-            if (bill1.includes(order.status)) return order.bill1?.amount ?? order.total;
-            if (bill2.includes(order.status)) return order.bill2?.amount ?? order.total;
+            if (bill1.includes(order.status)) return order.bill1?.amount || order.total;
+            if (bill2.includes(order.status)) return order.bill2?.amount || order.total;
             return order.total;
         },
     };

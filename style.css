@@ -14,3 +14,8 @@ Template: astra
 .single-product #content {
     padding-top: 10rem !important;
 }
+
+/* My Account: ซ่อนใน desktop nav bar, แสดงได้ใน hamburger popup */
+.main-header-bar .jn-hide-desktop {
+    display: none !important;
+}
