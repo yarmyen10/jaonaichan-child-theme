@@ -116,6 +116,13 @@ class Auth_API {
             ], 401);
         }
 
+        if ( ! in_array( 'administrator', (array) $user->roles, true ) ) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'ไม่มีสิทธิ์เข้าใช้งาน',
+            ], 403);
+        }
+
         delete_transient( 'login_attempts_' . $ip );
 
         // Generate JWT via the plugin endpoint (enriched by jwt_auth_token_before_dispatch)
