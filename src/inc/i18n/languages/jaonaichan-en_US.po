@@ -27,6 +27,21 @@ msgstr "Paid 1"
 msgid "ชำระแล้ว (ครั้งที่ 2)"
 msgstr "Paid 2"
 
+msgid "แพ็คแล้ว"
+msgstr "Packed"
+
+msgid "รอการติดตาม"
+msgstr "Waiting for Tracking"
+
+msgid "ติดตามแล้ว"
+msgstr "Tracked"
+
+msgid "รอการจัดส่ง"
+msgstr "Waiting for Shipping"
+
+msgid "จัดส่งแล้ว"
+msgstr "Shipped"
+
 
 msgid "Username or Email"
 msgstr "Username or Email"

@@ -14,6 +14,9 @@ function jaonaichan_get_custom_order_statuses() {
         'wc-paid-1'                 => __( 'ชำระแล้ว (ครั้งที่ 1)', $_ENV['TEXTDOMAIN_NAME'] ),
         'wc-paid-2'                 => __( 'ชำระแล้ว (ครั้งที่ 2)', $_ENV['TEXTDOMAIN_NAME'] ),
         'wc-packed'                 => __( 'แพ็คแล้ว', $_ENV['TEXTDOMAIN_NAME'] ),
+        'wc-wait-tracking'          => __( 'รอการติดตาม', $_ENV['TEXTDOMAIN_NAME'] ),
+        'wc-tracked'                => __( 'ติดตามแล้ว', $_ENV['TEXTDOMAIN_NAME'] ),
+        'wc-wait-shipping'          => __( 'รอการจัดส่ง', $_ENV['TEXTDOMAIN_NAME'] ),
         'wc-shipped'                => __( 'จัดส่งแล้ว', $_ENV['TEXTDOMAIN_NAME'] ),
     );
 }
@@ -86,9 +89,19 @@ function jaonaichan_custom_status_badge_colors() {
         .order-status.status-paid-2,
         mark.status-paid-2 { background: #a9cdff; color: #1c4a86; }
 
-        /* แพ็คแล้ว / จัดส่งแล้ว */
+        /* แพ็คแล้ว */
         .order-status.status-packed,
         mark.status-packed { background: #d1fae5; color: #065f46; }
+
+        /* รอการติดตาม / ติดตามแล้ว / รอการจัดส่ง */
+        .order-status.status-wait-tracking,
+        mark.status-wait-tracking { background: #fef9c3; color: #854d0e; }
+        .order-status.status-tracked,
+        mark.status-tracked { background: #bfdbfe; color: #1e40af; }
+        .order-status.status-wait-shipping,
+        mark.status-wait-shipping { background: #ddd6fe; color: #5b21b6; }
+
+        /* จัดส่งแล้ว */
         .order-status.status-shipped,
         mark.status-shipped { background: #6ee7b7; color: #064e3b; }
         /* { background: #c8e6c9; color: #2e7d32; } */

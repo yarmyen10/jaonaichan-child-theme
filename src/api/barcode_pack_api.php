@@ -149,7 +149,7 @@ class Barcode_Pack_API {
         }
 
         if ( $all_packed ) {
-            $order->update_status( 'packed', 'All items packed via Barcode Pack.' );
+            $order->update_status( 'wait-tracking', 'All items packed via Barcode Pack.' );
         }
 
         if ( $lot_id ) {
@@ -186,8 +186,9 @@ class Barcode_Pack_API {
             return new WP_Error( 'no_valid_parcels', 'No valid parcels provided.', [ 'status' => 400 ] );
         }
 
-        $order->update_meta_data( '_tracking_parcels', $clean );
-        $order->update_status( 'shipped', 'Tracking added via Barcode Pack.' );
+        $order->update_meta_data( '_tracking_parcels', wp_json_encode( $clean ) );
+        $order->save();
+        $order->update_status( 'tracked', 'Tracking added via Barcode Pack.' );
 
         return new WP_REST_Response( [ 'success' => true ], 200 );
     }
