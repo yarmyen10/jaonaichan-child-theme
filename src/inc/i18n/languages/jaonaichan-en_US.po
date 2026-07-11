@@ -54,3 +54,9 @@ msgstr "Forgot your password"
 
 msgid "username หรือ password ไม่ถูกต้อง"
 msgstr "The username or password Incorrect."
+
+msgid "ข้อมูลส่วนบุคคลของคุณ"
+msgstr "Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our %s."
+
+msgid "นโยบายความเป็นส่วนตัว"
+msgstr "Privacy Policy"
