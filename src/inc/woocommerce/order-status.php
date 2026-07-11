@@ -104,6 +104,7 @@ function jaonaichan_custom_status_badge_colors() {
         /* จัดส่งแล้ว */
         .order-status.status-shipped,
         mark.status-shipped { background: #6ee7b7; color: #064e3b; }
+
         /* { background: #c8e6c9; color: #2e7d32; } */
         /* { background: #81c784; color: #1b5e20; } */
     </style>

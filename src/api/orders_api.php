@@ -1265,7 +1265,7 @@ class Orders_API {
     }
 
     public static function validate_bill_status( string $status ): bool {
-        return in_array( $status, [ 'pending', 'submitted', 'paid', 'cancelled' ], true );
+        return in_array( $status, [ 'pending', 'submitted', 'paid', 'cancelled', 'draft' ], true );
     }
 
     public static function check_permission(): bool {

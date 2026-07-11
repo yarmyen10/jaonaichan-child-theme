@@ -161,6 +161,17 @@ $orders_tab   = esc_url( add_query_arg( 'tab', 'orders', $base_url ) );
                                               :style="statusBadge(order.status)"
                                               x-text="statusLabel(order.status)">
                                         </span>
+                                        <template x-if="order.bill2?.status && ['pending-payment-2','wait-verify-2'].includes(order.status)">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                                  :style="bill2Badge(order.bill2.status)"
+                                                  x-text="bill2Label(order.bill2.status)">
+                                            </span>
+                                        </template>
+                                        <template x-if="order.is_rts">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold" style="background:#d1fae5;color:#065f46;">
+                                                ⚡ RTS
+                                            </span>
+                                        </template>
                                     </div>
                                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate"
                                        x-text="orderProductLine(order)">
@@ -233,6 +244,8 @@ function overviewPage(apiUrl, nonce) {
                 'pending-payment-1': 'รอชำระบิล 1', 'pending-payment-2': 'รอชำระบิล 2',
                 'wait-verify-1': 'รอตรวจสอบ (1)', 'wait-verify-2': 'รอตรวจสอบ (2)',
                 'paid-1': 'ชำระแล้ว (1)', 'paid-2': 'ชำระแล้ว (2)',
+                'packed': 'แพ็คแล้ว', 'wait-tracking': 'รอการติดตาม', 'tracked': 'ติดตามแล้ว',
+                'wait-shipping': 'รอการจัดส่ง', 'shipped': 'จัดส่งแล้ว',
             };
             return m[s] || s;
         },
@@ -253,6 +266,11 @@ function overviewPage(apiUrl, nonce) {
                 'wait-verify-2': 'background:#fed7aa;color:#9a3412',
                 'paid-1': 'background:#dbeafe;color:#1e40af',
                 'paid-2': 'background:#bfdbfe;color:#1d4ed8',
+                'packed': 'background:#d1fae5;color:#065f46',
+                'wait-tracking': 'background:#fef9c3;color:#854d0e',
+                'tracked': 'background:#bfdbfe;color:#1e40af',
+                'wait-shipping': 'background:#ddd6fe;color:#5b21b6',
+                'shipped': 'background:#6ee7b7;color:#064e3b',
             };
             return m[s] || 'background:#f3f4f6;color:#374151';
         },
@@ -265,6 +283,8 @@ function overviewPage(apiUrl, nonce) {
                 'pending-payment-1': '#f59e0b', 'pending-payment-2': '#f97316',
                 'wait-verify-1': '#f59e0b', 'wait-verify-2': '#f97316',
                 'paid-1': '#3b82f6', 'paid-2': '#6366f1',
+                'packed': '#22c55e', 'wait-tracking': '#f59e0b', 'tracked': '#3b82f6',
+                'wait-shipping': '#8b5cf6', 'shipped': '#10b981',
             };
             return `background:${m[s] || '#9ca3af'}`;
         },
@@ -274,11 +294,26 @@ function overviewPage(apiUrl, nonce) {
             return order.more_items > 0 ? `${names} +${order.more_items} รายการ` : names;
         },
 
+        bill2Label(s) {
+            const m = { draft: 'Draft', pending: 'เปิดแล้ว', submitted: 'ส่งสลิปแล้ว', paid: 'ชำระแล้ว' };
+            return m[s] || s;
+        },
+
+        bill2Badge(s) {
+            const m = {
+                draft:     'background:#f3f4f6;color:#6b7280',
+                pending:   'background:#fef9c3;color:#854d0e',
+                submitted: 'background:#fed7aa;color:#9a3412',
+                paid:      'background:#dcfce7;color:#166534',
+            };
+            return m[s] || 'background:#f3f4f6;color:#6b7280';
+        },
+
         displayAmount(order) {
             const bill1 = ['pending-payment-1', 'wait-verify-1', 'paid-1'];
             const bill2 = ['pending-payment-2', 'wait-verify-2', 'paid-2'];
-            if (bill1.includes(order.status)) return order.bill1?.amount || order.total;
-            if (bill2.includes(order.status)) return order.bill2?.amount || order.total;
+            if (bill1.includes(order.status)) return order.bill1?.amount > 0 ? order.bill1.amount : order.total;
+            if (bill2.includes(order.status)) return order.bill2?.amount > 0 ? order.bill2.amount : order.total;
             return order.total;
         },
     };

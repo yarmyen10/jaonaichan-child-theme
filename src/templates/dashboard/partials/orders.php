@@ -49,6 +49,11 @@ $orders_url = esc_js( rest_url( 'bigboss-auth/v1/my-orders' ) );
             <option value="completed"><?= __( 'สำเร็จแล้ว', 'jaonaichan' ) ?></option>
             <option value="cancelled"><?= __( 'ยกเลิก', 'jaonaichan' ) ?></option>
             <option value="refunded"><?= __( 'คืนเงิน', 'jaonaichan' ) ?></option>
+            <option value="packed"><?= __( 'แพ็คแล้ว', 'jaonaichan' ) ?></option>
+            <option value="wait-tracking"><?= __( 'รอการติดตาม', 'jaonaichan' ) ?></option>
+            <option value="tracked"><?= __( 'ติดตามแล้ว', 'jaonaichan' ) ?></option>
+            <option value="wait-shipping"><?= __( 'รอการจัดส่ง', 'jaonaichan' ) ?></option>
+            <option value="shipped"><?= __( 'จัดส่งแล้ว', 'jaonaichan' ) ?></option>
         </select>
     </div>
 
@@ -101,6 +106,17 @@ $orders_url = esc_js( rest_url( 'bigboss-auth/v1/my-orders' ) );
                                       :style="statusBadge(order.status)"
                                       x-text="statusLabel(order.status)">
                                 </span>
+                                <template x-if="order.bill2?.status && ['pending-payment-2','wait-verify-2'].includes(order.status)">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                          :style="bill2Badge(order.bill2.status)"
+                                          x-text="bill2Label(order.bill2.status)">
+                                    </span>
+                                </template>
+                                <template x-if="order.is_rts">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style="background:#d1fae5;color:#065f46;">
+                                        ⚡ RTS
+                                    </span>
+                                </template>
                             </div>
 
                             <!-- Date + payment -->
@@ -219,6 +235,8 @@ function ordersPage(apiUrl, nonce) {
                 'pending-payment-1': 'รอชำระบิล 1', 'pending-payment-2': 'รอชำระบิล 2',
                 'wait-verify-1': 'รอตรวจสอบ (1)', 'wait-verify-2': 'รอตรวจสอบ (2)',
                 'paid-1': 'ชำระแล้ว (1)', 'paid-2': 'ชำระแล้ว (2)',
+                'packed': 'แพ็คแล้ว', 'wait-tracking': 'รอการติดตาม', 'tracked': 'ติดตามแล้ว',
+                'wait-shipping': 'รอการจัดส่ง', 'shipped': 'จัดส่งแล้ว',
             };
             return m[s] || s;
         },
@@ -239,6 +257,11 @@ function ordersPage(apiUrl, nonce) {
                 'wait-verify-2': 'background:#fed7aa;color:#9a3412',
                 'paid-1': 'background:#dbeafe;color:#1e40af',
                 'paid-2': 'background:#bfdbfe;color:#1d4ed8',
+                'packed': 'background:#d1fae5;color:#065f46',
+                'wait-tracking': 'background:#fef9c3;color:#854d0e',
+                'tracked': 'background:#bfdbfe;color:#1e40af',
+                'wait-shipping': 'background:#ddd6fe;color:#5b21b6',
+                'shipped': 'background:#6ee7b7;color:#064e3b',
             };
             return m[s] || 'background:#f3f4f6;color:#374151';
         },
@@ -248,11 +271,26 @@ function ordersPage(apiUrl, nonce) {
             return order.more_items > 0 ? `${names} +${order.more_items} รายการ` : names;
         },
 
+        bill2Label(s) {
+            const m = { draft: 'Draft', pending: 'เปิดแล้ว', submitted: 'ส่งสลิปแล้ว', paid: 'ชำระแล้ว' };
+            return m[s] || s;
+        },
+
+        bill2Badge(s) {
+            const m = {
+                draft:     'background:#f3f4f6;color:#6b7280',
+                pending:   'background:#fef9c3;color:#854d0e',
+                submitted: 'background:#fed7aa;color:#9a3412',
+                paid:      'background:#dcfce7;color:#166534',
+            };
+            return m[s] || 'background:#f3f4f6;color:#6b7280';
+        },
+
         displayAmount(order) {
             const bill1 = ['pending-payment-1', 'wait-verify-1', 'paid-1'];
             const bill2 = ['pending-payment-2', 'wait-verify-2', 'paid-2'];
-            if (bill1.includes(order.status)) return order.bill1?.amount || order.total;
-            if (bill2.includes(order.status)) return order.bill2?.amount || order.total;
+            if (bill1.includes(order.status)) return order.bill1?.amount > 0 ? order.bill1.amount : order.total;
+            if (bill2.includes(order.status)) return order.bill2?.amount > 0 ? order.bill2.amount : order.total;
             return order.total;
         },
     };

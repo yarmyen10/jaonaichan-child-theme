@@ -10,13 +10,13 @@ class Auth_API {
         // 1) File-load time — for servers where determine_current_user fires after theme loads.
         // 2) determine_current_user priority 9 — fires right before the JWT plugin (priority 10),
         //    handles servers where WP bootstraps the user BEFORE loading the theme.
-        if ( ! empty( $_COOKIE['bb_jwt'] ) && empty( $_SERVER['HTTP_AUTHORIZATION'] ) ) {
+        if ( ! empty( $_COOKIE['bb_jwt'] ) && empty( $_SERVER['HTTP_AUTHORIZATION'] ) && self::bb_jwt_allowed_on_current_route() ) {
             $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . sanitize_text_field( wp_unslash( $_COOKIE['bb_jwt'] ) );
         }
 
         add_filter( 'determine_current_user', function ( $user_id ) {
             if ( $user_id ) return $user_id;
-            if ( ! empty( $_COOKIE['bb_jwt'] ) && empty( $_SERVER['HTTP_AUTHORIZATION'] ) ) {
+            if ( ! empty( $_COOKIE['bb_jwt'] ) && empty( $_SERVER['HTTP_AUTHORIZATION'] ) && self::bb_jwt_allowed_on_current_route() ) {
                 $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . sanitize_text_field( wp_unslash( $_COOKIE['bb_jwt'] ) );
             }
             return $user_id;
@@ -56,6 +56,21 @@ class Auth_API {
             return $result;
         }, 9999 );
 
+    }
+
+    /**
+     * bb_jwt is issued only to administrators (see signin() below). Never let it authenticate
+     * customer-only routes (bigboss-auth/v1/my-*) — otherwise a stale admin cookie on a shared
+     * browser silently hijacks a different, currently logged-in customer's request, since the
+     * jwt-auth plugin trusts the Authorization header over the customer's own WP session cookie
+     * whenever that header is present.
+     */
+    private static function bb_jwt_allowed_on_current_route(): bool {
+        // REST requests can arrive as pretty-permalink URIs or ?rest_route= query strings —
+        // check both, same as the rest_authentication_errors public-route check above.
+        $route = $_GET['rest_route'] ?? '';
+        $uri   = $_SERVER['REQUEST_URI'] ?? '';
+        return ! str_contains( $route, '/bigboss-auth/v1/my-' ) && ! str_contains( $uri, '/wp-json/bigboss-auth/v1/my-' );
     }
 
     public static function register_routes(): void {

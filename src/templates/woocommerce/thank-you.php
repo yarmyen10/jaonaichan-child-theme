@@ -85,10 +85,18 @@ get_header();
     <?php
       $order_id     = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
       $order        = $order_id ? wc_get_order($order_id) : null;
+
+      // Ownership check — wcf-order is a raw numeric ID with no secret key, so without this
+      // ANY logged-in visitor could view ANY other customer's order (shipping address, phone,
+      // payment status/amount, product list) just by changing the number in the URL.
+      if ( $order && ! current_user_can( 'manage_options' ) && ( ! is_user_logged_in() || (int) $order->get_customer_id() !== get_current_user_id() ) ) {
+          $order = null;
+      }
+
       $order_status = $order ? $order->get_status() : '';
       $bill1_status   = $order ? ( $order->get_meta('_bill1_status', true) ?: 'pending' ) : 'pending';
       $bill2_status   = $order ? ( $order->get_meta('_bill2_status', true) ?: 'pending' ) : 'pending';
-      $bill2_has_meta = $order && $order->get_meta('_bill2_status', true) !== '';
+      $bill2_has_meta = $order && !in_array( $order->get_meta('_bill2_status', true), [ '', 'draft' ], true );
 
       $bill2_unit_prices_raw = $order ? $order->get_meta('_bill2_unit_prices', true) : '';
       $bill2_unit_prices     = $bill2_unit_prices_raw ? (array) json_decode($bill2_unit_prices_raw, true) : [];
@@ -296,7 +304,7 @@ get_header();
         @click="switchTab(2)"
         :class="[
           activeTab === 2 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50',
-          (!bill1Paid || !bill2HasMeta) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+          !bill1Paid ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
         ]"
         class="flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 text-center transition-all duration-300 rounded-xl"
       >
@@ -583,7 +591,11 @@ get_header();
 
       <div x-show="bill1Paid">
 
-        <div x-show="!bill2Paid && !bill2Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
+        <div x-show="!bill2HasMeta" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
+          <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
+          กำลังเตรียมบิลที่สอง ยอดนี้อาจมีการเปลี่ยนแปลง
+        </div>
+        <div x-show="bill2HasMeta && !bill2Paid && !bill2Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
           <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
           รอการชำระเงิน
         </div>
@@ -722,7 +734,8 @@ get_header();
               <?php endif; ?>
             </div>
 
-            <!-- {{-- QR --}} -->
+            <!-- {{-- QR + Upload — เฉพาะบิลที่เผยแพร่แล้ว ไม่สร้าง QR/แสดงปุ่มอัปโหลดขณะยังเป็นร่าง --}} -->
+            <?php if ( $bill2_has_meta ) : ?>
             <div class="flex flex-col gap-4">
               <!-- {{-- QR Code --}} -->
               <div class="flex flex-col items-center gap-3 bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
@@ -852,6 +865,7 @@ get_header();
               </div>
 
             </div>
+            <?php endif; ?>
 
           </div>
         </div>
@@ -995,7 +1009,7 @@ function billTabs() {
     },
 
     switchTab(n) {
-      if (n === 2 && (!this.bill1Paid || !this.bill2HasMeta)) return;
+      if (n === 2 && !this.bill1Paid) return;
       this.activeTab = n;
     },
     handleFile(e, bill) {

@@ -31,7 +31,20 @@ class My_Orders_API {
     }
 
     public static function check_permission(): bool {
-        return is_user_logged_in();
+        return self::verified_customer_id() > 0;
+    }
+
+    /**
+     * Re-derive identity from the visitor's own native WordPress login cookie only —
+     * bypasses get_current_user_id()/is_user_logged_in(), which resolve through the
+     * determine_current_user filter chain and can be overridden by any
+     * Authorization-header-based auth mechanism (e.g. a stale admin JWT cookie on a
+     * shared browser winning over the customer's own session). These customer-only
+     * endpoints must never trust anything but the cookie WordPress itself issued to
+     * whoever is actually sitting at this browser right now.
+     */
+    private static function verified_customer_id(): int {
+        return (int) wp_validate_auth_cookie( '', 'logged_in' );
     }
 
     // =========================================================================
@@ -39,7 +52,7 @@ class My_Orders_API {
     // =========================================================================
 
     public static function get_summary(): WP_REST_Response {
-        $user_id = get_current_user_id();
+        $user_id = self::verified_customer_id();
 
         $order_count = count( wc_get_orders([
             'customer' => $user_id,
@@ -85,7 +98,7 @@ class My_Orders_API {
     // =========================================================================
 
     public static function get_orders( WP_REST_Request $request ): WP_REST_Response {
-        $user_id  = get_current_user_id();
+        $user_id  = self::verified_customer_id();
         $page     = (int) $request->get_param( 'page' );
         $per_page = (int) $request->get_param( 'per_page' );
         $status   = $request->get_param( 'status' );
@@ -140,10 +153,15 @@ class My_Orders_API {
         $names = array_values( array_map( fn( $i ) => $i->get_name(), $items ) );
         $more  = max( 0, count( $names ) - 3 );
 
+        // Bill 2 still a draft → pretend it hasn't started yet, same fiction thank-you.php
+        // already tells the customer, so the "My Orders" list can't leak an unpublished price.
+        $is_bill2_draft = $order->get_meta( '_bill2_status', true ) === 'draft';
+        $status = $order->get_status();
+
         return [
             'id'             => $order->get_id(),
             'number'         => $order->get_order_number(),
-            'status'         => $order->get_status(),
+            'status'         => $status,
             'total'          => (float) $order->get_total(),
             'currency'       => $order->get_currency(),
             'date'           => $order->get_date_created()?->date( 'Y-m-d H:i:s' ),
@@ -152,11 +170,13 @@ class My_Orders_API {
             'more_items'     => $more,
             'payment_method' => $order->get_payment_method_title(),
             'view_url'       => $order->get_view_order_url(),
+            'is_rts'         => $order->get_meta( '_is_rts_order', true ) === '1',
             'bill1'          => [
                 'amount' => (float) ( $order->get_meta( '_bill1_amount' ) ?: 0 ),
             ],
             'bill2'          => [
-                'amount' => (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
+                'amount' => $is_bill2_draft ? 0.0 : (float) ( $order->get_meta( '_bill2_amount' ) ?: 0 ),
+                'status' => $order->get_meta( '_bill2_status', true ) ?: null,
             ],
         ];
     }
