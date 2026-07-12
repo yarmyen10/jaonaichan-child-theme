@@ -2,19 +2,24 @@
 /**
  * Customers REST API
  *
- * GET /wp-json/jaonaichan/v1/customers
- * GET /wp-json/jaonaichan/v1/customers/{id}/orders
+ * GET    /wp-json/jaonaichan/v1/customers
+ * POST   /wp-json/jaonaichan/v1/customers
+ * POST   /wp-json/jaonaichan/v1/customers/{id}
+ * PATCH  /wp-json/jaonaichan/v1/customers/{id}/status
+ * POST   /wp-json/jaonaichan/v1/customers/{id}/reset-password
+ * GET    /wp-json/jaonaichan/v1/customers/{id}/orders
+ * GET    /wp-json/jaonaichan/v1/customers/{id}/cart
  */
 class Customers_API {
 
     public static function init(): void {
         add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
+        // Block login for inactive accounts
+        add_filter( 'authenticate', [ self::class, 'block_inactive_login' ], 30, 1 );
     }
 
     public static function register_routes(): void {
 
-        // GET /wp-json/jaonaichan/v1/customers
-        //   ?page=1&per_page=20&search=...
         register_rest_route( 'jaonaichan/v1', '/customers', [
             'methods'             => 'GET',
             'callback'            => [ self::class, 'get_customers' ],
@@ -22,60 +27,60 @@ class Customers_API {
             'args'                => [
                 'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1, 'minimum' => 1 ],
                 'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20, 'minimum' => 1, 'maximum' => 100 ],
-                'search'   => [
-                    'required'          => false,
-                    'type'              => 'string',
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
+                'search'   => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
             ],
         ]);
 
-        // POST /wp-json/jaonaichan/v1/customers
         register_rest_route( 'jaonaichan/v1', '/customers', [
             'methods'             => 'POST',
             'callback'            => [ self::class, 'create_customer' ],
             'permission_callback' => [ self::class, 'check_permission' ],
             'args'                => [
-                'email'      => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_email' ],
-                'first_name' => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
-                'last_name'  => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
-                'phone'      => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'username'      => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_user' ],
+                'customer_name' => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'phone'         => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'email'         => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_email' ],
+                'status'        => [ 'required' => false, 'type' => 'string', 'enum' => [ 'active', 'inactive' ], 'default' => 'active' ],
             ],
         ]);
 
-        // POST /wp-json/jaonaichan/v1/customers/{id}
         register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)', [
             'methods'             => 'POST',
             'callback'            => [ self::class, 'update_customer' ],
             'permission_callback' => [ self::class, 'check_permission' ],
             'args'                => [
-                'email'      => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_email' ],
-                'first_name' => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
-                'last_name'  => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
-                'phone'      => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'username'      => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_user' ],
+                'customer_name' => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'phone'         => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+                'email'         => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_email' ],
             ],
         ]);
 
-        // POST /wp-json/jaonaichan/v1/customers/{id}/reset-password
+        register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/status', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'set_status' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'status' => [ 'required' => true, 'type' => 'string', 'enum' => [ 'active', 'inactive' ] ],
+            ],
+        ]);
+
         register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/reset-password', [
             'methods'             => 'POST',
             'callback'            => [ self::class, 'reset_password' ],
             'permission_callback' => [ self::class, 'check_permission' ],
             'args'                => [
-                'mode'     => [ 'required' => true, 'type' => 'string', 'enum' => [ 'phone', 'manual' ] ],
+                'mode'     => [ 'required' => true,  'type' => 'string', 'enum' => [ 'phone', 'manual' ] ],
                 'password' => [ 'required' => false, 'type' => 'string' ],
             ],
         ]);
 
-        // GET /wp-json/jaonaichan/v1/customers/{id}/cart
         register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/cart', [
             'methods'             => 'GET',
             'callback'            => [ self::class, 'get_customer_cart' ],
             'permission_callback' => [ self::class, 'check_permission' ],
         ]);
 
-        // GET /wp-json/jaonaichan/v1/customers/{id}/orders
-        //   ?page=1&per_page=20
         register_rest_route( 'jaonaichan/v1', '/customers/(?P<id>\d+)/orders', [
             'methods'             => 'GET',
             'callback'            => [ self::class, 'get_customer_orders' ],
@@ -98,26 +103,19 @@ class Customers_API {
 
         $query_args = [
             'role__in'    => [ 'customer', 'subscriber' ],
-            'number'  => $per_page,
-            'offset'  => ( $page - 1 ) * $per_page,
-            'orderby' => 'registered',
-            'order'   => 'DESC',
+            'number'      => $per_page,
+            'offset'      => ( $page - 1 ) * $per_page,
+            'orderby'     => 'registered',
+            'order'       => 'DESC',
             'count_total' => true,
         ];
 
         if ( $search !== '' ) {
             $query_args['search']         = '*' . $search . '*';
             $query_args['search_columns'] = [ 'user_email', 'display_name', 'user_login' ];
-
-            // also search billing_phone via meta
-            $query_args['meta_query'] = [
+            $query_args['meta_query']     = [
                 'relation' => 'OR',
-                [
-                    'key'     => 'billing_phone',
-                    'value'   => $search,
-                    'compare' => 'LIKE',
-                ],
-                // placeholder so WP_User_Query OR-joins correctly with the text search
+                [ 'key' => 'billing_phone', 'value' => $search, 'compare' => 'LIKE' ],
             ];
         }
 
@@ -143,38 +141,32 @@ class Customers_API {
     // =========================================================================
 
     public static function create_customer( WP_REST_Request $request ): WP_REST_Response {
-        $email      = $request->get_param('email');
-        $first_name = $request->get_param('first_name');
-        $last_name  = $request->get_param('last_name');
-        $phone      = $request->get_param('phone');
+        $username      = $request->get_param('username');
+        $customer_name = $request->get_param('customer_name');
+        $phone         = $request->get_param('phone');
+        $email         = $request->get_param('email');
+        $status        = $request->get_param('status') ?: 'active';
 
-        if ( empty( $phone ) ) {
-            return new WP_REST_Response([ 'success' => false, 'message' => 'กรุณากรอกเบอร์โทรศัพท์' ], 400);
+        if ( username_exists( $username ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'Username นี้มีอยู่ในระบบแล้ว' ], 400);
         }
 
-        // Generate username JNC{YY}9999
-        $year = date('y');
-        $prefix = "JNC{$year}";
-        
-        global $wpdb;
-        $latest_username = $wpdb->get_var( $wpdb->prepare( "
-            SELECT user_login FROM {$wpdb->users} 
-            WHERE user_login LIKE %s 
-            ORDER BY user_login DESC LIMIT 1
-        ", $prefix . '%' ) );
-        
-        if ( $latest_username ) {
-            $num = (int) str_replace( $prefix, '', $latest_username );
-            $next_num = $num + 1;
-        } else {
-            $next_num = 1;
+        // Duplicate phone check (active or inactive)
+        $phone_clean = preg_replace( '/\D/', '', $phone );
+        $existing_phone = get_users([
+            'meta_key'   => 'billing_phone',
+            'meta_value' => $phone_clean,
+            'number'     => 1,
+            'fields'     => 'ID',
+        ]);
+        if ( ! empty( $existing_phone ) ) {
+            $existing_status = get_user_meta( $existing_phone[0], 'jnc_account_status', true ) ?: 'active';
+            $label = $existing_status === 'inactive' ? ' (ระงับการใช้งาน)' : '';
+            return new WP_REST_Response([ 'success' => false, 'message' => "เบอร์โทรนี้มีอยู่ในระบบแล้ว{$label}" ], 400);
         }
-        $username = $prefix . str_pad( $next_num, 5, '0', STR_PAD_LEFT );
-
-        $password = preg_replace( '/\D/', '', $phone );
 
         if ( empty( $email ) ) {
-            $email = strtolower($username) . '@jaonaichan.local';
+            $email = strtolower( $username ) . '@jaonaichan.local';
         } else {
             if ( ! is_email( $email ) ) {
                 return new WP_REST_Response([ 'success' => false, 'message' => 'รูปแบบอีเมลไม่ถูกต้อง' ], 400);
@@ -184,55 +176,46 @@ class Customers_API {
             }
         }
 
-        // wc_create_new_customer creates the user and triggers new customer email if WC is configured to do so
+        $password    = $phone_clean;
         $customer_id = wc_create_new_customer( $email, $username, $password );
 
         if ( is_wp_error( $customer_id ) ) {
             return new WP_REST_Response([ 'success' => false, 'message' => $customer_id->get_error_message() ], 400);
         }
 
-        // Update additional info
-        update_user_meta( $customer_id, 'billing_first_name', $first_name );
-        update_user_meta( $customer_id, 'billing_last_name', $last_name );
-        update_user_meta( $customer_id, 'billing_phone', $phone );
-
-        // Also update standard WP name fields
         wp_update_user([
             'ID'           => $customer_id,
-            'first_name'   => $first_name,
-            'last_name'    => $last_name,
-            'display_name' => trim( "$first_name $last_name" )
+            'display_name' => $customer_name,
         ]);
+        update_user_meta( $customer_id, 'billing_phone', $phone_clean );
+        update_user_meta( $customer_id, 'jnc_account_status', $status );
 
         return new WP_REST_Response([
             'success' => true,
             'message' => 'สร้างลูกค้าใหม่สำเร็จ',
-            'data'    => [
-                'id'    => $customer_id,
-                'email' => $email,
-                'name'  => trim( "$first_name $last_name" )
-            ]
+            'data'    => [ 'id' => $customer_id, 'username' => $username, 'name' => $customer_name ],
         ], 201);
     }
 
     // =========================================================================
-    // POST /customers/{id} (Update)
+    // POST /customers/{id}
     // =========================================================================
 
     public static function update_customer( WP_REST_Request $request ): WP_REST_Response {
-        $customer_id = absint( $request->get_param('id') );
-        $email       = $request->get_param('email');
-        $first_name  = $request->get_param('first_name');
-        $last_name   = $request->get_param('last_name');
-        $phone       = $request->get_param('phone');
-
-        if ( empty( $phone ) ) {
-            return new WP_REST_Response([ 'success' => false, 'message' => 'กรุณากรอกเบอร์โทรศัพท์' ], 400);
-        }
+        $customer_id   = absint( $request->get_param('id') );
+        $username      = $request->get_param('username');
+        $customer_name = $request->get_param('customer_name');
+        $phone         = $request->get_param('phone');
+        $email         = $request->get_param('email');
 
         $user = get_userdata( $customer_id );
         if ( ! $user ) {
             return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบลูกค้า' ], 404);
+        }
+
+        // Username uniqueness check (skip if unchanged)
+        if ( $username !== $user->user_login && username_exists( $username ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'Username นี้มีอยู่ในระบบแล้ว' ], 400);
         }
 
         if ( ! empty( $email ) ) {
@@ -245,34 +228,52 @@ class Customers_API {
             }
         }
 
-        // Update main user fields
         $update_args = [
             'ID'           => $customer_id,
-            'first_name'   => $first_name,
-            'last_name'    => $last_name,
-            'display_name' => trim( "$first_name $last_name" )
+            'display_name' => $customer_name,
         ];
-
         if ( ! empty( $email ) ) {
             $update_args['user_email'] = $email;
         }
-        
-        $updated_id = wp_update_user( $update_args );
-        if ( is_wp_error( $updated_id ) ) {
-            return new WP_REST_Response([ 'success' => false, 'message' => $updated_id->get_error_message() ], 400);
+
+        $updated = wp_update_user( $update_args );
+        if ( is_wp_error( $updated ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => $updated->get_error_message() ], 400);
         }
 
-        // Update meta fields
-        update_user_meta( $customer_id, 'billing_first_name', $first_name );
-        update_user_meta( $customer_id, 'billing_last_name', $last_name );
+        // Change user_login if different (wp_update_user doesn't support this)
+        if ( $username !== $user->user_login ) {
+            global $wpdb;
+            $wpdb->update( $wpdb->users, [ 'user_login' => $username ], [ 'ID' => $customer_id ] );
+            clean_user_cache( $customer_id );
+        }
+
+        $phone_clean = preg_replace( '/\D/', '', $phone );
+        update_user_meta( $customer_id, 'billing_phone', $phone_clean );
         if ( ! empty( $email ) ) {
             update_user_meta( $customer_id, 'billing_email', $email );
         }
-        update_user_meta( $customer_id, 'billing_phone', $phone );
+
+        return new WP_REST_Response([ 'success' => true, 'message' => 'อัปเดตข้อมูลลูกค้าสำเร็จ' ], 200);
+    }
+
+    // =========================================================================
+    // PATCH /customers/{id}/status
+    // =========================================================================
+
+    public static function set_status( WP_REST_Request $request ): WP_REST_Response {
+        $customer_id = absint( $request->get_param('id') );
+        $status      = $request->get_param('status');
+
+        if ( ! get_userdata( $customer_id ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบลูกค้า' ], 404);
+        }
+
+        update_user_meta( $customer_id, 'jnc_account_status', $status );
 
         return new WP_REST_Response([
             'success' => true,
-            'message' => 'อัปเดตข้อมูลลูกค้าสำเร็จ',
+            'message' => $status === 'active' ? 'เปิดใช้งานบัญชีสำเร็จ' : 'ระงับบัญชีสำเร็จ',
         ], 200);
     }
 
@@ -326,9 +327,9 @@ class Customers_API {
             return new WP_REST_Response([ 'data' => $empty ], 200);
         }
 
-        $session   = maybe_unserialize( $row->session_value );
-        $raw_cart  = $session['cart'] ?? [];
-        $totals    = $session['cart_totals'] ?? [];
+        $session  = maybe_unserialize( $row->session_value );
+        $raw_cart = $session['cart'] ?? [];
+        $totals   = $session['cart_totals'] ?? [];
 
         $items = [];
         foreach ( $raw_cart as $item ) {
@@ -400,22 +401,11 @@ class Customers_API {
     private static function format_customer( WP_User $user ): array {
         $user_id = $user->ID;
 
-        $first = get_user_meta( $user_id, 'billing_first_name', true );
-        $last  = get_user_meta( $user_id, 'billing_last_name', true );
-        $name  = trim( "$first $last" );
-        if ( $name === '' ) {
-            $name = $user->display_name;
-        }
+        $name = $user->display_name ?: $user->user_login;
 
-        $email = get_user_meta( $user_id, 'billing_email', true );
-        if ( $email === '' ) {
-            $email = $user->user_email;
-        }
+        $email = get_user_meta( $user_id, 'billing_email', true ) ?: $user->user_email;
+        $phone = get_user_meta( $user_id, 'billing_phone', true ) ?: '';
 
-        $phone = get_user_meta( $user_id, 'billing_phone', true );
-
-        // wc_get_customer_order_count / wc_get_customer_total_spent are
-        // WooCommerce built-ins with transient caching
         $order_count = (int) wc_get_customer_order_count( $user_id );
         $total_spend = (float) wc_get_customer_total_spent( $user_id );
 
@@ -429,7 +419,7 @@ class Customers_API {
                 'return'   => 'ids',
             ]);
             if ( ! empty( $last_ids ) ) {
-                $last_order = wc_get_order( $last_ids[0] );
+                $last_order      = wc_get_order( $last_ids[0] );
                 $last_order_date = $last_order?->get_date_created()?->date('Y-m-d H:i:s');
             }
         }
@@ -437,16 +427,32 @@ class Customers_API {
         $roles = $user->roles;
         $role  = ! empty( $roles ) ? reset( $roles ) : '';
 
+        $status = get_user_meta( $user_id, 'jnc_account_status', true ) ?: 'active';
+
         return [
             'id'              => $user_id,
+            'username'        => $user->user_login,
             'name'            => $name,
             'email'           => $email,
-            'phone'           => $phone ?: '',
+            'phone'           => $phone,
             'role'            => $role,
+            'status'          => $status,
             'order_count'     => $order_count,
             'total_spend'     => $total_spend,
+            'member_date'     => $user->user_registered,
             'last_order_date' => $last_order_date,
         ];
+    }
+
+    public static function block_inactive_login( $user ) {
+        if ( ! ( $user instanceof WP_User ) ) {
+            return $user;
+        }
+        $status = get_user_meta( $user->ID, 'jnc_account_status', true ) ?: 'active';
+        if ( $status === 'inactive' ) {
+            return new WP_Error( 'account_inactive', 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่' );
+        }
+        return $user;
     }
 
     public static function check_permission(): bool {

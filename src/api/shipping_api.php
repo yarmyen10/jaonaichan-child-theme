@@ -33,6 +33,10 @@ class Shipping_API {
             return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบคำสั่งซื้อ' ], 404);
         }
 
+        if ( jn_is_past_packed( $order ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'คำสั่งซื้อนี้แพ็คสินค้าแล้ว ไม่สามารถแก้ไขข้อมูลจัดส่งได้' ], 409);
+        }
+
         $name    = $request->get_param('shipping_name');
         $phone   = $request->get_param('shipping_phone');
         $address = $request->get_param('shipping_address');

@@ -50,7 +50,7 @@ if ( have_posts() ) {
     <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-400 opacity-[0.08] rounded-full mix-blend-multiply filter blur-3xl transform translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 2s;"></div>
   </div>
 
-  <section class="relative overflow-hidden pt-[180px] pb-16 md:pt-[220px] md:pb-20">
+  <section class="relative overflow-hidden pt-[120px] pb-16 md:pt-[160px] md:pb-20 lg:pt-[220px]">
     <div class="mx-auto max-w-5xl px-6 relative" style="z-index:1;">
       <div class="text-center mb-16">
         <span class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full mb-5" style="background:#fce7f3; color:#db2777;">

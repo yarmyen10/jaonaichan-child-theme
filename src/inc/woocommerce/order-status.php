@@ -21,6 +21,21 @@ function jaonaichan_get_custom_order_statuses() {
     );
 }
 
+// สถานะ >= "packed" (แพ็คแล้ว, รอติดตาม, ติดตามแล้ว, รอจัดส่ง, จัดส่งแล้ว, completed)
+// ลูกค้าแก้ไขข้อมูลการจัดส่งเองไม่ได้อีก — พัสดุแพ็คแล้วเปลี่ยนที่อยู่จะกระทบงานแพ็ค/จัดส่งจริง
+function jn_is_past_packed( WC_Order $order ): bool {
+    $pipeline = array_map(
+        fn( $slug ) => str_replace( 'wc-', '', $slug ),
+        array_keys( jaonaichan_get_custom_order_statuses() )
+    );
+    $pipeline[] = 'completed';
+
+    $packed_index  = array_search( 'packed', $pipeline, true );
+    $current_index = array_search( $order->get_status(), $pipeline, true );
+
+    return $current_index !== false && $current_index >= $packed_index;
+}
+
 function jaonaichan_get_custom_order_status_args( $label ) {
     $count_template = $label . ' <span class="count">(%s)</span>';
     return array(

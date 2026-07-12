@@ -7,6 +7,19 @@
 // $color = 'bg-indigo-600 dark:bg-indigo-300';
 // include get_stylesheet_directory() . '/src/templates/spinner.php';
 
+$order_id = isset( $_GET['wcf-order'] ) ? intval( $_GET['wcf-order'] ) : 0;
+$order    = $order_id ? wc_get_order( $order_id ) : null;
+
+// Ownership check — wcf-order is a raw numeric ID with no secret key, so without this
+// ANY logged-in visitor could view ANY other customer's order (shipping address, phone,
+// payment status/amount, product list) just by changing the number in the URL.
+// Must run before get_header() — redirecting after HTML output has started risks
+// a "headers already sent" failure.
+if ( $order && ! current_user_can( 'manage_options' ) && ( ! is_user_logged_in() || (int) $order->get_customer_id() !== get_current_user_id() ) ) {
+    wp_safe_redirect( home_url( '/dashboard' ) );
+    exit;
+}
+
 add_action( 'wp_enqueue_scripts', function () {
 	wp_enqueue_style(
 		'jn-kawaii-fonts',
@@ -63,7 +76,7 @@ get_header();
     }
   }
 </style>
-<div class="jn-thankyou-wrap w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+<div class="jn-thankyou-wrap w-full min-h-[calc(100vh-80px)] pt-[150px] pb-8 md:pt-[220px] lg:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
   
   <!-- Full Width Background Container -->
   <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
@@ -83,16 +96,7 @@ get_header();
     <h2 class="jn-rise-in jn-delay-1 text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FB5FAB] to-purple-600 tracking-tight">ขอบคุณสำหรับคำสั่งซื้อ</h2>
     <p class="jn-rise-in jn-delay-2 text-base text-gray-500 mt-3 font-medium">กรุณาชำระเงินเพื่อยืนยันคำสั่งซื้อของคุณ</p>
     <?php
-      $order_id     = isset($_GET['wcf-order']) ? intval($_GET['wcf-order']) : 0;
-      $order        = $order_id ? wc_get_order($order_id) : null;
-
-      // Ownership check — wcf-order is a raw numeric ID with no secret key, so without this
-      // ANY logged-in visitor could view ANY other customer's order (shipping address, phone,
-      // payment status/amount, product list) just by changing the number in the URL.
-      if ( $order && ! current_user_can( 'manage_options' ) && ( ! is_user_logged_in() || (int) $order->get_customer_id() !== get_current_user_id() ) ) {
-          $order = null;
-      }
-
+      // $order_id / $order already resolved + ownership-checked at the top of the file
       $order_status = $order ? $order->get_status() : '';
       $bill1_status   = $order ? ( $order->get_meta('_bill1_status', true) ?: 'pending' ) : 'pending';
       $bill2_status   = $order ? ( $order->get_meta('_bill2_status', true) ?: 'pending' ) : 'pending';
@@ -161,10 +165,10 @@ get_header();
       $bill2_submitted = $bill2_status === 'submitted';
 
       // Shipping Data
-      $order_completed = $order && $order->has_status('completed');
+      $shipping_locked = $order && jn_is_past_packed( $order );
       $cid = $order ? (int) $order->get_customer_id() : 0;
 
-      if ($order_completed) {
+      if ($shipping_locked) {
           // Locked: อ่านจาก order meta ตรงๆ ไม่ fallback — แก้ไขไม่ได้แล้ว
           $fn = $order->get_shipping_first_name();
           $ln = $order->get_shipping_last_name();
@@ -331,7 +335,7 @@ get_header();
 
       <div x-show="!bill1Paid && !bill1Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
         <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
-        รอการชำระเงิน
+        รอการชำระเงิน (รบกวนชำระบิลภายใน 24 ชั่วโมง)
       </div>
       <div x-show="bill1Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-800 text-sm rounded-lg mb-4">
         <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
@@ -342,20 +346,17 @@ get_header();
         ชำระเงินแล้ว
       </div>
 
-      <div class="bg-white/50 backdrop-blur-lg border border-white/80 rounded-[1.5rem] p-5 md:p-8 shadow-sm">
+      <div class="pb-6 md:pb-8 mb-6 md:mb-8 border-b border-gray-100">
         <?php if ( $is_rts_order ) : ?>
         <p class="text-base font-medium text-gray-900">ยอดชำระ</p>
         <p class="text-sm text-gray-400 mt-1 mb-6">สินค้าพร้อมส่ง ชำระครั้งเดียว</p>
-        <?php else : ?>
-        <p class="text-base font-medium text-gray-900">ค่ามัดจำ</p>
-        <p class="text-sm text-gray-400 mt-1 mb-6">ชำระครึ่งหนึ่งของยอดรวม</p>
         <?php endif; ?>
 
-        <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-8">
 
           <?php if ( $is_rts_order ) : ?>
           <!-- Shipping address — RTS orders need delivery address before payment -->
-          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+          <div>
             <div class="flex items-center justify-between mb-4">
               <div>
                 <p class="text-sm font-medium text-gray-700">ข้อมูลการจัดส่ง</p>
@@ -383,7 +384,7 @@ get_header();
           <?php endif; ?>
 
           <!-- {{-- รายการสินค้า --}} -->
-          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+          <div>
             <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
             <?php if ( $order ) : ?>
               <div class="product-scroll flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80 pr-3">
@@ -426,9 +427,9 @@ get_header();
                   <span>฿<?= number_format( $order_shipping, 2 ) ?></span>
                 </div>
                 <?php endif; ?>
-                <div class="flex justify-between <?= $order_shipping > 0 ? 'pt-1 border-t border-gray-100' : '' ?>">
-                  <span class="text-sm text-gray-500">รวมทั้งหมด</span>
-                  <span class="text-sm font-semibold text-gray-900">
+                <div class="flex justify-between items-center px-3 py-2 mt-1 rounded-lg bg-pink-50 border border-pink-100">
+                  <span class="text-base font-semibold text-gray-700">รวมทั้งหมด</span>
+                  <span class="text-base font-bold text-[#FB5FAB]">
                       ฿<?= number_format( $order->get_total(), 2 ) ?>
                   </span>
                 </div>
@@ -439,7 +440,7 @@ get_header();
           <!-- {{-- QR --}} -->
           <div class="flex flex-col gap-4">
             <!-- {{-- QR Code --}} -->
-            <div class="flex flex-col items-center gap-3 bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+            <div class="flex flex-col items-center gap-3">
               <div class="relative w-full max-w-[240px] h-full">
                 <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                 <?php
@@ -597,7 +598,7 @@ get_header();
         </div>
         <div x-show="bill2HasMeta && !bill2Paid && !bill2Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-800 text-sm rounded-lg mb-4">
           <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
-          รอการชำระเงิน
+          รอการชำระเงิน (รบกวนชำระบิลภายใน 24 ชั่วโมง)
         </div>
         <div x-show="bill2Submitted" class="flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-800 text-sm rounded-lg mb-4">
           <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
@@ -609,7 +610,7 @@ get_header();
         </div>
 
         <!-- {{-- Shipping Info (ข้อมูลจัดส่ง) --}} -->
-        <div class="bg-white/50 backdrop-blur-lg border border-white/80 rounded-[1.5rem] p-5 md:p-8 shadow-sm mb-6">
+        <div class="pb-6 md:pb-8 mb-6 md:mb-8 border-b border-gray-100">
           <div class="flex items-center justify-between mb-4">
             <div>
               <p class="text-base font-medium text-gray-900">ข้อมูลการจัดส่ง</p>
@@ -620,7 +621,7 @@ get_header();
             </button>
           </div>
           
-          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+          <div>
             <template x-if="!shippingName || !shippingPhone || !shippingAddress">
               <div class="flex items-center gap-2 text-amber-600 text-sm">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -638,23 +639,25 @@ get_header();
           </div>
         </div>
 
-        <div class="bg-white/50 backdrop-blur-lg border border-white/80 rounded-[1.5rem] p-5 md:p-8 shadow-sm">
-          <p class="text-base font-medium text-gray-900">ค่าส่วนที่เหลือ</p>
-          <p class="text-sm text-gray-400 mt-1 mb-6">ยอดคงเหลือทั้งหมด</p>
+        <div class="pb-6 md:pb-8">
 
-          <div class="flex flex-col gap-6">
+          <div class="flex flex-col gap-8">
 
             <!-- {{-- รายการสินค้า --}} -->
-            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+            <div>
               <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
               <?php if ( $order ) : ?>
                 <div class="product-scroll flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80 pr-3">
+                  <!-- header row -->
+                  <div class="hidden sm:grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-wide">
+                    <span>สินค้า</span>
+                    <span class="text-center">จำนวน</span>
+                    <span class="text-right">ราคา/ชิ้น</span>
+                    <span class="text-right">รวม</span>
+                  </div>
                   <?php foreach ( $order->get_items() as $item ) :
                     $product = $item->get_product();
-                    // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
                     $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
-
-                    // Fallback ถ้าไม่มี
                     if ( ! $img_url ) {
                         $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
                     }
@@ -664,34 +667,40 @@ get_header();
                     $china_ship2 = isset( $bill2_china_shipping[$pid2] ) ? (float) $bill2_china_shipping[$pid2] : null;
                     $import_fee2 = isset( $bill2_import_fee[$pid2] )     ? (float) $bill2_import_fee[$pid2]     : null;
                     $line_total2 = $unit2 !== null ? $unit2 * $item->get_quantity() : (float) $item->get_total();
+                    $row_total2  = $line_total2 + ($china_ship2 ?? 0) + ($import_fee2 ?? 0);
                   ?>
-                    <div class="flex items-start gap-3">
+                    <!-- mobile: bill-1 style flex; sm+: 4-col grid -->
+                    <div class="sm:hidden flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
                       <?php if ( $img_url ) : ?>
-                          <img src="<?= esc_url($img_url) ?>"
-                              class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
+                        <img src="<?= esc_url($img_url) ?>" class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
                       <?php endif; ?>
-                      <div class="flex-1">
-                          <p class="text-sm font-medium text-gray-900 !mb-0.5">
-                              <?= esc_html( $item->get_name() ) ?>
-                          </p>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 !mb-0.5 leading-snug"><?= esc_html( $item->get_name() ) ?></p>
+                        <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
+                        <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
+                        <?php endforeach; ?>
+                        <p class="text-xs text-gray-400 !mb-0">x<?= $item->get_quantity() ?></p>
+                        <p class="text-xs text-gray-500 !mb-0 mt-0.5">
+                          ราคา/ชิ้น ฿<?= number_format((float)$unit2, 2) ?>
+                          <span class="ml-2 font-semibold text-gray-800">รวม ฿<?= number_format($row_total2, 2) ?></span>
+                        </p>
+                      </div>
+                    </div>
+                    <div class="hidden sm:grid sm:grid-cols-[1fr_3rem_6rem_6rem] items-center gap-x-3 py-2 border-b border-gray-50 last:border-0">
+                      <div class="flex items-center gap-2">
+                        <?php if ( $img_url ) : ?>
+                          <img src="<?= esc_url($img_url) ?>" class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
+                        <?php endif; ?>
+                        <div class="min-w-0">
+                          <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug"><?= esc_html( $item->get_name() ) ?></p>
                           <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
                           <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
                           <?php endforeach; ?>
-                          <p class="text-xs text-gray-400 !mb-0">
-                              x<?= $item->get_quantity() ?>
-                          </p>
-                          <?php
-                              $bill2_line_parts = [
-                                  'ราคา/ชิ้น ฿' . number_format( (float) $unit2, 2 ),
-                                  'ส่งจีน ฿' . number_format( (float) $china_ship2, 2 ),
-                                  'Import ฿' . number_format( (float) $import_fee2, 2 ),
-                              ];
-                          ?>
-                          <p class="text-xs text-gray-400 mt-0.5"><?= implode( ' · ', $bill2_line_parts ) ?></p>
+                        </div>
                       </div>
-                      <p class="text-sm font-medium text-gray-900 shrink-0">
-                          ฿<?= number_format( $line_total2, 2 ) ?>
-                      </p>
+                      <p class="text-xs text-gray-500 text-center !mb-0">x<?= $item->get_quantity() ?></p>
+                      <p class="text-xs text-gray-500 text-right !mb-0">฿<?= number_format((float)$unit2, 2) ?></p>
+                      <p class="text-sm font-semibold text-gray-900 text-right !mb-0">฿<?= number_format($row_total2, 2) ?></p>
                     </div>
                   <?php endforeach; ?>
                 </div>
@@ -726,9 +735,9 @@ get_header();
                     </div>
                     <?php endif; ?>
                   <?php endif; ?>
-                  <div class="flex justify-between <?= $has_breakdown ? 'pt-1.5 border-t border-gray-100' : '' ?>">
-                    <span class="text-sm text-gray-500">รวมทั้งหมด</span>
-                    <span class="text-sm font-semibold text-gray-900">฿<?= number_format($bill2_amount, 2) ?></span>
+                  <div class="flex justify-between items-center px-3 py-2 mt-1 rounded-lg bg-pink-50 border border-pink-100">
+                    <span class="text-base font-semibold text-gray-700">รวมทั้งหมด</span>
+                    <span class="text-base font-bold text-[#FB5FAB]">฿<?= number_format($bill2_amount, 2) ?></span>
                   </div>
                 </div>
               <?php endif; ?>
@@ -738,7 +747,7 @@ get_header();
             <?php if ( $bill2_has_meta ) : ?>
             <div class="flex flex-col gap-4">
               <!-- {{-- QR Code --}} -->
-              <div class="flex flex-col items-center gap-3 bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/60 shadow-sm">
+              <div class="flex flex-col items-center gap-3">
                 <div class="relative w-full max-w-[240px] h-full">
                   <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
                   <?php
@@ -964,7 +973,7 @@ function billTabs() {
     shippingName: '<?= esc_js($shipping_name) ?>',
     shippingPhone: '<?= esc_js($shipping_phone) ?>',
     shippingAddress: '<?= esc_js($shipping_address) ?>',
-    canEditShipping: <?= $order_completed ? 'false' : 'true' ?>,
+    canEditShipping: <?= $shipping_locked ? 'false' : 'true' ?>,
     savingShipping: false,
 
     async init() {

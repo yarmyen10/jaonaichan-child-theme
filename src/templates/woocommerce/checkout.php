@@ -83,21 +83,18 @@ $is_mixed_cart = $has_rts && $has_normal;
   .jn-confirm-btn { font-size: 1rem; padding: 0.875rem; }
 }
 
-/* ── Mobile card tweaks ── */
-@media (max-width: 639px) {
-  .jn-checkout-card { padding: 1rem !important; }
-  .jn-items-scroll  { max-height: 200px !important; }
-}
-
 .jn-checkout-wrap { font-family: 'Prompt', sans-serif; }
 
+/* Divider style — no box, just a hairline between sections (was a bordered/shadowed card) */
 .jn-checkout-card {
-  background: #fff;
-  border: 1px solid #f3f4f6;
-  border-radius: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 20px -8px rgba(107,63,160,.10);
-  padding: 1.25rem;
-  margin-bottom: 1rem;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* ── Mobile card tweaks ── */
+@media (max-width: 639px) {
+  .jn-checkout-card { padding-bottom: 1rem; margin-bottom: 1rem; }
 }
 
 /* Blob float animations */
@@ -146,7 +143,7 @@ aside.widget-area { display: none !important; }
 }
 </style>
 
-<div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+<div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[150px] pb-8 md:pt-[220px] lg:pt-[280px] px-0 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
 
   <!-- Full Width Background Container -->
   <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
@@ -157,7 +154,7 @@ aside.widget-area { display: none !important; }
 
   <main
       x-data="jaoCheckout()"
-      class="jn-rise-in relative z-10 w-full max-w-6xl mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
+      class="jn-rise-in relative z-10 w-full max-w-6xl mx-auto px-2 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
   >
   <?php $color = '#FB5FAB'; include get_stylesheet_directory() . '/src/templates/spinner.php'; ?>
 
@@ -190,12 +187,15 @@ aside.widget-area { display: none !important; }
             $cart_items = $cart->get_cart();
             $last_item  = end( $cart_items );
             foreach ( $cart_items as $cart_item ) :
-            $product   = $cart_item['data'];
-            $qty       = $cart_item['quantity'];
-            $image_id  = $product->get_image_id();
-            $image_url = $image_id
+            $product    = $cart_item['data'];
+            $qty        = $cart_item['quantity'];
+            $image_id   = $product->get_image_id();
+            $image_url  = $image_id
               ? wp_get_attachment_image_url( $image_id, 'custom-100' )
               : wc_placeholder_img_src( 'custom-100' );
+            // เหมือน get_formatted_meta_data() ของ order item แต่สำหรับ cart item — ดู thank-you.php
+            $meta_flat  = wc_get_formatted_cart_item_data( $cart_item, true );
+            $meta_lines = $meta_flat ? array_filter( array_map( 'trim', explode( "\n", $meta_flat ) ) ) : [];
           ?>
             <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom: <?= $cart_item === $last_item ? 'none' : '1px solid #f3f4f6' ?>;">
               <img
@@ -207,6 +207,9 @@ aside.widget-area { display: none !important; }
                 <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;">
                   <?= esc_html( $product->get_name() ) ?>
                 </p>
+                <?php foreach ( $meta_lines as $meta_line ) : ?>
+                  <p style="font-size:0.75rem; color:#9ca3af; margin:0;"><?= wp_strip_all_tags( $meta_line ) ?></p>
+                <?php endforeach; ?>
                 <p style="font-size:0.75rem; color:#6b7280; margin:0;">x<?= $qty ?></p>
               </div>
               <span style="font-size:0.875rem; font-weight:600; white-space:nowrap;">
@@ -266,7 +269,7 @@ aside.widget-area { display: none !important; }
       ?>
 
       <?php if ( $has_rts && ! $has_normal ) : ?>
-      <div class="jn-checkout-card" style="border-color:#d1fae5; background:#f0fdf4;">
+      <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;">
         <div style="display:flex; gap:0.625rem; align-items:flex-start;">
           <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
           <div style="font-size:0.8125rem; color:#065f46; line-height:1.55;">
@@ -284,7 +287,7 @@ aside.widget-area { display: none !important; }
       <?php endif; ?>
 
       <?php if ( $is_mixed_cart ) : ?>
-      <div class="jn-checkout-card" style="border-color:#d1fae5; background:#f0fdf4;">
+      <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;">
         <div style="display:flex; gap:0.625rem; align-items:flex-start;">
           <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
           <div style="font-size:0.8125rem; color:#065f46; line-height:1.55;">

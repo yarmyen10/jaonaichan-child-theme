@@ -125,6 +125,15 @@ class Orders_API {
                     'type'              => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                'member_no' => [
+                    'required' => false,
+                    'type'     => 'integer',
+                ],
+                'username' => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
             ],
         ]);
 
@@ -680,6 +689,23 @@ class Orders_API {
             $base_args['meta_value'] = $lot_id;
         }
 
+        $member_no = intval( $request->get_param('member_no') );
+        if ( $member_no > 0 ) {
+            $base_args['customer_id'] = $member_no;
+        }
+
+        $username = sanitize_text_field( (string) $request->get_param('username') );
+        if ( $username !== '' ) {
+            $user = get_user_by( 'login', $username );
+            if ( ! $user ) {
+                return new WP_REST_Response([
+                    'data'       => [],
+                    'pagination' => [ 'page' => 1, 'per_page' => $per_page, 'total' => 0, 'total_pages' => 0 ],
+                ], 200);
+            }
+            $base_args['customer_id'] = $user->ID;
+        }
+
         $date_query = self::build_date_query( $request );
         if ( $date_query ) {
             $base_args['date_query'] = $date_query;
@@ -1143,10 +1169,11 @@ class Orders_API {
             'date_modified'  => $order->get_date_modified()?->date('Y-m-d H:i:s'),
             'payment_method' => $order->get_payment_method(),
             'customer'       => [
-                'id'    => $order->get_customer_id(),
-                'name'  => self::get_billing_name( $order ),
-                'email' => $order->get_billing_email(),
-                'phone' => $order->get_billing_phone(),
+                'id'       => $order->get_customer_id(),
+                'username' => ( $order->get_customer_id() ? get_userdata( $order->get_customer_id() )->user_login ?? null : null ),
+                'name'     => self::get_billing_name( $order ),
+                'email'    => $order->get_billing_email(),
+                'phone'    => $order->get_billing_phone(),
             ],
             'billing' => [
                 'address' => $order->get_formatted_billing_address(),

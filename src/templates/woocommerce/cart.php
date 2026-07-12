@@ -69,12 +69,17 @@ foreach ( $cart->get_cart() as $key => $cart_item ) {
         ? wp_get_attachment_image_url( $image_id, 'custom-100' )
         : wc_placeholder_img_src( 'custom-100' );
 
+    // เหมือน get_formatted_meta_data() ของ order item แต่สำหรับ cart item — ดู thank-you.php
+    $meta_flat  = wc_get_formatted_cart_item_data( $cart_item, true );
+    $meta_lines = $meta_flat ? array_values( array_filter( array_map( 'trim', explode( "\n", $meta_flat ) ) ) ) : [];
+
     $items_payload[] = [
         'key'        => $key,
         'name'       => $product->get_name(),
         'image'      => $image_url,
         'quantity'   => $cart_item['quantity'],
         'line_total' => wc_price( $cart_item['line_total'] ),
+        'meta_lines' => array_map( 'wp_strip_all_tags', $meta_lines ),
     ];
 }
 
@@ -101,20 +106,18 @@ $cart_seed = [
   .jn-confirm-btn { font-size: 1rem; padding: 0.875rem; }
 }
 
-/* ── Mobile card tweaks ── */
-@media (max-width: 639px) {
-  .jn-checkout-card { padding: 1rem !important; }
-}
-
 .jn-checkout-wrap { font-family: 'Prompt', sans-serif; }
 
+/* Divider style — no box, just a hairline between sections (was a bordered/shadowed card) */
 .jn-checkout-card {
-  background: #fff;
-  border: 1px solid #f3f4f6;
-  border-radius: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 20px -8px rgba(107,63,160,.10);
-  padding: 1.25rem;
-  margin-bottom: 1rem;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* ── Mobile card tweaks ── */
+@media (max-width: 639px) {
+  .jn-checkout-card { padding-bottom: 1rem; margin-bottom: 1rem; }
 }
 
 /* Qty stepper */
@@ -186,7 +189,7 @@ aside.widget-area { display: none !important; }
 #moderncart-floating-cart { display: none !important; }
 </style>
 
-<div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[240px] pb-8 md:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+<div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[150px] pb-8 md:pt-[220px] lg:pt-[280px] px-0 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
 
   <!-- Full Width Background Container -->
   <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">
@@ -197,7 +200,7 @@ aside.widget-area { display: none !important; }
 
   <main
       x-data="jaoCart(<?= esc_attr( wp_json_encode( $cart_seed ) ) ?>)"
-      class="jn-rise-in relative z-10 w-full max-w-6xl mx-auto px-4 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
+      class="jn-rise-in relative z-10 w-full max-w-6xl mx-auto px-2 py-8 md:px-12 md:py-12 rounded-[2rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)]"
   >
 
   <!-- Items -->
@@ -211,9 +214,13 @@ aside.widget-area { display: none !important; }
         <img :src="item.image" :alt="item.name" style="width:56px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0;">
 
         <div style="flex:1; min-width:0;">
-          <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 0 0.375rem;" x-text="item.name"></p>
+          <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;" x-text="item.name"></p>
 
-          <div style="display:flex; align-items:center; gap:0.5rem;">
+          <template x-for="line in item.meta_lines" :key="line">
+            <p style="font-size:0.75rem; color:#9ca3af; margin:0;" x-text="line"></p>
+          </template>
+
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.375rem;">
             <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, -1)">−</button>
             <span style="min-width:1.5rem; text-align:center; font-size:0.875rem;" x-text="item.quantity"></span>
             <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, 1)">+</button>
@@ -263,7 +270,7 @@ aside.widget-area { display: none !important; }
   </div>
 
   <!-- RTS-only notice -->
-  <div class="jn-checkout-card" style="border-color:#d1fae5; background:#f0fdf4;" x-show="hasRts && !hasNormal">
+  <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;" x-show="hasRts && !hasNormal">
     <div style="display:flex; gap:0.625rem; align-items:flex-start;">
       <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
       <div style="font-size:0.8125rem; color:#065f46; line-height:1.55;">
@@ -280,7 +287,7 @@ aside.widget-area { display: none !important; }
   </div>
 
   <!-- Mixed cart notice -->
-  <div class="jn-checkout-card" style="border-color:#d1fae5; background:#f0fdf4;" x-show="isMixedCart">
+  <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;" x-show="isMixedCart">
     <div style="display:flex; gap:0.625rem; align-items:flex-start;">
       <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
       <div style="font-size:0.8125rem; color:#065f46; line-height:1.55;">

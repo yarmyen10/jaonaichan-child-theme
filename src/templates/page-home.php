@@ -222,7 +222,7 @@ $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 
 	══════════════════════════════════════════════ -->
 	<section class="relative overflow-hidden">
 
-		<div class="mx-auto max-w-6xl px-6 pt-[240px] pb-16 md:pt-[280px] md:pb-28 relative" style="z-index:1;">
+		<div class="mx-auto max-w-6xl px-6 pt-[180px] pb-16 md:pt-[220px] md:pb-28 lg:pt-[280px] relative" style="z-index:1;">
 			<div class="flex flex-col md:flex-row items-center gap-10 md:gap-16">
 
 				<!-- ── Text ── -->
