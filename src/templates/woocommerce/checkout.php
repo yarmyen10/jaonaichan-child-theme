@@ -182,39 +182,98 @@ aside.widget-area { display: none !important; }
           <?= __( 'สรุปคำสั่งซื้อ', $_ENV['TEXTDOMAIN_NAME'] ) ?>
         </h3>
 
-        <div style="margin:0 -0.25rem; padding:0 0.25rem;">
-          <?php
-            $cart_items = $cart->get_cart();
-            $last_item  = end( $cart_items );
-            foreach ( $cart_items as $cart_item ) :
-            $product    = $cart_item['data'];
-            $qty        = $cart_item['quantity'];
-            $image_id   = $product->get_image_id();
-            $image_url  = $image_id
-              ? wp_get_attachment_image_url( $image_id, 'custom-100' )
-              : wc_placeholder_img_src( 'custom-100' );
-            // เหมือน get_formatted_meta_data() ของ order item แต่สำหรับ cart item — ดู thank-you.php
-            $meta_flat  = wc_get_formatted_cart_item_data( $cart_item, true );
-            $meta_lines = $meta_flat ? array_filter( array_map( 'trim', explode( "\n", $meta_flat ) ) ) : [];
-          ?>
-            <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom: <?= $cart_item === $last_item ? 'none' : '1px solid #f3f4f6' ?>;">
+        <?php
+          // คำนวณข้อมูลแต่ละ item ครั้งเดียว ใช้ทั้ง card list (มือถือ/iPad) และตาราง (desktop)
+          $items_view = [];
+          foreach ( $cart->get_cart() as $cart_item ) {
+              $product   = $cart_item['data'];
+              $image_id  = $product->get_image_id();
+              $image_url = $image_id
+                  ? wp_get_attachment_image_url( $image_id, 'custom-100' )
+                  : wc_placeholder_img_src( 'custom-100' );
+              // เหมือน get_formatted_meta_data() ของ order item แต่สำหรับ cart item — ดู thank-you.php
+              $meta_flat  = wc_get_formatted_cart_item_data( $cart_item, true );
+              $meta_lines = $meta_flat ? array_filter( array_map( 'trim', explode( "\n", $meta_flat ) ) ) : [];
+              $qty        = $cart_item['quantity'];
+
+              $items_view[] = [
+                  'name'       => $product->get_name(),
+                  'sku'        => $product->get_sku(),
+                  'image'      => $image_url,
+                  'qty'        => $qty,
+                  'meta_lines' => $meta_lines,
+                  'unit_price' => $qty > 0 ? $cart_item['line_total'] / $qty : 0,
+                  'line_total' => $cart_item['line_total'],
+              ];
+          }
+          $last_index = count( $items_view ) - 1;
+        ?>
+
+        <!-- Card list — iPad / iPhone -->
+        <div class="lg:hidden" style="margin:0 -0.25rem; padding:0 0.25rem;">
+          <?php foreach ( $items_view as $i => $it ) : ?>
+            <div style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom: <?= $i === $last_index ? 'none' : '1px solid #f3f4f6' ?>;">
               <img
-                src="<?= esc_url( $image_url ) ?>"
-                alt="<?= esc_attr( $product->get_name() ) ?>"
-                style="width:56px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0;"
+                src="<?= esc_url( $it['image'] ) ?>"
+                alt="<?= esc_attr( $it['name'] ) ?>"
+                style="width:80px; height:80px; object-fit:cover; border-radius:8px; flex-shrink:0;"
               />
               <div style="flex:1; min-width:0;">
                 <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;">
-                  <?= esc_html( $product->get_name() ) ?>
+                  <?php if ( $it['sku'] ) : ?>
+                    <span style="color:#9ca3af; font-weight:400;"><?= esc_html( $it['sku'] ) ?></span> ·
+                  <?php endif; ?>
+                  <?= esc_html( $it['name'] ) ?>
                 </p>
-                <?php foreach ( $meta_lines as $meta_line ) : ?>
-                  <p style="font-size:0.75rem; color:#9ca3af; margin:0;"><?= wp_strip_all_tags( $meta_line ) ?></p>
-                <?php endforeach; ?>
-                <p style="font-size:0.75rem; color:#6b7280; margin:0;">x<?= $qty ?></p>
+                <?php if ( $it['meta_lines'] ) : ?>
+                  <?php foreach ( $it['meta_lines'] as $meta_line ) : ?>
+                    <p style="font-size:0.85rem; color:#9ca3af; margin:0;"><?= wp_strip_all_tags( $meta_line ) ?></p>
+                  <?php endforeach; ?>
+                <?php else : ?>
+                  <p style="font-size:0.85rem; color:#9ca3af; margin:0;">&nbsp;</p>
+                <?php endif; ?>
+                <p style="font-size:0.85rem; color:#6b7280; margin:0;">
+                  x<?= $it['qty'] ?> · <?= wc_price( $it['unit_price'] ) ?>/ชิ้น
+                </p>
               </div>
               <span style="font-size:0.875rem; font-weight:600; white-space:nowrap;">
-                <?= wc_price( $cart_item['line_total'] ) ?>
+                <?= wc_price( $it['line_total'] ) ?>
               </span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+
+        <!-- Table — Desktop (grid style matching thank-you.php's bill2 item list) -->
+        <div class="hidden lg:block">
+          <div class="grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-wide">
+            <span><?= __( 'สินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+            <span class="text-center"><?= __( 'จำนวน', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+            <span class="text-right"><?= __( 'ราคา/ชิ้น', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+            <span class="text-right"><?= __( 'รวม', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+          </div>
+          <?php foreach ( $items_view as $it ) : ?>
+            <div class="grid grid-cols-[1fr_3rem_6rem_6rem] items-center gap-x-3 py-2 border-b border-gray-50 last:border-0">
+              <div class="flex items-center gap-2">
+                <img
+                  src="<?= esc_url( $it['image'] ) ?>"
+                  alt="<?= esc_attr( $it['name'] ) ?>"
+                  class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200"
+                />
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug">
+                    <?php if ( $it['sku'] ) : ?>
+                      <span class="text-gray-400 font-normal"><?= esc_html( $it['sku'] ) ?></span> ·
+                    <?php endif; ?>
+                    <?= esc_html( $it['name'] ) ?>
+                  </p>
+                  <?php foreach ( $it['meta_lines'] as $meta_line ) : ?>
+                    <p class="text-xs text-gray-400 !mb-0"><?= wp_strip_all_tags( $meta_line ) ?></p>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 text-center !mb-0">x<?= $it['qty'] ?></p>
+              <p class="text-xs text-gray-500 text-right !mb-0"><?= wc_price( $it['unit_price'] ) ?></p>
+              <p class="text-sm font-semibold text-gray-900 text-right !mb-0"><?= wc_price( $it['line_total'] ) ?></p>
             </div>
           <?php endforeach; ?>
         </div>
@@ -240,9 +299,9 @@ aside.widget-area { display: none !important; }
           </div>
           <?php endif; ?>
 
-          <div style="display:flex; justify-content:space-between; font-size:1rem; font-weight:700; padding-top:0.5rem; border-top:1px solid #e5e7eb;">
-            <span><?= __( 'ยอดรวมทั้งหมด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
-            <span><?= wc_price( $cart_total_raw ) ?></span>
+          <div class="flex justify-between items-center px-3 py-2 mt-1 rounded-lg bg-pink-50 border border-pink-100">
+            <span class="text-base font-semibold text-gray-700"><?= __( 'ยอดรวมทั้งหมด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+            <span class="text-base font-bold text-[#FB5FAB]"><?= wc_price( $cart_total_raw ) ?></span>
           </div>
 
         </div>

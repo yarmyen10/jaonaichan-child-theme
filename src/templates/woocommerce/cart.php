@@ -72,13 +72,16 @@ foreach ( $cart->get_cart() as $key => $cart_item ) {
     // เหมือน get_formatted_meta_data() ของ order item แต่สำหรับ cart item — ดู thank-you.php
     $meta_flat  = wc_get_formatted_cart_item_data( $cart_item, true );
     $meta_lines = $meta_flat ? array_values( array_filter( array_map( 'trim', explode( "\n", $meta_flat ) ) ) ) : [];
+    $qty        = $cart_item['quantity'];
 
     $items_payload[] = [
         'key'        => $key,
+        'sku'        => $product->get_sku(),
         'name'       => $product->get_name(),
         'image'      => $image_url,
-        'quantity'   => $cart_item['quantity'],
+        'quantity'   => $qty,
         'line_total' => wc_price( $cart_item['line_total'] ),
+        'unit_price' => wc_price( $qty > 0 ? $cart_item['line_total'] / $qty : 0 ),
         'meta_lines' => array_map( 'wp_strip_all_tags', $meta_lines ),
     ];
 }
@@ -136,7 +139,7 @@ $cart_seed = [
   cursor: pointer;
   transition: background-color .15s;
 }
-.jn-qty-btn:hover:not(:disabled) { background: #f9fafb; }
+.jn-qty-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #d1d5db; }
 .jn-qty-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* Blob float animations */
@@ -209,39 +212,77 @@ aside.widget-area { display: none !important; }
       <?= __( 'ตะกร้าสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>
     </h3>
 
-    <template x-for="item in items" :key="item.key">
-      <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 0; border-bottom:1px solid #f3f4f6;">
-        <img :src="item.image" :alt="item.name" style="width:56px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0;">
+    <!-- Card list — iPad / iPhone -->
+    <div class="lg:hidden">
+      <template x-for="item in items" :key="item.key">
+        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 0; border-bottom:1px solid #f3f4f6;">
+          <img :src="item.image" :alt="item.name" style="width:56px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0;">
 
-        <div style="flex:1; min-width:0;">
-          <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;" x-text="item.name"></p>
+          <div style="flex:1; min-width:0;">
+            <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;" x-text="item.name"></p>
 
-          <template x-for="line in item.meta_lines" :key="line">
-            <p style="font-size:0.75rem; color:#9ca3af; margin:0;" x-text="line"></p>
-          </template>
+            <template x-for="line in item.meta_lines" :key="line">
+              <p style="font-size:0.75rem; color:#9ca3af; margin:0;" x-text="line"></p>
+            </template>
 
-          <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.375rem;">
-            <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, -1)">−</button>
-            <span style="min-width:1.5rem; text-align:center; font-size:0.875rem;" x-text="item.quantity"></span>
-            <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, 1)">+</button>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.375rem;">
+              <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, -1)">−</button>
+              <span style="min-width:1.5rem; text-align:center; font-size:0.875rem;" x-text="item.quantity"></span>
+              <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, 1)">+</button>
 
-            <button
-              type="button"
-              title="<?= esc_attr__( 'ลบสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
-              :disabled="updatingKey !== null"
-              @click="removeItem(item.key)"
-              style="margin-left:0.5rem; color:#9ca3af; background:none; border:none; cursor:pointer; padding:4px;"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
-              </svg>
-            </button>
+              <button
+                type="button"
+                title="<?= esc_attr__( 'ลบสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
+                :disabled="updatingKey !== null"
+                @click="removeItem(item.key)"
+                style="margin-left:0.5rem; color:#9ca3af; background:none; border:none; cursor:pointer; padding:4px;"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
 
-        <span style="font-size:0.875rem; font-weight:600; white-space:nowrap;" x-html="item.line_total"></span>
+          <span style="font-size:0.875rem; font-weight:600; white-space:nowrap;" x-html="item.line_total"></span>
+        </div>
+      </template>
+    </div>
+
+    <!-- Table — Desktop (grid style matching thank-you.php's bill2 item list) -->
+    <div class="hidden lg:block">
+      <div class="grid grid-cols-[1fr_8rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-wide">
+        <span><?= __( 'สินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+        <span class="text-center"><?= __( 'จำนวน', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+        <span class="text-right"><?= __( 'ราคา/ชิ้น', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+        <span class="text-right"><?= __( 'รวม', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
       </div>
-    </template>
+
+      <template x-for="item in items" :key="item.key">
+        <div class="grid grid-cols-[1fr_8rem_6rem_6rem] items-center gap-x-3 py-2 border-b border-gray-50 last:border-0">
+          <div class="flex items-center gap-2">
+            <img :src="item.image" :alt="item.name" class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug">
+                <template x-if="item.sku"><span class="text-gray-400 font-normal" x-text="item.sku + ' · '"></span></template><span x-text="item.name"></span>
+              </p>
+              <template x-for="line in item.meta_lines" :key="line">
+                <p class="text-xs text-gray-400 !mb-0" x-text="line"></p>
+              </template>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-1.5">
+            <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, -1)">−</button>
+            <span style="min-width:1.25rem; text-align:center; font-size:0.8125rem;" x-text="item.quantity"></span>
+            <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, 1)">+</button>
+          </div>
+
+          <p class="text-xs text-gray-500 text-right !mb-0" x-html="item.unit_price"></p>
+          <p class="text-sm font-semibold text-gray-900 text-right !mb-0" x-html="item.line_total"></p>
+        </div>
+      </template>
+    </div>
 
     <!-- totals -->
     <div style="border-top:1px solid #f3f4f6; margin-top:0.5rem; padding-top:0.75rem; display:flex; flex-direction:column; gap:0.375rem;">
@@ -261,9 +302,9 @@ aside.widget-area { display: none !important; }
         <span x-html="totals.discount"></span>
       </div>
 
-      <div style="display:flex; justify-content:space-between; font-size:1rem; font-weight:700; padding-top:0.5rem; border-top:1px solid #e5e7eb;">
-        <span><?= __( 'ยอดรวมทั้งหมด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
-        <span x-html="totals.total"></span>
+      <div class="flex justify-between items-center px-3 py-2 mt-1 rounded-lg bg-pink-50 border border-pink-100">
+        <span class="text-base font-semibold text-gray-700"><?= __( 'ยอดรวมทั้งหมด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
+        <span class="text-base font-bold text-[#FB5FAB]" x-html="totals.total"></span>
       </div>
 
     </div>
@@ -377,6 +418,7 @@ function jaoCart(seed) {
                     if (item) {
                         item.quantity   = d.item.quantity;
                         item.line_total = d.item.line_total;
+                        item.unit_price = d.item.unit_price;
                     }
                 }
                 this.totals      = d.totals;

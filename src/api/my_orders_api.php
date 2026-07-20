@@ -62,7 +62,27 @@ class My_Orders_API {
             'return'   => 'ids',
         ]));
 
-        $total_spent = (float) wc_get_customer_total_spent( $user_id );
+        // Count from bill-1 paid onwards; bill-1-only statuses use bill1_amount, rest use order total.
+        $bill1_only_statuses = [ 'paid-1', 'pending-payment-2', 'wait-verify-2' ];
+        $paid_statuses = array_merge( $bill1_only_statuses, [
+            'paid-2', 'packed', 'wait-tracking', 'tracked', 'wait-shipping', 'shipped',
+            'processing', 'completed',
+        ]);
+        $paid_orders = wc_get_orders([
+            'customer' => $user_id,
+            'status'   => $paid_statuses,
+            'type'     => 'shop_order',
+            'limit'    => -1,
+        ]);
+        $total_spent = 0.0;
+        foreach ( $paid_orders as $o ) {
+            if ( in_array( $o->get_status(), $bill1_only_statuses, true ) ) {
+                $b1 = (float) ( $o->get_meta( '_bill1_amount' ) ?: 0 );
+                $total_spent += $b1 > 0 ? $b1 : (float) $o->get_total();
+            } else {
+                $total_spent += (float) $o->get_total();
+            }
+        }
 
         $recent = wc_get_orders([
             'customer' => $user_id,

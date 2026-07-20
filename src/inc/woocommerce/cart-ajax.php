@@ -44,9 +44,11 @@ function jn_update_cart_item(): void {
     $removed  = ! isset( $updated[ $key ] );
     $item_out = null;
     if ( ! $removed ) {
+        $new_qty  = $updated[ $key ]['quantity'];
         $item_out = [
-            'quantity'   => $updated[ $key ]['quantity'],
+            'quantity'   => $new_qty,
             'line_total' => wc_price( $updated[ $key ]['line_total'] ),
+            'unit_price' => wc_price( $new_qty > 0 ? $updated[ $key ]['line_total'] / $new_qty : 0 ),
         ];
     }
 

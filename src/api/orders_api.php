@@ -228,6 +228,20 @@ class Orders_API {
             ],
         ]);
 
+        // PATCH /wp-json/jaonaichan/v1/orders/{id}/items
+        register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/items', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'update_order_items' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+            'args'                => [
+                'items' => [
+                    'required'    => true,
+                    'type'        => 'array',
+                    'description' => 'Array of order line items to replace',
+                ],
+            ],
+        ]);
+
         // DELETE /wp-json/jaonaichan/v1/bill2-batch/{batch_id}
         register_rest_route( 'jaonaichan/v1', '/bill2-batch/(?P<batch_id>\d+)', [
             'methods'             => 'DELETE',
@@ -1025,7 +1039,7 @@ class Orders_API {
             // china_shipping / import_fee — per-product breakdown, same shape as unit_prices.
             // Stored this way (instead of one summed number) so we can see which product
             // contributed how much to an order's shipping/import cost.
-            foreach ( [ 'china_shipping', 'import_fee' ] as $param ) {
+            foreach ( [ 'china_shipping', 'import_fee', 'extra_shipping' ] as $param ) {
                 $raw = $request->get_param( $param );
                 if ( is_array( $raw ) ) {
                     $clean = [];
@@ -1045,14 +1059,16 @@ class Orders_API {
         $order->save();
 
         // sync WC order status ตาม bill status ที่เปลี่ยน
+        // NOTE: ไม่มี case b1='paid' && b2='pending'/'draft' — admin re-saving bill2 prices
+        // ไม่ควร rollback WC status ไป paid-1 เพราะ frontend จัดการ paid-1→pending-payment-2
+        // แยกผ่าน patchOrderStatus อยู่แล้ว และการ rollback จะ trigger bill-meta.php hook
+        // ที่ลบ bill2 meta ทั้งหมดทิ้ง
         if ( isset( $updated['status'] ) ) {
             $b1 = (string) $order->get_meta( '_bill1_status', true );
             $b2 = (string) $order->get_meta( '_bill2_status', true );
 
             if ( $b1 === 'paid' && $b2 === 'paid' ) {
                 $order->update_status( 'paid-2', 'ชำระครบทั้ง 2 บิลแล้ว' );
-            } elseif ( $b1 === 'paid' ) {
-                $order->update_status( 'paid-1', 'ชำระบิลแรกแล้ว' );
             } elseif ( $b2 === 'submitted' ) {
                 $order->update_status( 'wait-verify-2', 'รอตรวจสลิปบิลที่ 2' );
             } elseif ( $b1 === 'submitted' ) {
@@ -1085,16 +1101,71 @@ class Orders_API {
         ], 200);
     }
 
+    public static function update_order_items( WP_REST_Request $request ): WP_REST_Response {
+        $order = self::get_order_or_fail( $request['id'] );
+        if ( $order instanceof WP_REST_Response ) return $order;
+
+        $items_data = $request->get_param('items');
+        if ( ! is_array( $items_data ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'Items must be an array' ], 400);
+        }
+
+        // Build set of item_ids to keep
+        $keep_ids = [];
+        foreach ( $items_data as $d ) {
+            if ( ! empty( $d['item_id'] ) ) {
+                $keep_ids[] = (int) $d['item_id'];
+            }
+        }
+
+        // Remove items not present in the request
+        foreach ( $order->get_items() as $item_id => $item ) {
+            if ( ! in_array( (int) $item_id, $keep_ids, true ) ) {
+                $order->remove_item( $item_id );
+            }
+        }
+
+        // Update existing or add new items
+        foreach ( $items_data as $d ) {
+            $qty        = max( 1, (int) ( $d['quantity'] ?? 1 ) );
+            $unit_price = (float) ( $d['unit_price'] ?? 0 );
+            $subtotal   = $unit_price * $qty;
+
+            if ( ! empty( $d['item_id'] ) ) {
+                $item = $order->get_item( (int) $d['item_id'] );
+                if ( $item ) {
+                    $item->set_quantity( $qty );
+                    $item->set_subtotal( $subtotal );
+                    $item->set_total( $subtotal );
+                    $item->save();
+                }
+            } elseif ( ! empty( $d['name'] ) ) {
+                $new_item = new WC_Order_Item_Product();
+                $new_item->set_name( sanitize_text_field( $d['name'] ) );
+                $new_item->set_quantity( $qty );
+                $new_item->set_subtotal( $subtotal );
+                $new_item->set_total( $subtotal );
+                $order->add_item( $new_item );
+            }
+        }
+
+        $order->calculate_totals();
+        $order->save();
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'อัปเดตรายการสินค้าแล้ว',
+            'data'    => self::format_order( $order, true ),
+        ], 200);
+    }
+
     // =========================================================================
     // Format helpers
     // =========================================================================
 
     private static function format_order_item( WC_Order_Item $item ): ?array {
         /** @var WC_Order_Item_Product $item */
-        $product = $item->get_product();
-        if ( ! $product ) return null;
-
-        $image_id   = $product->get_image_id();
+        $product    = $item->get_product();
         $qty        = $item->get_quantity();
         $subtotal   = (float) $item->get_subtotal();
         $total      = (float) $item->get_total();
@@ -1107,6 +1178,38 @@ class Orders_API {
                 'value' => $meta->display_value,
             ], $item->get_formatted_meta_data('') );
         }
+
+        if ( ! $product ) {
+            // Manual item (no product association)
+            return [
+                'item_id'    => $item->get_id(),
+                'name'       => $item->get_name(),
+                'quantity'   => $qty,
+                'unit_price' => $unit_price,
+                'subtotal'   => $subtotal,
+                'total'      => $total,
+                'discount'   => 0.0,
+                'variation'  => [],
+                'product'    => [
+                    'id'            => 0,
+                    'type'          => 'simple',
+                    'name'          => $item->get_name(),
+                    'sku'           => '',
+                    'price'         => $unit_price,
+                    'regular_price' => $unit_price,
+                    'sale_price'    => '',
+                    'stock'         => null,
+                    'stock_status'  => 'instock',
+                    'categories'    => [],
+                    'tags'          => [],
+                    'attributes'    => [],
+                    'permalink'     => '',
+                    'image'         => [ 'thumbnail' => null, 'medium' => null, 'full' => null ],
+                ],
+            ];
+        }
+
+        $image_id = $product->get_image_id();
 
         return [
             'item_id'    => $item->get_id(),
@@ -1195,16 +1298,18 @@ class Orders_API {
                 'paid_at'        => $order->get_meta( '_bill2_paid_at' ),
                 'unit_prices'    => self::get_bill2_unit_prices( $order ),
                 'unit_prices_id' => $order->get_meta( '_bill2_unit_prices_id' ) ?: null,
-                'china_shipping'           => array_sum( self::get_bill2_breakdown( $order, 'china_shipping' ) ),
-                'import_fee'               => array_sum( self::get_bill2_breakdown( $order, 'import_fee' ) ),
+                'china_shipping'            => array_sum( self::get_bill2_breakdown( $order, 'china_shipping' ) ),
+                'import_fee'                => array_sum( self::get_bill2_breakdown( $order, 'import_fee' ) ),
                 'china_shipping_by_product' => self::get_bill2_breakdown( $order, 'china_shipping' ),
                 'import_fee_by_product'     => self::get_bill2_breakdown( $order, 'import_fee' ),
-                'local_shipping' => (float) $order->get_meta( '_bill2_local_shipping' ),
+                'extra_shipping_by_product' => self::get_bill2_breakdown( $order, 'extra_shipping' ),
+                'local_shipping'            => (float) $order->get_meta( '_bill2_local_shipping' ),
             ],
             'invoice_items'        => self::get_custom_invoice_items( $order ),
             'is_rts'               => $order->get_meta( '_is_rts_order', true ) === '1',
             'linked_rts_order_id'  => (int) $order->get_meta( '_linked_rts_order_id', true ) ?: null,
             'parent_order_id'      => (int) $order->get_meta( '_parent_order_id', true ) ?: null,
+            'lot_id'               => (int) $order->get_meta( '_lot_id', true ) ?: null,
         ];
 
         if ( $with_items ) {

@@ -107,10 +107,9 @@ get_header();
       $bill2_total           = 0.0;
       if ( $order ) {
           foreach ( $order->get_items() as $item ) {
-              $p   = $item->get_product();
-              if ( ! $p ) continue;
-              $pid  = (string) $p->get_id();
-              $unit = isset( $bill2_unit_prices[$pid] ) ? (float) $bill2_unit_prices[$pid] : 0.0;
+              if ( ! $item->get_product() ) continue;
+              $iid  = (string) $item->get_id();
+              $unit = isset( $bill2_unit_prices[$iid] ) ? (float) $bill2_unit_prices[$iid] : 0.0;
               $bill2_total += $unit * $item->get_quantity();
           }
       }
@@ -308,7 +307,7 @@ get_header();
         @click="switchTab(2)"
         :class="[
           activeTab === 2 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50',
-          !bill1Paid ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+          (!bill1Paid || !bill2HasMeta) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
         ]"
         class="flex-1 flex flex-col items-center justify-center gap-1 py-3 px-2 text-center transition-all duration-300 rounded-xl"
       >
@@ -388,6 +387,13 @@ get_header();
             <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
             <?php if ( $order ) : ?>
               <div class="product-scroll flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80 pr-3">
+                <!-- header row -->
+                <div class="hidden sm:grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-wide">
+                  <span>สินค้า</span>
+                  <span class="text-center">จำนวน</span>
+                  <span class="text-right">ราคา/ชิ้น</span>
+                  <span class="text-right">รวม</span>
+                </div>
                 <?php foreach ( $order->get_items() as $item ) :
                   $product = $item->get_product();
                   // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
@@ -397,24 +403,49 @@ get_header();
                   if ( ! $img_url ) {
                       $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
                   }
+
+                  $qty1        = $item->get_quantity();
+                  $line_total1 = (float) $item->get_total();
+                  $unit1       = $qty1 > 0 ? $line_total1 / $qty1 : 0.0;
                 ?>
-                  <div class="flex items-start gap-3">
+                  <!-- mobile: flex; sm+: 4-col grid -->
+                  <div class="sm:hidden flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
                     <?php if ( $img_url ) : ?>
                         <img src="<?= esc_url($img_url) ?>"
                             class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
                     <?php endif; ?>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-900 !mb-0.5">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 !mb-0.5 leading-snug">
                             <?= esc_html( $item->get_name() ) ?>
                         </p>
                         <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
                         <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
                         <?php endforeach; ?>
-                        <p class="text-xs text-gray-400 !mb-0">x<?= $item->get_quantity() ?></p>
+                        <p class="text-xs text-gray-400 !mb-0">x<?= $qty1 ?></p>
+                        <p class="text-xs text-gray-500 !mb-0 mt-0.5">
+                          ราคา/ชิ้น ฿<?= number_format( $unit1, 2 ) ?>
+                          <span class="ml-2 font-semibold text-gray-800">รวม ฿<?= number_format( $line_total1, 2 ) ?></span>
+                        </p>
                     </div>
-                    <p class="text-sm font-medium text-gray-900 shrink-0">
-                        ฿<?= number_format( $item->get_total(), 2 ) ?>
-                    </p>
+                  </div>
+                  <div class="hidden sm:grid sm:grid-cols-[1fr_3rem_6rem_6rem] items-center gap-x-3 py-2 border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-2">
+                      <?php if ( $img_url ) : ?>
+                          <img src="<?= esc_url($img_url) ?>"
+                              class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
+                      <?php endif; ?>
+                      <div class="min-w-0">
+                          <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug">
+                              <?= esc_html( $item->get_name() ) ?>
+                          </p>
+                          <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
+                          <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
+                          <?php endforeach; ?>
+                      </div>
+                    </div>
+                    <p class="text-xs text-gray-500 text-center !mb-0">x<?= $qty1 ?></p>
+                    <p class="text-xs text-gray-500 text-right !mb-0">฿<?= number_format( $unit1, 2 ) ?></p>
+                    <p class="text-sm font-semibold text-gray-900 text-right !mb-0">฿<?= number_format( $line_total1, 2 ) ?></p>
                   </div>
                 <?php endforeach; ?>
               </div>
@@ -662,10 +693,10 @@ get_header();
                         $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
                     }
 
-                    $pid2        = (string) $product->get_id();
-                    $unit2       = isset( $bill2_unit_prices[$pid2] ) ? (float) $bill2_unit_prices[$pid2] : null;
-                    $china_ship2 = isset( $bill2_china_shipping[$pid2] ) ? (float) $bill2_china_shipping[$pid2] : null;
-                    $import_fee2 = isset( $bill2_import_fee[$pid2] )     ? (float) $bill2_import_fee[$pid2]     : null;
+                    $iid2        = (string) $item->get_id();
+                    $unit2       = isset( $bill2_unit_prices[$iid2] ) ? (float) $bill2_unit_prices[$iid2] : null;
+                    $china_ship2 = isset( $bill2_china_shipping[$iid2] ) ? (float) $bill2_china_shipping[$iid2] : null;
+                    $import_fee2 = isset( $bill2_import_fee[$iid2] )     ? (float) $bill2_import_fee[$iid2]     : null;
                     $line_total2 = $unit2 !== null ? $unit2 * $item->get_quantity() : (float) $item->get_total();
                     $row_total2  = $line_total2 + ($china_ship2 ?? 0) + ($import_fee2 ?? 0);
                   ?>
@@ -1018,7 +1049,7 @@ function billTabs() {
     },
 
     switchTab(n) {
-      if (n === 2 && !this.bill1Paid) return;
+      if (n === 2 && (!this.bill1Paid || !this.bill2HasMeta)) return;
       this.activeTab = n;
     },
     handleFile(e, bill) {
