@@ -49,6 +49,26 @@ add_filter( 'woocommerce_cart_shipping_packages', function ( array $packages ): 
     return $packages;
 } );
 
+add_filter( 'woocommerce_package_rates', function ( array $rates, array $package ): array {
+    $min = (float) get_option( 'jn_rts_free_min', '0' );
+    if ( $min <= 0 ) return $rates;
+
+    $subtotal = 0.0;
+    foreach ( $package['contents'] as $item ) {
+        if ( jn_product_is_rts( (int) $item['product_id'] ) ) {
+            $subtotal += (float) $item['line_total'];
+        }
+    }
+
+    if ( $subtotal >= $min ) {
+        foreach ( $rates as &$rate ) {
+            $rate->cost   = 0;
+            $rate->taxes  = [];
+        }
+    }
+    return $rates;
+}, 10, 2 );
+
 add_action( 'woocommerce_checkout_order_created', function ( WC_Order $order ) {
     // Guard: skip orders we created programmatically to avoid re-entry
     if ( $order->get_meta( '_is_rts_order' ) !== '' || $order->get_meta( '_parent_order_id' ) !== '' ) {
@@ -129,6 +149,15 @@ add_action( 'woocommerce_checkout_order_created', function ( WC_Order $order ) {
     // Remove shipping from main order (bill 2 handles its own shipping later)
     foreach ( $order->get_items( 'shipping' ) as $shipping_item ) {
         $order->remove_item( $shipping_item->get_id() );
+    }
+
+    // Zero shipping if RTS subtotal meets free-shipping threshold
+    $free_min = (float) get_option( 'jn_rts_free_min', '0' );
+    if ( $free_min > 0 ) {
+        $rts_subtotal = array_sum( array_map( fn( $i ) => (float) $i->get_total(), $rts_items ) );
+        if ( $rts_subtotal >= $free_min ) {
+            $rts_ship_cost = 0.0;
+        }
     }
 
     // Add RTS shipping to RTS order

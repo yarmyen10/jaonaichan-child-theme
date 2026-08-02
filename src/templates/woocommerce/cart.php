@@ -130,16 +130,16 @@ $cart_seed = [
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #fce7f3;
   border-radius: 8px;
   background: #fff;
-  color: #374151;
+  color: #FB5FAB;
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
-  transition: background-color .15s;
+  transition: background-color .15s, border-color .15s;
 }
-.jn-qty-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #d1d5db; }
+.jn-qty-btn:hover:not(:disabled) { background: #fdf2f8; border-color: #FB5FAB; }
 .jn-qty-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* Blob float animations */
@@ -235,7 +235,7 @@ aside.widget-area { display: none !important; }
                 title="<?= esc_attr__( 'ลบสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
                 :disabled="updatingKey !== null"
                 @click="removeItem(item.key)"
-                style="margin-left:0.5rem; color:#9ca3af; background:none; border:none; cursor:pointer; padding:4px;"
+                style="margin-left:0.5rem; color:#d1d5db; background:none; border:none; cursor:pointer; padding:4px; transition:color .15s;" onmouseover="this.style.color='#FB5FAB'" onmouseout="this.style.color='#d1d5db'"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
@@ -310,6 +310,7 @@ aside.widget-area { display: none !important; }
     </div>
   </div>
 
+  <?php /*
   <!-- RTS-only notice -->
   <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;" x-show="hasRts && !hasNormal">
     <div style="display:flex; gap:0.625rem; align-items:flex-start;">
@@ -326,7 +327,9 @@ aside.widget-area { display: none !important; }
       </div>
     </div>
   </div>
+  */ ?>
 
+  <?php /*
   <!-- Mixed cart notice -->
   <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;" x-show="isMixedCart">
     <div style="display:flex; gap:0.625rem; align-items:flex-start;">
@@ -346,6 +349,7 @@ aside.widget-area { display: none !important; }
       </div>
     </div>
   </div>
+  */ ?>
 
   <!-- Empty state -->
   <div class="jn-checkout-card" style="text-align:center; padding:3rem 1.5rem;" x-show="items.length === 0">

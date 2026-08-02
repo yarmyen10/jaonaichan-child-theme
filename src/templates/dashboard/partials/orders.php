@@ -104,9 +104,9 @@ $orders_url = esc_js( rest_url( 'bigboss-auth/v1/my-orders' ) );
                                 <span class="text-sm font-bold text-gray-800 dark:text-white" x-text="'คำสั่งซื้อ #' + order.number"></span>
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
                                       :style="statusBadge(order.status)"
-                                      x-text="statusLabel(order.status)">
+                                      x-text="(['pending-payment-2','wait-verify-2'].includes(order.status) && order.bill2?.status === 'draft') ? 'อยู่ระหว่างดำเนินการ...' : statusLabel(order.status)">
                                 </span>
-                                <template x-if="order.bill2?.status && ['pending-payment-2','wait-verify-2'].includes(order.status)">
+                                <template x-if="order.bill2?.status && order.bill2.status !== 'draft' && ['pending-payment-2','wait-verify-2'].includes(order.status)">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                                           :style="bill2Badge(order.bill2.status)"
                                           x-text="bill2Label(order.bill2.status)">

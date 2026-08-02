@@ -1150,7 +1150,10 @@ function billTabs() {
               confirmButtonColor: '#111827',
               cancelButtonColor: '#6b7280',
           });
-          if (!confirmAddr.isConfirmed) return;
+          if (!confirmAddr.isConfirmed) {
+              if (confirmAddr.dismiss === Swal.DismissReason.cancel) this.openShippingModal();
+              return;
+          }
       }
 
       try {
@@ -1247,7 +1250,10 @@ function billTabs() {
           confirmButtonColor: '#111827',
           cancelButtonColor: '#6b7280',
       });
-      if (!confirmAddr.isConfirmed) return;
+      if (!confirmAddr.isConfirmed) {
+          if (confirmAddr.dismiss === Swal.DismissReason.cancel) this.openShippingModal();
+          return;
+      }
 
       try {
         this.loading = true;

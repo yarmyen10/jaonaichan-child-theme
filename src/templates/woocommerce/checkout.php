@@ -327,7 +327,7 @@ aside.widget-area { display: none !important; }
       }
       ?>
 
-      <?php if ( $has_rts && ! $has_normal ) : ?>
+      <?php /* if ( $has_rts && ! $has_normal ) : ?>
       <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;">
         <div style="display:flex; gap:0.625rem; align-items:flex-start;">
           <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
@@ -343,9 +343,9 @@ aside.widget-area { display: none !important; }
           </div>
         </div>
       </div>
-      <?php endif; ?>
+      <?php endif; */ ?>
 
-      <?php if ( $is_mixed_cart ) : ?>
+      <?php /*  if ( $is_mixed_cart ) : ?>
       <div class="jn-checkout-card" style="background:#f0fdf4; border-left:3px solid #34d399; padding:0.875rem 1rem;">
         <div style="display:flex; gap:0.625rem; align-items:flex-start;">
           <span style="font-size:1.1rem; line-height:1.4; flex-shrink:0;">⚡</span>
@@ -364,7 +364,7 @@ aside.widget-area { display: none !important; }
           </div>
         </div>
       </div>
-      <?php endif; ?>
+      <?php endif; */ ?>
 
     <!-- Validation / WC error messages -->
     <div

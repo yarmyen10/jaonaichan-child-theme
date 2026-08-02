@@ -23,7 +23,8 @@ class RTS_Shipping_Settings_API {
                 'callback'            => [ self::class, 'update_settings' ],
                 'permission_callback' => [ self::class, 'check_permission' ],
                 'args'                => [
-                    'cost' => [ 'required' => true, 'type' => 'number' ],
+                    'cost'       => [ 'required' => true, 'type' => 'number' ],
+                    'min_amount' => [ 'required' => false, 'type' => 'number', 'default' => 0 ],
                 ],
             ],
         ] );
@@ -39,12 +40,13 @@ class RTS_Shipping_Settings_API {
                             'method_title' => $method->get_title(),
                             'cost'         => (float) $method->cost,
                             'instance_id'  => $method->instance_id,
+                            'min_amount'   => (float) get_option( 'jn_rts_free_min', '0' ),
                         ];
                     }
                 }
             }
         }
-        return [ 'zone_name' => 'rts', 'method_title' => '', 'cost' => 0.0, 'instance_id' => null ];
+        return [ 'zone_name' => 'rts', 'method_title' => '', 'cost' => 0.0, 'instance_id' => null, 'min_amount' => (float) get_option( 'jn_rts_free_min', '0' ) ];
     }
 
     public static function update_settings( WP_REST_Request $req ): array|WP_Error {
@@ -55,11 +57,13 @@ class RTS_Shipping_Settings_API {
                     if ( $method->is_enabled() ) {
                         $key              = 'woocommerce_' . $method->id . '_' . $method->instance_id . '_settings';
                         $settings         = get_option( $key, [] );
+                        $min_amount = (float) $req->get_param( 'min_amount' );
                         $settings['cost'] = (string) $cost;
                         update_option( $key, $settings );
                         update_option( 'jn_rts_shipping_cost', (string) $cost );
+                        update_option( 'jn_rts_free_min', (string) $min_amount );
                         WC_Cache_Helper::get_transient_version( 'shipping', true );
-                        return [ 'success' => true, 'cost' => $cost ];
+                        return [ 'success' => true, 'cost' => $cost, 'min_amount' => $min_amount ];
                     }
                 }
             }

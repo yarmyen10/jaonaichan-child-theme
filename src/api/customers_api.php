@@ -90,6 +90,12 @@ class Customers_API {
                 'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 20, 'minimum' => 1, 'maximum' => 100 ],
             ],
         ]);
+
+        register_rest_route( 'jaonaichan/v1', '/customers/import', [
+            'methods'             => 'POST',
+            'callback'            => [ self::class, 'import_customers' ],
+            'permission_callback' => [ self::class, 'check_permission' ],
+        ]);
     }
 
     // =========================================================================
@@ -195,6 +201,77 @@ class Customers_API {
             'message' => 'สร้างลูกค้าใหม่สำเร็จ',
             'data'    => [ 'id' => $customer_id, 'username' => $username, 'name' => $customer_name ],
         ], 201);
+    }
+
+    // =========================================================================
+    // POST /customers/import
+    // =========================================================================
+
+    public static function import_customers( WP_REST_Request $request ): WP_REST_Response {
+        $rows = $request->get_json_params()['customers'] ?? null;
+
+        if ( ! is_array( $rows ) || empty( $rows ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่มีข้อมูลนำเข้า' ], 400);
+        }
+
+        $created = 0;
+        $skipped = [];
+
+        foreach ( $rows as $i => $row ) {
+            $username      = sanitize_user( $row['username'] ?? '' );
+            $customer_name = sanitize_text_field( $row['customer_name'] ?? '' );
+            $phone         = preg_replace( '/\D/', '', $row['phone'] ?? '' );
+            $email         = ! empty( $row['email'] ) ? sanitize_email( $row['email'] ) : '';
+            $status        = ( $row['status'] ?? 'active' ) === 'inactive' ? 'inactive' : 'active';
+
+            $reason = null;
+            if ( empty( $username ) || empty( $customer_name ) ) {
+                $reason = 'ข้อมูลไม่ครบ (username/ชื่อ)';
+            } elseif ( empty( $phone ) ) {
+                $reason = 'เบอร์โทรศัพท์ไม่ถูกต้อง';
+            } elseif ( username_exists( $username ) ) {
+                $reason = 'Username นี้มีอยู่ในระบบแล้ว';
+            } else {
+                $existing_phone = get_users([
+                    'meta_key'   => 'billing_phone',
+                    'meta_value' => $phone,
+                    'number'     => 1,
+                    'fields'     => 'ID',
+                ]);
+                if ( ! empty( $existing_phone ) ) {
+                    $reason = 'เบอร์โทรนี้มีอยู่ในระบบแล้ว';
+                } elseif ( $email !== '' && ( ! is_email( $email ) || email_exists( $email ) ) ) {
+                    $reason = 'อีเมลไม่ถูกต้องหรือถูกใช้แล้ว';
+                }
+            }
+
+            if ( $reason !== null ) {
+                $skipped[] = [ 'row' => $i + 1, 'username' => $row['username'] ?? '', 'reason' => $reason ];
+                continue;
+            }
+
+            $customer_id = wc_create_new_customer(
+                $email !== '' ? $email : strtolower( $username ) . '@jaonaichan.local',
+                $username,
+                $phone
+            );
+
+            if ( is_wp_error( $customer_id ) ) {
+                $skipped[] = [ 'row' => $i + 1, 'username' => $username, 'reason' => $customer_id->get_error_message() ];
+                continue;
+            }
+
+            wp_update_user([ 'ID' => $customer_id, 'display_name' => $customer_name ]);
+            update_user_meta( $customer_id, 'billing_phone', $phone );
+            update_user_meta( $customer_id, 'jnc_account_status', $status );
+            $created++;
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => "นำเข้าสำเร็จ {$created} รายการ" . ( count( $skipped ) ? ', ข้าม ' . count( $skipped ) . ' รายการ' : '' ),
+            'data'    => [ 'created' => $created, 'skipped' => $skipped ],
+        ], 200);
     }
 
     // =========================================================================

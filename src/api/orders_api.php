@@ -89,7 +89,9 @@ class Orders_API {
 
         // ✅ wildcard routes ลงหลัง
         // GET /wp-json/jaonaichan/v1/orders?page=1&per_page=10&status=...
-        //   &create_date=dd/mm/yyyy   (exact day)
+        //   &create_date=dd/mm/yyyy          (exact day)
+        //   &create_date_after=dd/mm/yyyy    (range start — takes priority over create_date)
+        //   &create_date_before=dd/mm/yyyy   (range end)
         //   &create_date_m=mm         (month only)
         //   &create_date_y=yyyy       (year only — combinable with create_date_m)
         register_rest_route( 'jaonaichan/v1', '/orders', [
@@ -106,6 +108,20 @@ class Orders_API {
                     'sanitize_callback' => 'sanitize_text_field',
                     'validate_callback' => fn( $v ) => (bool) preg_match( '/^\d{1,2}\/\d{1,2}\/\d{4}$/', $v ),
                     'description'       => 'dd/mm/yyyy — กรองตามวันที่สร้าง (เฉพาะวัน)',
+                ],
+                'create_date_after' => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => fn( $v ) => (bool) preg_match( '/^\d{1,2}\/\d{1,2}\/\d{4}$/', $v ),
+                    'description'       => 'dd/mm/yyyy — ช่วงเริ่มต้น (inclusive)',
+                ],
+                'create_date_before' => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => fn( $v ) => (bool) preg_match( '/^\d{1,2}\/\d{1,2}\/\d{4}$/', $v ),
+                    'description'       => 'dd/mm/yyyy — ช่วงสิ้นสุด (inclusive)',
                 ],
                 'create_date_m' => [
                     'required'    => false,
@@ -747,8 +763,17 @@ class Orders_API {
     }
 
     private static function build_date_query( WP_REST_Request $request ): array {
-        $create_date = $request->get_param('create_date');
+        $after  = $request->get_param('create_date_after');
+        $before = $request->get_param('create_date_before');
 
+        if ( $after || $before ) {
+            $clause = [ 'inclusive' => true ];
+            if ( $after )  { [ $d, $m, $y ] = explode( '/', $after );  $clause['after']  = "$y-$m-$d 00:00:00"; }
+            if ( $before ) { [ $d, $m, $y ] = explode( '/', $before ); $clause['before'] = "$y-$m-$d 23:59:59"; }
+            return [ $clause ];
+        }
+
+        $create_date = $request->get_param('create_date');
         if ( $create_date ) {
             [ $d, $m, $y ] = explode( '/', $create_date );
             return [ [ 'year' => (int) $y, 'month' => (int) $m, 'day' => (int) $d ] ];

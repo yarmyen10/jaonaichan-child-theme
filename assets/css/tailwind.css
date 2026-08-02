@@ -2253,11 +2253,6 @@
       display: none;
     }
   }
-  .lg\:table {
-    @media (width >= 64rem) {
-      display: table;
-    }
-  }
   .lg\:translate-x-0 {
     @media (width >= 64rem) {
       --tw-translate-x: calc(var(--spacing) * 0);
