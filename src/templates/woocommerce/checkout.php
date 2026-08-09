@@ -141,6 +141,9 @@ aside.widget-area { display: none !important; }
 .site-content > .ast-container {
   display: block !important;
 }
+
+.jn-btn-primary { background-color: #FB5FAB; color: #fff !important; }
+.jn-btn-primary:hover:not(:disabled) { background-color: #e8439a; }
 </style>
 
 <div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[150px] pb-8 md:pt-[220px] lg:pt-[280px] px-0 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
@@ -386,7 +389,7 @@ aside.widget-area { display: none !important; }
       <button
         type="submit"
         :disabled="loading || <?= empty( $gateways ) ? 'true' : 'false' ?>"
-        class="jn-confirm-btn w-full flex items-center justify-center gap-2 bg-primary hover:bg-[#5e9a28] text-white rounded-xl font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        class="jn-confirm-btn w-full flex items-center justify-center gap-2 rounded-xl font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed jn-btn-primary"
       >
         <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>

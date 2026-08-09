@@ -190,6 +190,11 @@ aside.widget-area { display: none !important; }
 /* ModernCart floating button doesn't listen for wc_fragment_refresh — stays stale
    after our ajax quantity updates. This page already shows live totals, hide it. */
 #moderncart-floating-cart { display: none !important; }
+
+.jn-btn-primary { background-color: #FB5FAB; color: #fff !important; }
+.jn-btn-primary:hover { background-color: #e8439a; color: #fff !important; }
+.jn-btn-outline { border: 1px solid #fce7f3; color: #FB5FAB; background: transparent; }
+.jn-btn-outline:hover { background-color: #fdf2f8; }
 </style>
 
 <div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[150px] pb-8 md:pt-[220px] lg:pt-[280px] px-0 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
@@ -276,6 +281,16 @@ aside.widget-area { display: none !important; }
             <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, -1)">−</button>
             <span style="min-width:1.25rem; text-align:center; font-size:0.8125rem;" x-text="item.quantity"></span>
             <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, 1)">+</button>
+            <button
+              type="button"
+              :disabled="updatingKey !== null"
+              @click="removeItem(item.key)"
+              style="color:#FB5FAB; background:none; border:none; cursor:pointer; padding:4px; transition:color .15s;" onmouseover="this.style.color='#e8439a'" onmouseout="this.style.color='#FB5FAB'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
+              </svg>
+            </button>
           </div>
 
           <p class="text-xs text-gray-500 text-right !mb-0" x-html="item.unit_price"></p>
@@ -369,13 +384,13 @@ aside.widget-area { display: none !important; }
   <div class="jn-checkout-card" x-show="items.length > 0">
     <a
       href="<?= esc_url( home_url( '/checkout-slave/' ) ) ?>"
-      class="jn-confirm-btn w-full flex items-center justify-center gap-2 bg-primary hover:bg-[#5e9a28] text-white rounded-xl font-medium transition-colors"
+      class="jn-confirm-btn w-full flex items-center justify-center gap-2 text-white rounded-xl font-medium transition-colors jn-btn-primary"
     >
       <?= __( 'ไปหน้าชำระเงิน', $_ENV['TEXTDOMAIN_NAME'] ) ?>
     </a>
     <a
       href="<?= esc_url( wc_get_page_permalink( 'shop' ) ) ?>"
-      class="jn-confirm-btn w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-medium transition-colors"
+      class="jn-confirm-btn w-full flex items-center justify-center gap-2 rounded-xl font-medium transition-colors jn-btn-outline"
       style="margin-top:0.625rem;"
     >
       <?= __( 'กลับไปร้านค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>

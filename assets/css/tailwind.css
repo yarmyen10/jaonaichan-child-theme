@@ -811,6 +811,9 @@
   .grid-cols-\[1fr_8rem_6rem_6rem\] {
     grid-template-columns: 1fr 8rem 6rem 6rem;
   }
+  .grid-cols-\[1fr_8rem_6rem_6rem_2rem\] {
+    grid-template-columns: 1fr 8rem 6rem 6rem 2rem;
+  }
   .flex-col {
     flex-direction: column;
   }
@@ -1000,6 +1003,9 @@
   .border-dashed {
     --tw-border-style: dashed;
     border-style: dashed;
+  }
+  .border-\[\#fce7f3\] {
+    border-color: #fce7f3;
   }
   .border-amber-200 {
     border-color: var(--color-amber-200);
@@ -1854,6 +1860,13 @@
       }
     }
   }
+  .hover\:bg-\[\#e8439a\] {
+    &:hover {
+      @media (hover: hover) {
+        background-color: #e8439a;
+      }
+    }
+  }
   .hover\:bg-emerald-700 {
     &:hover {
       @media (hover: hover) {
@@ -1886,6 +1899,13 @@
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-gray-800);
+      }
+    }
+  }
+  .hover\:bg-pink-50 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-pink-50);
       }
     }
   }
