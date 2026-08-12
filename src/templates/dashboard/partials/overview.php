@@ -148,7 +148,7 @@ $orders_tab   = esc_url( add_query_arg( 'tab', 'orders', $base_url ) );
                 <template x-if="summary.recent_orders.length > 0">
                     <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                         <template x-for="order in summary.recent_orders" :key="order.id">
-                            <li class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                            <li class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
 
                                 <!-- Status dot -->
                                 <div class="flex-shrink-0 w-2 h-2 rounded-full" :style="statusDot(order.status)"></div>

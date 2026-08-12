@@ -11,50 +11,45 @@ $rest_nonce = wp_create_nonce( 'wp_rest' );
 $orders_url = esc_js( rest_url( 'bigboss-auth/v1/my-orders' ) );
 ?>
 
+<style>
+/* Hide scrollbar on the tab strip — touch devices scroll it fine without a visible bar */
+.tab-scroll { -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+.tab-scroll::-webkit-scrollbar { display: none; }
+</style>
+
 <div
     x-data="ordersPage('<?= $orders_url ?>', '<?= esc_js( $rest_nonce ) ?>')"
     x-init="load()"
     class="space-y-5"
 >
-    <!-- Page heading + filter -->
-    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div class="flex-1">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
-                <?= __( 'คำสั่งซื้อ', 'jaonaichan' ) ?>
-            </h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                <span x-text="pagination.total"></span>
-                <?= __( 'รายการ', 'jaonaichan' ) ?>
-            </p>
-        </div>
+    <!-- Page heading -->
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+            <?= __( 'คำสั่งซื้อ', 'jaonaichan' ) ?>
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            <span x-text="pagination.total"></span>
+            <?= __( 'รายการ', 'jaonaichan' ) ?>
+        </p>
+    </div>
 
-        <!-- Status filter -->
-        <select
-            x-model="filterStatus"
-            @change="load(1)"
-            class="w-full sm:w-48 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm px-3 py-2 focus:outline-none focus:ring-2"
-            style="--tw-ring-color:#ec4899;"
-        >
-            <option value="any"><?= __( 'ทั้งหมด', 'jaonaichan' ) ?></option>
-            <option value="pending"><?= __( 'รอดำเนินการ', 'jaonaichan' ) ?></option>
-            <option value="processing"><?= __( 'กำลังดำเนินการ', 'jaonaichan' ) ?></option>
-            <option value="waiting-transfer"><?= __( 'รอโอนเงิน', 'jaonaichan' ) ?></option>
-            <option value="pending-payment-1"><?= __( 'รอชำระบิล 1', 'jaonaichan' ) ?></option>
-            <option value="pending-payment-2"><?= __( 'รอชำระบิล 2', 'jaonaichan' ) ?></option>
-            <option value="wait-verify-1"><?= __( 'รอตรวจสอบ (1)', 'jaonaichan' ) ?></option>
-            <option value="wait-verify-2"><?= __( 'รอตรวจสอบ (2)', 'jaonaichan' ) ?></option>
-            <option value="paid-1"><?= __( 'ชำระแล้ว (บิล 1)', 'jaonaichan' ) ?></option>
-            <option value="paid-2"><?= __( 'ชำระแล้ว (บิล 2)', 'jaonaichan' ) ?></option>
-            <option value="on-hold"><?= __( 'ระงับไว้', 'jaonaichan' ) ?></option>
-            <option value="completed"><?= __( 'สำเร็จแล้ว', 'jaonaichan' ) ?></option>
-            <option value="cancelled"><?= __( 'ยกเลิก', 'jaonaichan' ) ?></option>
-            <option value="refunded"><?= __( 'คืนเงิน', 'jaonaichan' ) ?></option>
-            <option value="packed"><?= __( 'แพ็คแล้ว', 'jaonaichan' ) ?></option>
-            <option value="wait-tracking"><?= __( 'รอการติดตาม', 'jaonaichan' ) ?></option>
-            <option value="tracked"><?= __( 'ติดตามแล้ว', 'jaonaichan' ) ?></option>
-            <option value="wait-shipping"><?= __( 'รอการจัดส่ง', 'jaonaichan' ) ?></option>
-            <option value="shipped"><?= __( 'จัดส่งแล้ว', 'jaonaichan' ) ?></option>
-        </select>
+    <!-- Status tabs -->
+    <div class="tab-scroll flex overflow-x-auto" style="gap:1.25rem;border-bottom:1px solid #e5e7eb;">
+        <template x-for="tab in tabs" :key="tab.key">
+            <button
+                @click="selectTab(tab.key)"
+                :class="activeTab === tab.key ? 'font-semibold' : 'font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                :style="activeTab === tab.key
+                    ? 'color:#ec4899;border-bottom:2px solid #ec4899;margin-bottom:-1px;'
+                    : 'border-bottom:2px solid transparent;margin-bottom:-1px;'"
+                class="shrink-0 pt-2 pb-3 text-sm transition-colors"
+            >
+                <span x-text="tab.label"></span>
+                <template x-if="bucketCounts[tab.key] > 0">
+                    <span x-text="' (' + bucketCounts[tab.key] + ')'"></span>
+                </template>
+            </button>
+        </template>
     </div>
 
     <!-- Loading skeleton -->
@@ -96,7 +91,7 @@ $orders_url = esc_js( rest_url( 'bigboss-auth/v1/my-orders' ) );
             <template x-for="order in orders" :key="order.id">
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5">
 
-                    <div class="flex items-start justify-between gap-3">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
 
                         <!-- Left: order info -->
                         <div class="flex-1 min-w-0">
@@ -128,23 +123,35 @@ $orders_url = esc_js( rest_url( 'bigboss-auth/v1/my-orders' ) );
                             </p>
 
                             <!-- Products -->
-                            <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-snug" x-text="orderProductLine(order)"></p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-snug break-words" x-text="orderProductLine(order)"></p>
                         </div>
 
-                        <!-- Right: total + link -->
-                        <div class="flex-shrink-0 text-right">
-                            <p class="text-base font-extrabold text-gray-900 dark:text-white" x-text="fmtMoney(displayAmount(order))"></p>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5" x-text="order.item_count + ' รายการ'"></p>
-                            <a
-                                :href="'/thank-you-slave/?wcf-order=' + order.id"
-                                class="mt-2 inline-flex items-center gap-1 text-xs font-medium hover:underline"
-                                style="color:#ec4899;"
-                            >
-                                <?= __( 'รายละเอียด', 'jaonaichan' ) ?>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </a>
+                        <!-- Right: total + links — stacked row on mobile, right-aligned column from sm: up -->
+                        <div class="flex items-center justify-between gap-3 sm:block flex-shrink-0 mt-1 pt-3 sm:mt-0 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700 sm:text-right">
+                            <div>
+                                <p class="text-base font-extrabold text-gray-900 dark:text-white" x-text="fmtMoney(displayAmount(order))"></p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5" x-text="order.item_count + ' รายการ'"></p>
+                            </div>
+                            <div class="flex items-center gap-4 sm:block">
+                                <a
+                                    :href="'/thank-you-slave/?wcf-order=' + order.id"
+                                    class="inline-flex items-center gap-1 text-xs font-medium hover:underline sm:mt-2"
+                                    style="color:#ec4899;"
+                                >
+                                    <?= __( 'รายละเอียด', 'jaonaichan' ) ?>
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
+                                <template x-if="canCancel(order)">
+                                    <button
+                                        @click="cancelOrder(order)"
+                                        :disabled="cancelling === order.id"
+                                        class="text-xs font-medium text-red-500 hover:underline disabled:opacity-50 sm:mt-2 sm:block sm:w-full sm:text-right"
+                                        x-text="cancelling === order.id ? 'กำลังยกเลิก...' : 'ยกเลิกคำสั่งซื้อ'"
+                                    ></button>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -195,8 +202,28 @@ function ordersPage(apiUrl, nonce) {
         status:       'loading',
         orders:       [],
         pagination:   { page: 1, per_page: 10, total: 0, total_pages: 1 },
-        filterStatus: 'any',
         errorMsg:     '',
+
+        // Customer-facing tabs — must match the bucket keys/status lists My_Orders_API::status_buckets() groups server-side
+        tabs: [
+            { key: 'any',       label: 'ทั้งหมด' },
+            { key: 'to_pay',    label: 'ที่ต้องชำระ' },
+            { key: 'to_verify', label: 'ที่ต้องจัดส่ง' },
+            { key: 'to_ship',   label: 'ที่ต้องได้รับ' },
+            { key: 'completed', label: 'สำเร็จ' },
+            { key: 'cancelled', label: 'ยกเลิกแล้ว' },
+        ],
+        bucketStatusMap: {
+            to_pay:    'pending,waiting-transfer,pending-payment-1,pending-payment-2',
+            to_verify: 'processing,wait-verify-1,wait-verify-2',
+            to_ship:   'paid-1,paid-2,packed,wait-tracking,tracked,wait-shipping,shipped',
+            completed: 'completed',
+            cancelled: 'cancelled,refunded,failed',
+        },
+        activeTab:    'any',
+        filterStatus: 'any',
+        bucketCounts: {},
+        cancelling:   null,
 
         async load(page = 1) {
             this.status = 'loading';
@@ -209,12 +236,41 @@ function ordersPage(apiUrl, nonce) {
                 const res  = await fetch(`${apiUrl}?${params}`, { headers: { 'X-WP-Nonce': nonce }, cache: 'no-store' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'โหลดไม่สำเร็จ');
-                this.orders     = data.data;
-                this.pagination = data.pagination;
-                this.status     = 'ready';
+                this.orders       = data.data;
+                this.pagination   = data.pagination;
+                this.bucketCounts = data.bucket_counts || {};
+                this.status       = 'ready';
             } catch (e) {
                 this.errorMsg = e.message;
                 this.status   = 'error';
+            }
+        },
+
+        selectTab(key) {
+            this.activeTab    = key;
+            this.filterStatus = key === 'any' ? 'any' : this.bucketStatusMap[key];
+            this.load(1);
+        },
+
+        canCancel(order) {
+            return this.bucketStatusMap.to_pay.split(',').includes(order.status);
+        },
+
+        async cancelOrder(order) {
+            if (!confirm(`ยืนยันยกเลิกคำสั่งซื้อ #${order.number}?`)) return;
+            this.cancelling = order.id;
+            try {
+                const res  = await fetch(`/wp-json/bigboss-auth/v1/my-orders/${order.id}/cancel`, {
+                    method:  'PATCH',
+                    headers: { 'X-WP-Nonce': nonce },
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'ยกเลิกไม่สำเร็จ');
+                await this.load(this.pagination.page);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                this.cancelling = null;
             }
         },
 

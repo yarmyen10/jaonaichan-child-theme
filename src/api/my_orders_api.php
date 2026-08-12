@@ -25,13 +25,41 @@ class My_Orders_API {
             'args'                => [
                 'page'     => [ 'required' => false, 'type' => 'integer', 'default' => 1, 'minimum' => 1 ],
                 'per_page' => [ 'required' => false, 'type' => 'integer', 'default' => 10, 'minimum' => 1, 'maximum' => 50 ],
+                // comma-separated list of WC order statuses for tab/bucket filtering, or 'any'
                 'status'   => [ 'required' => false, 'type' => 'string', 'default' => 'any', 'sanitize_callback' => 'sanitize_text_field' ],
             ],
+        ]);
+
+        // PATCH /wp-json/bigboss-auth/v1/my-orders/{id}/cancel — customer-initiated cancel
+        register_rest_route( 'bigboss-auth/v1', '/my-orders/(?P<id>\d+)/cancel', [
+            'methods'             => 'PATCH',
+            'callback'            => [ self::class, 'cancel_order' ],
+            'permission_callback' => [ self::class, 'check_own_order' ],
         ]);
     }
 
     public static function check_permission(): bool {
         return self::verified_customer_id() > 0;
+    }
+
+    public static function check_own_order( WP_REST_Request $request ): bool {
+        $user_id = self::verified_customer_id();
+        if ( $user_id <= 0 ) return false;
+        $order = wc_get_order( (int) $request['id'] );
+        return $order && (int) $order->get_customer_id() === $user_id;
+    }
+
+    // Customer-facing status buckets — collapses the internal pipeline (waiting-transfer,
+    // pending-payment-1/2, wait-verify-1/2, paid-1/2, packed, ...) into tabs a customer
+    // can actually understand, mirroring Shopee's "รอชำระ/รอจัดส่ง/สำเร็จ" grouping.
+    private static function status_buckets(): array {
+        return [
+            'to_pay'    => [ 'pending', 'waiting-transfer', 'pending-payment-1', 'pending-payment-2' ],
+            'to_verify' => [ 'processing', 'wait-verify-1', 'wait-verify-2' ],
+            'to_ship'   => [ 'paid-1', 'paid-2', 'packed', 'wait-tracking', 'tracked', 'wait-shipping', 'shipped' ],
+            'completed' => [ 'completed' ],
+            'cancelled' => [ 'cancelled', 'refunded', 'failed' ],
+        ];
     }
 
     /**
@@ -122,6 +150,7 @@ class My_Orders_API {
         $page     = (int) $request->get_param( 'page' );
         $per_page = (int) $request->get_param( 'per_page' );
         $status   = $request->get_param( 'status' );
+        $status   = $status === 'any' ? 'any' : array_map( 'trim', explode( ',', $status ) );
 
         $base_args = [
             'customer' => $user_id,
@@ -144,12 +173,31 @@ class My_Orders_API {
             'return' => 'ids',
         ])));
 
+        // Bucket counts always reflect ALL of the customer's orders, independent of the
+        // current tab filter, so every tab can show its own badge count at once.
+        $bucket_counts = array_fill_keys( array_keys( self::status_buckets() ), 0 );
+        $all_orders    = wc_get_orders([
+            'customer' => $user_id,
+            'status'   => 'any',
+            'type'     => 'shop_order',
+            'limit'    => -1,
+        ]);
+        foreach ( $all_orders as $o ) {
+            foreach ( self::status_buckets() as $key => $statuses ) {
+                if ( in_array( $o->get_status(), $statuses, true ) ) {
+                    $bucket_counts[ $key ]++;
+                    break;
+                }
+            }
+        }
+
         $response = new WP_REST_Response([
-            'data'       => array_values( array_map(
+            'data'          => array_values( array_map(
                 [ self::class, 'format_order_brief' ],
                 $orders
             )),
-            'pagination' => [
+            'bucket_counts' => $bucket_counts,
+            'pagination'    => [
                 'page'        => $page,
                 'per_page'    => $per_page,
                 'total'       => $total,
@@ -162,6 +210,27 @@ class My_Orders_API {
         $response->header( 'Pragma', 'no-cache' );
 
         return $response;
+    }
+
+    // =========================================================================
+    // PATCH /my-orders/{id}/cancel
+    // =========================================================================
+
+    public static function cancel_order( WP_REST_Request $request ): WP_REST_Response {
+        $order = wc_get_order( (int) $request['id'] );
+
+        // ponytail: cancellable only pre-payment (same set as the "to_pay" tab) — once a
+        // slip is submitted for verification, cancelling needs staff review, not self-serve.
+        if ( ! in_array( $order->get_status(), self::status_buckets()['to_pay'], true ) ) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'ไม่สามารถยกเลิกคำสั่งซื้อนี้ได้แล้ว',
+            ], 400);
+        }
+
+        $order->update_status( 'cancelled', 'ลูกค้ายกเลิกคำสั่งซื้อ' );
+
+        return new WP_REST_Response( [ 'success' => true ], 200 );
     }
 
     // =========================================================================
