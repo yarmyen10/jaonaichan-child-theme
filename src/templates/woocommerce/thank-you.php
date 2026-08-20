@@ -75,6 +75,36 @@ get_header();
       animation: none;
     }
   }
+  /* Bill 2 — 7-col table */
+  .jn-bill2-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .jn-bill2-table { width: 100%; border-collapse: collapse; min-width: 720px; border: none; }
+  .jn-bill2-table thead, .jn-bill2-table tbody, .jn-bill2-table tfoot,
+  .jn-bill2-table tr, .jn-bill2-table th, .jn-bill2-table td { border: none; }
+  .jn-bill2-table thead th {
+    background: linear-gradient(180deg,#FFF5F5 0%,#FFFBFB 100%);
+    font-size: 13px; font-weight: 700; color: #27272A;
+    padding: 12px 10px; text-align: right;
+    border-bottom: 2px solid #FFD1D6 !important;
+    white-space: nowrap;
+  }
+  .jn-bill2-table thead th:first-child { text-align: left; min-width: 180px; }
+  .jn-bill2-table thead th.jn-center { text-align: center; }
+  .jn-bill2-table tbody td {
+    padding: 14px 10px; font-size: 13px; text-align: right;
+    border-bottom: 1px solid #F4F4F5 !important;
+    vertical-align: middle; color: #3F3F46;
+  }
+  .jn-bill2-table tbody td:first-child { text-align: left; }
+  .jn-bill2-table tbody td.jn-center { text-align: center; }
+  .jn-bill2-table tbody tr:last-child td { border-bottom: none !important; }
+  .jn-bill2-table tbody tr:hover td { background: #FAFAFA; }
+  .jn-money-zero { color: #A1A1AA; }
+  /* Summary rows + total bar */
+  .jn-summary-row { display: flex; justify-content: space-between; padding: 9px 0; font-size: 13px; color: #52525B; border-bottom: 1px dashed #E4E4E7; }
+  .jn-summary-row .jn-val { font-weight: 500; color: #27272A; font-variant-numeric: tabular-nums; }
+  .jn-total-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; margin-top: 6px; background: linear-gradient(90deg,#FFE5E5 0%,#FFF5F5 100%); border-top: 2px solid #FFD1D6; border-radius: 0.5rem; }
+  .jn-total-bar .jn-label { font-size: 15px; font-weight: 600; color: #C43D55; }
+  .jn-total-bar .jn-val { font-size: 20px; font-weight: 700; color: #C43D55; font-variant-numeric: tabular-nums; }
 </style>
 <div class="jn-thankyou-wrap w-full min-h-[calc(100vh-80px)] pt-[150px] pb-8 md:pt-[220px] lg:pt-[280px] px-4 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
   
@@ -118,6 +148,16 @@ get_header();
 
       $bill2_local_shipping = $order ? (float) $order->get_meta('_bill2_local_shipping', true) : 0.0;
 
+      $bill2_extra_shipping       = $order ? (array) json_decode($order->get_meta('_bill2_extra_shipping', true), true) : [];
+      $bill2_extra_shipping_total = $bill2_extra_shipping ? array_sum($bill2_extra_shipping) : 0.0;
+
+      $wc_original_total = 0.0;
+      if ( $order ) {
+          foreach ( $order->get_items() as $_i ) {
+              $wc_original_total += (float) $_i->get_total();
+          }
+      }
+
       $bill2_meta_amount = $order ? (float) $order->get_meta('_bill2_amount', true) : 0.0;
       $bill2_amount = $bill2_meta_amount ?: ( $bill2_unit_prices ? $bill2_total : ( $order ? (float) $order->get_total() : 0.0 ) );
 
@@ -143,18 +183,21 @@ get_header();
         foreach ( $order->get_items() as $item ) {
           $p = $item->get_product();
           if ( ! $p ) continue;
-          $pid  = (string) $p->get_id();
+          $iid  = (string) $item->get_id();
           $qty  = $item->get_quantity();
           $unit = (float) $p->get_price() ?: 199.0;
-          $bill2_unit_prices[$pid]    = $unit;
-          $bill2_china_shipping[$pid] = round( $unit * 0.12 );  // ~12% of unit
-          $bill2_import_fee[$pid]     = round( $unit * 0.08 );  // ~8% of unit
+          $bill2_unit_prices[$iid]    = $unit;
+          $bill2_china_shipping[$iid] = round( $unit * 0.12 );
+          $bill2_import_fee[$iid]     = round( $unit * 0.08 );
+          $bill2_extra_shipping[$iid] = round( $unit * 0.05 );
           $bill2_total += $unit * $qty;
         }
-        $bill2_local_shipping = 50.0;
+        $bill2_local_shipping        = 50.0;
+        $bill2_extra_shipping_total  = array_sum($bill2_extra_shipping);
         $bill2_amount = $bill2_total
           + array_sum($bill2_china_shipping)
           + array_sum($bill2_import_fee)
+          + array_sum($bill2_extra_shipping)
           + $bill2_local_shipping;
       }
 
@@ -386,68 +429,48 @@ get_header();
           <div>
             <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
             <?php if ( $order ) : ?>
-              <div class="product-scroll flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80 pr-3">
-                <!-- header row -->
-                <div class="hidden sm:grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-wide">
-                  <span>สินค้า</span>
-                  <span class="text-center">จำนวน</span>
-                  <span class="text-right">ราคา/ชิ้น</span>
-                  <span class="text-right">รวม</span>
-                </div>
-                <?php foreach ( $order->get_items() as $item ) :
-                  $product = $item->get_product();
-                  // ถ้าไม่มี custom-100 → ใช้ thumbnail แล้วจำกัดด้วย CSS แทน
-                  $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
-
-                  // Fallback ถ้าไม่มี
-                  if ( ! $img_url ) {
-                      $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
-                  }
-
-                  $qty1        = $item->get_quantity();
-                  $line_total1 = (float) $item->get_total();
-                  $unit1       = $qty1 > 0 ? $line_total1 / $qty1 : 0.0;
-                ?>
-                  <!-- mobile: flex; sm+: 4-col grid -->
-                  <div class="sm:hidden flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                    <?php if ( $img_url ) : ?>
-                        <img src="<?= esc_url($img_url) ?>"
-                            class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
-                    <?php endif; ?>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 !mb-0.5 leading-snug">
-                            <?= esc_html( $item->get_name() ) ?>
-                        </p>
-                        <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
-                        <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
-                        <?php endforeach; ?>
-                        <p class="text-xs text-gray-400 !mb-0">x<?= $qty1 ?></p>
-                        <p class="text-xs text-gray-500 !mb-0 mt-0.5">
-                          ราคา/ชิ้น ฿<?= number_format( $unit1, 2 ) ?>
-                          <span class="ml-2 font-semibold text-gray-800">รวม ฿<?= number_format( $line_total1, 2 ) ?></span>
-                        </p>
-                    </div>
-                  </div>
-                  <div class="hidden sm:grid sm:grid-cols-[1fr_3rem_6rem_6rem] items-center gap-x-3 py-2 border-b border-gray-50 last:border-0">
-                    <div class="flex items-center gap-2">
-                      <?php if ( $img_url ) : ?>
-                          <img src="<?= esc_url($img_url) ?>"
-                              class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
-                      <?php endif; ?>
-                      <div class="min-w-0">
-                          <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug">
-                              <?= esc_html( $item->get_name() ) ?>
-                          </p>
-                          <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
-                          <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
-                          <?php endforeach; ?>
-                      </div>
-                    </div>
-                    <p class="text-xs text-gray-500 text-center !mb-0">x<?= $qty1 ?></p>
-                    <p class="text-xs text-gray-500 text-right !mb-0">฿<?= number_format( $unit1, 2 ) ?></p>
-                    <p class="text-sm font-semibold text-gray-900 text-right !mb-0">฿<?= number_format( $line_total1, 2 ) ?></p>
-                  </div>
-                <?php endforeach; ?>
+              <div class="jn-bill2-table-wrap">
+                <table class="jn-bill2-table" style="min-width:400px">
+                  <thead>
+                    <tr>
+                      <th>สินค้า</th>
+                      <th class="jn-center">จำนวน</th>
+                      <th>ราคา/ชิ้น</th>
+                      <th>รวม</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <?php foreach ( $order->get_items() as $item ) :
+                    $product = $item->get_product();
+                    $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
+                    if ( ! $img_url ) {
+                        $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                    }
+                    $qty1        = $item->get_quantity();
+                    $line_total1 = (float) $item->get_total();
+                    $unit1       = $qty1 > 0 ? $line_total1 / $qty1 : 0.0;
+                  ?>
+                    <tr>
+                      <td>
+                        <div class="flex items-center gap-2">
+                          <?php if ( $img_url ) : ?>
+                            <img src="<?= esc_url($img_url) ?>" class="w-14 h-14 shrink-0 object-cover rounded-lg border border-gray-200" />
+                          <?php endif; ?>
+                          <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug"><?= esc_html( $item->get_name() ) ?></p>
+                            <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
+                            <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
+                            <?php endforeach; ?>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="jn-center">×<?= $qty1 ?></td>
+                      <td>฿<?= number_format($unit1, 2) ?></td>
+                      <td>฿<?= number_format($line_total1, 2) ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                  </tbody>
+                </table>
               </div>
 
               <?php $order_shipping = $order ? (float) $order->get_shipping_total() : 0.0; ?>
@@ -458,11 +481,9 @@ get_header();
                   <span>฿<?= number_format( $order_shipping, 2 ) ?></span>
                 </div>
                 <?php endif; ?>
-                <div class="flex justify-between items-center px-3 py-2 mt-1 rounded-lg bg-pink-50 border border-pink-100">
-                  <span class="text-base font-semibold text-gray-700">รวมทั้งหมด</span>
-                  <span class="text-base font-bold text-[#FB5FAB]">
-                      ฿<?= number_format( $order->get_total(), 2 ) ?>
-                  </span>
+                <div class="jn-total-bar mt-1">
+                  <span class="jn-label">รวมทั้งหมด</span>
+                  <span class="jn-val">฿<?= number_format( $order->get_total(), 2 ) ?></span>
                 </div>
               </div>
             <?php endif; ?>
@@ -678,97 +699,107 @@ get_header();
             <div>
               <p class="text-sm font-medium text-gray-700 mb-3">รายการสินค้า</p>
               <?php if ( $order ) : ?>
-                <div class="product-scroll flex flex-col gap-3 overscroll-contain md:overscroll-auto overflow-y-auto h-80 pr-3">
-                  <!-- header row -->
-                  <div class="hidden sm:grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-wide">
-                    <span>สินค้า</span>
-                    <span class="text-center">จำนวน</span>
-                    <span class="text-right">ราคา/ชิ้น</span>
-                    <span class="text-right">รวม</span>
-                  </div>
-                  <?php foreach ( $order->get_items() as $item ) :
-                    $product = $item->get_product();
-                    $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
-                    if ( ! $img_url ) {
-                        $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
-                    }
-
-                    $iid2        = (string) $item->get_id();
-                    $unit2       = isset( $bill2_unit_prices[$iid2] ) ? (float) $bill2_unit_prices[$iid2] : null;
-                    $china_ship2 = isset( $bill2_china_shipping[$iid2] ) ? (float) $bill2_china_shipping[$iid2] : null;
-                    $import_fee2 = isset( $bill2_import_fee[$iid2] )     ? (float) $bill2_import_fee[$iid2]     : null;
-                    $line_total2 = $unit2 !== null ? $unit2 * $item->get_quantity() : (float) $item->get_total();
-                    $row_total2  = $line_total2 + ($china_ship2 ?? 0) + ($import_fee2 ?? 0);
-                  ?>
-                    <!-- mobile: bill-1 style flex; sm+: 4-col grid -->
-                    <div class="sm:hidden flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                      <?php if ( $img_url ) : ?>
-                        <img src="<?= esc_url($img_url) ?>" class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
-                      <?php endif; ?>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 !mb-0.5 leading-snug"><?= esc_html( $item->get_name() ) ?></p>
-                        <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
-                        <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
-                        <?php endforeach; ?>
-                        <p class="text-xs text-gray-400 !mb-0">x<?= $item->get_quantity() ?></p>
-                        <p class="text-xs text-gray-500 !mb-0 mt-0.5">
-                          ราคา/ชิ้น ฿<?= number_format((float)$unit2, 2) ?>
-                          <span class="ml-2 font-semibold text-gray-800">รวม ฿<?= number_format($row_total2, 2) ?></span>
-                        </p>
-                      </div>
-                    </div>
-                    <div class="hidden sm:grid sm:grid-cols-[1fr_3rem_6rem_6rem] items-center gap-x-3 py-2 border-b border-gray-50 last:border-0">
-                      <div class="flex items-center gap-2">
-                        <?php if ( $img_url ) : ?>
-                          <img src="<?= esc_url($img_url) ?>" class="w-20 h-20 shrink-0 object-cover rounded-lg border border-gray-200" />
-                        <?php endif; ?>
-                        <div class="min-w-0">
-                          <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug"><?= esc_html( $item->get_name() ) ?></p>
-                          <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
-                          <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
-                          <?php endforeach; ?>
-                        </div>
-                      </div>
-                      <p class="text-xs text-gray-500 text-center !mb-0">x<?= $item->get_quantity() ?></p>
-                      <p class="text-xs text-gray-500 text-right !mb-0">฿<?= number_format((float)$unit2, 2) ?></p>
-                      <p class="text-sm font-semibold text-gray-900 text-right !mb-0">฿<?= number_format($row_total2, 2) ?></p>
-                    </div>
-                  <?php endforeach; ?>
+                <div class="jn-bill2-table-wrap">
+                  <table class="jn-bill2-table">
+                    <thead>
+                      <tr>
+                        <th>สินค้า</th>
+                        <th class="jn-center">จำนวน</th>
+                        <th>ราคาสินค้า</th>
+                        <th>Extra Items</th>
+                        <th>Extra Shipping Fee</th>
+                        <th>ค่าส่งจีน</th>
+                        <th>ค่านำเข้า</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ( $order->get_items() as $item ) :
+                      $product      = $item->get_product();
+                      $img_url      = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
+                      if ( ! $img_url ) {
+                          $img_url  = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                      }
+                      $iid2         = (string) $item->get_id();
+                      $wc_total2    = (float) $item->get_total();
+                      $unit2        = isset( $bill2_unit_prices[$iid2] )    ? (float) $bill2_unit_prices[$iid2]    : null;
+                      $extra_ship2  = isset( $bill2_extra_shipping[$iid2] ) ? (float) $bill2_extra_shipping[$iid2] : null;
+                      $china_ship2  = isset( $bill2_china_shipping[$iid2] ) ? (float) $bill2_china_shipping[$iid2] : null;
+                      $import_fee2  = isset( $bill2_import_fee[$iid2] )     ? (float) $bill2_import_fee[$iid2]     : null;
+                      $extra_items2 = $unit2 !== null ? $unit2 * $item->get_quantity() : null;
+                    ?>
+                      <tr>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <?php if ( $img_url ) : ?>
+                              <img src="<?= esc_url($img_url) ?>" class="w-14 h-14 shrink-0 object-cover rounded-lg border border-gray-200" />
+                            <?php endif; ?>
+                            <div class="min-w-0">
+                              <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug"><?= esc_html( $item->get_name() ) ?></p>
+                              <?php foreach ( $item->get_formatted_meta_data() as $meta ) : ?>
+                              <p class="text-xs text-gray-400 !mb-0"><?= esc_html($meta->display_key) ?>: <?= wp_strip_all_tags($meta->display_value) ?></p>
+                              <?php endforeach; ?>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="jn-center">×<?= $item->get_quantity() ?></td>
+                        <td class="<?= $wc_total2 == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($wc_total2, 2) ?></td>
+                        <td class="<?= ($extra_items2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($extra_items2 ?? 0, 2) ?></td>
+                        <td class="<?= ($extra_ship2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($extra_ship2 ?? 0, 2) ?></td>
+                        <td class="<?= ($china_ship2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($china_ship2 ?? 0, 2) ?></td>
+                        <td class="<?= ($import_fee2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($import_fee2 ?? 0, 2) ?></td>
+                      </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                  </table>
                 </div>
 
                 <?php
                   $bill2_china_total  = $bill2_china_shipping ? array_sum($bill2_china_shipping) : 0.0;
                   $bill2_import_total = $bill2_import_fee    ? array_sum($bill2_import_fee)    : 0.0;
-                  $has_breakdown      = $bill2_china_shipping || $bill2_import_fee || $bill2_local_shipping;
+                  $has_breakdown      = $bill2_china_shipping || $bill2_import_fee || $bill2_local_shipping || $bill2_extra_shipping;
                 ?>
-                <div class="border-t border-gray-200 mt-3 pt-3 space-y-1.5">
+                <div class="border-t border-gray-200 mt-4 pt-3">
                   <?php if ( $has_breakdown ) : ?>
-                    <div class="flex justify-between text-xs text-gray-400">
-                      <span>ค่าสินค้า</span>
-                      <span>฿<?= number_format($bill2_total, 2) ?></span>
+                    <?php if ( $wc_original_total > 0 ) : ?>
+                    <div class="jn-summary-row">
+                      <span>ราคาสินค้า</span>
+                      <span class="jn-val">฿<?= number_format($wc_original_total, 2) ?></span>
                     </div>
+                    <?php endif; ?>
+                    <?php if ( $bill2_total > 0 ) : ?>
+                    <div class="jn-summary-row">
+                      <span>Extra Items</span>
+                      <span class="jn-val">฿<?= number_format($bill2_total, 2) ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $bill2_extra_shipping_total > 0 ) : ?>
+                    <div class="jn-summary-row">
+                      <span>Extra Shipping</span>
+                      <span class="jn-val">฿<?= number_format($bill2_extra_shipping_total, 2) ?></span>
+                    </div>
+                    <?php endif; ?>
                     <?php if ( $bill2_china_total > 0 ) : ?>
-                    <div class="flex justify-between text-xs text-gray-400">
-                      <span>ค่าส่งจีน</span>
-                      <span>฿<?= number_format($bill2_china_total, 2) ?></span>
+                    <div class="jn-summary-row">
+                      <span>รวมค่าส่งจีน</span>
+                      <span class="jn-val">฿<?= number_format($bill2_china_total, 2) ?></span>
                     </div>
                     <?php endif; ?>
                     <?php if ( $bill2_import_total > 0 ) : ?>
-                    <div class="flex justify-between text-xs text-gray-400">
-                      <span>ค่า Import</span>
-                      <span>฿<?= number_format($bill2_import_total, 2) ?></span>
+                    <div class="jn-summary-row">
+                      <span>รวมค่านำเข้า</span>
+                      <span class="jn-val">฿<?= number_format($bill2_import_total, 2) ?></span>
                     </div>
                     <?php endif; ?>
                     <?php if ( $bill2_local_shipping > 0 ) : ?>
-                    <div class="flex justify-between text-xs text-gray-400">
+                    <div class="jn-summary-row">
                       <span>ค่าส่งไทย</span>
-                      <span>฿<?= number_format($bill2_local_shipping, 2) ?></span>
+                      <span class="jn-val">฿<?= number_format($bill2_local_shipping, 2) ?></span>
                     </div>
                     <?php endif; ?>
                   <?php endif; ?>
-                  <div class="flex justify-between items-center px-3 py-2 mt-1 rounded-lg bg-pink-50 border border-pink-100">
-                    <span class="text-base font-semibold text-gray-700">รวมทั้งหมด</span>
-                    <span class="text-base font-bold text-[#FB5FAB]">฿<?= number_format($bill2_amount, 2) ?></span>
+                  <div class="jn-total-bar">
+                    <span class="jn-label">รวมทั้งหมด</span>
+                    <span class="jn-val">฿<?= number_format($bill2_amount, 2) ?></span>
                   </div>
                 </div>
               <?php endif; ?>
