@@ -3,6 +3,16 @@
  * Initialize order status + two-bill meta on order creation.
  */
 add_action( 'woocommerce_new_order', function ( $order_id, $order ) {
+    // Snapshot QR config ตอนสร้าง order — ป้องกัน mode switch กระทบ order เก่า
+    $qr_mode   = get_option( 'promptpay_qr_mode', 'phone' );
+    $qr_target = $qr_mode === 'biller'
+        ? get_option( 'promptpay_biller_id', '' )
+        : get_option( 'promptpay_phone', '' );
+    $order->update_meta_data( '_qr_mode',   $qr_mode );
+    $order->update_meta_data( '_qr_target', $qr_target );
+}, 10, 2 );
+
+add_action( 'woocommerce_new_order', function ( $order_id, $order ) {
     error_log( sprintf(
         '[bill-meta] woocommerce_new_order fired for order #%d, total=%s',
         $order_id,

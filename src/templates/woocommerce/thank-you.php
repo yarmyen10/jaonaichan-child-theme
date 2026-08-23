@@ -442,6 +442,7 @@ get_header();
                   <tbody>
                   <?php foreach ( $order->get_items() as $item ) :
                     $product = $item->get_product();
+                    if ( ! $product ) continue;
                     $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'custom-100' );
                     if ( ! $img_url ) {
                         $img_url = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
@@ -493,22 +494,47 @@ get_header();
           <div class="flex flex-col gap-4">
             <!-- {{-- QR Code --}} -->
             <div class="flex flex-col items-center gap-3">
-              <div class="relative w-full max-w-[240px] h-full">
-                <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
+              <div class="relative w-full max-w-[240px]">
                 <?php
-                    $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
-                    $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
-                    $amount  = $order ? $order->get_total() : 0;
-                    $qr_url  = PromptPay_QR_Generator::generate($phone, $amount);
+                    $gateway      = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
+                    $amount       = $order ? $order->get_total() : 0;
+                    $qr_mode_snap = $order ? (string) $order->get_meta('_qr_mode',   true) : '';
+                    $qr_target    = $order ? (string) $order->get_meta('_qr_target', true) : '';
+                    if ( ! $qr_mode_snap ) $qr_mode_snap = get_option('promptpay_qr_mode', 'phone');
+                    if ( ! $qr_target ) {
+                        $qr_target = $qr_mode_snap === 'biller'
+                            ? get_option('promptpay_biller_id', '')
+                            : ( $gateway ? $gateway->phone : get_option('promptpay_phone') );
+                        if ( ! $qr_target ) {
+                            $qr_target    = $gateway ? $gateway->phone : get_option('promptpay_phone');
+                            $qr_mode_snap = 'phone';
+                        }
+                    }
+                    $qr_url = $qr_mode_snap === 'biller'
+                        ? KShop_QR_Generator::generate( $qr_target, $amount, (string) ( $order ? $order->get_id() : '' ) )
+                        : PromptPay_QR_Generator::generate( $qr_target, $amount );
                 ?>
-                <div class="bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-                    <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
+                <div class="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                    <!-- Thai QR logo header -->
+                    <div class="flex items-center justify-center px-4 py-3" style="background-color:#0d3b6e">
+                        <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/thai-qr-logo-white.svg' ?>"
+                             alt="Thai QR Payment" class="h-9 w-auto object-contain" />
+                    </div>
+                    <!-- QR code -->
+                    <div class="p-2" style="position:relative">
+                        <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full object-contain" />
+                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+                            <div style="background:#fff;border-radius:6px;padding:4px;box-shadow:0 1px 3px rgba(0,0,0,.15)">
+                                <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/kbank-logo.svg' ?>" alt="KBank" style="width:20px;height:auto;display:block" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Watermark ชำระแล้ว (Pinned Note) -->
                 <div
                     x-show="bill1Paid"
-                    class="absolute inset-0 flex items-center justify-center z-10 bg-white/40 backdrop-blur-[3px] rounded-lg"
+                    class="absolute inset-0 flex items-center justify-center z-10 bg-white/40 backdrop-blur-[3px] rounded-xl"
                 >
                     <div class="relative rotate-[-6deg] bg-gradient-to-br from-yellow-50 to-amber-100 px-6 py-4 shadow-[2px_4px_16px_rgba(0,0,0,0.15)] border border-amber-200 transform hover:scale-105 transition-transform duration-300">
                         <!-- Red Push Pin -->
@@ -528,7 +554,7 @@ get_header();
                   ฿<?= number_format($amount, 2) ?>
               </span>
               <span class="text-xs text-gray-400">
-                  PromptPay QR : <?= esc_html($phone) ?>
+                  <?= $qr_mode_snap === 'biller' ? 'K-Shop' : 'PromptPay' ?> : <?= esc_html($qr_target) ?>
               </span>
             </div>
 
@@ -810,22 +836,47 @@ get_header();
             <div class="flex flex-col gap-4">
               <!-- {{-- QR Code --}} -->
               <div class="flex flex-col items-center gap-3">
-                <div class="relative w-full max-w-[240px] h-full">
-                  <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/prompt-pay-logo.jpg' ?>" class="object-cover">
+                <div class="relative w-full max-w-[240px]">
                   <?php
-                      $gateway = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
-                      $phone   = $gateway ? $gateway->phone : get_option('promptpay_phone');
-                      $amount  = $bill2_amount;
-                      $qr_url  = PromptPay_QR_Generator::generate($phone, $amount);
+                      $gateway      = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
+                      $amount       = $bill2_amount;
+                      $qr_mode_snap = $order ? (string) $order->get_meta('_qr_mode',   true) : '';
+                      $qr_target    = $order ? (string) $order->get_meta('_qr_target', true) : '';
+                      if ( ! $qr_mode_snap ) $qr_mode_snap = get_option('promptpay_qr_mode', 'phone');
+                      if ( ! $qr_target ) {
+                          $qr_target = $qr_mode_snap === 'biller'
+                              ? get_option('promptpay_biller_id', '')
+                              : ( $gateway ? $gateway->phone : get_option('promptpay_phone') );
+                          if ( ! $qr_target ) {
+                              $qr_target    = $gateway ? $gateway->phone : get_option('promptpay_phone');
+                              $qr_mode_snap = 'phone';
+                          }
+                      }
+                      $qr_url = $qr_mode_snap === 'biller'
+                          ? KShop_QR_Generator::generate( $qr_target, $amount, (string) ( $order ? $order->get_id() : '' ) )
+                          : PromptPay_QR_Generator::generate( $qr_target, $amount );
                   ?>
-                  <div class="bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-                      <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full h-full object-contain" />
+                  <div class="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                      <!-- Thai QR logo header -->
+                      <div class="flex items-center justify-center px-4 py-3" style="background-color:#0d3b6e">
+                          <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/thai-qr-logo-white.svg' ?>"
+                               alt="Thai QR Payment" class="h-9 w-auto object-contain" />
+                      </div>
+                      <!-- QR code -->
+                      <div class="p-2" style="position:relative">
+                          <img src="<?= esc_url($qr_url) ?>" alt="QR" class="w-full object-contain" />
+                          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+                              <div style="background:#fff;border-radius:6px;padding:4px;box-shadow:0 1px 3px rgba(0,0,0,.15)">
+                                  <img src="<?= get_stylesheet_directory_uri() . '/assets/imgs/kbank-logo.svg' ?>" alt="KBank" style="width:20px;height:auto;display:block" />
+                              </div>
+                          </div>
+                      </div>
                   </div>
 
                   <!-- Watermark ชำระแล้ว (Pinned Note) -->
                   <div
                       x-show="bill2Paid"
-                      class="absolute inset-0 flex items-center justify-center z-10 bg-white/40 backdrop-blur-[3px] rounded-lg"
+                      class="absolute inset-0 flex items-center justify-center z-10 bg-white/40 backdrop-blur-[3px] rounded-xl"
                   >
                       <div class="relative rotate-[4deg] bg-gradient-to-br from-yellow-50 to-amber-100 px-6 py-4 shadow-[2px_4px_16px_rgba(0,0,0,0.15)] border border-amber-200 transform hover:scale-105 transition-transform duration-300">
                           <!-- Red Push Pin -->
@@ -845,7 +896,7 @@ get_header();
                     ฿<?= number_format($amount, 2) ?>
                 </span>
                 <span class="text-xs text-gray-400">
-                    PromptPay QR : <?= esc_html($phone) ?>
+                    <?= esc_html($qr_target) ?>
                 </span>
               </div>
 
