@@ -137,7 +137,7 @@ class Barcode_Pack_API {
             $item->save();
         }
 
-        // Check if all items are fully packed and complete the order if so
+        // Check if all items are fully packed — only advance status from packable states
         $order      = wc_get_order( $order_id );
         $all_packed = true;
         foreach ( $order->get_items() as $item ) {
@@ -148,12 +148,15 @@ class Barcode_Pack_API {
             }
         }
 
-        if ( $all_packed ) {
-            $order->update_status( 'wait-tracking', 'All items packed via Barcode Pack.' );
-        }
-
+        // Set lot_id before any save so both changes land in one write
         if ( $lot_id ) {
             $order->update_meta_data( '_lot_id', $lot_id );
+        }
+
+        $packable_statuses = [ 'paid-1', 'paid-2', 'packed' ];
+        if ( $all_packed && in_array( $order->get_status(), $packable_statuses, true ) ) {
+            $order->update_status( 'wait-tracking', 'All items packed via Barcode Pack.' );
+        } elseif ( $lot_id ) {
             $order->save();
         }
 

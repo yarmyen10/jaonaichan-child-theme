@@ -230,12 +230,12 @@ aside.widget-area { display: none !important; }
                 </p>
                 <?php if ( $it['meta_lines'] ) : ?>
                   <?php foreach ( $it['meta_lines'] as $meta_line ) : ?>
-                    <p style="font-size:0.85rem; color:#9ca3af; margin:0;"><?= wp_strip_all_tags( $meta_line ) ?></p>
+                    <p style="font-size:0.875rem; color:#9ca3af; margin:0;"><?= wp_strip_all_tags( $meta_line ) ?></p>
                   <?php endforeach; ?>
                 <?php else : ?>
-                  <p style="font-size:0.85rem; color:#9ca3af; margin:0;">&nbsp;</p>
+                  <p style="font-size:0.875rem; color:#9ca3af; margin:0;">&nbsp;</p>
                 <?php endif; ?>
-                <p style="font-size:0.85rem; color:#6b7280; margin:0;">
+                <p style="font-size:0.875rem; color:#6b7280; margin:0;">
                   x<?= $it['qty'] ?> · <?= wc_price( $it['unit_price'] ) ?>/ชิ้น
                 </p>
               </div>
@@ -248,7 +248,7 @@ aside.widget-area { display: none !important; }
 
         <!-- Table — Desktop (grid style matching thank-you.php's bill2 item list) -->
         <div class="hidden lg:block">
-          <div class="grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-wide">
+          <div class="grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide">
             <span><?= __( 'สินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
             <span class="text-center"><?= __( 'จำนวน', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
             <span class="text-right"><?= __( 'ราคา/ชิ้น', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
@@ -270,12 +270,12 @@ aside.widget-area { display: none !important; }
                     <?= esc_html( $it['name'] ) ?>
                   </p>
                   <?php foreach ( $it['meta_lines'] as $meta_line ) : ?>
-                    <p class="text-xs text-gray-400 !mb-0"><?= wp_strip_all_tags( $meta_line ) ?></p>
+                    <p class="text-sm text-gray-400 !mb-0"><?= wp_strip_all_tags( $meta_line ) ?></p>
                   <?php endforeach; ?>
                 </div>
               </div>
-              <p class="text-xs text-gray-500 text-center !mb-0">x<?= $it['qty'] ?></p>
-              <p class="text-xs text-gray-500 text-right !mb-0"><?= wc_price( $it['unit_price'] ) ?></p>
+              <p class="text-sm text-gray-500 text-center !mb-0">x<?= $it['qty'] ?></p>
+              <p class="text-sm text-gray-500 text-right !mb-0"><?= wc_price( $it['unit_price'] ) ?></p>
               <p class="text-sm font-semibold text-gray-900 text-right !mb-0"><?= wc_price( $it['line_total'] ) ?></p>
             </div>
           <?php endforeach; ?>

@@ -53,6 +53,7 @@ class Customers_API {
                 'customer_name' => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
                 'phone'         => [ 'required' => true,  'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
                 'email'         => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_email' ],
+                'remark'        => [ 'required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_textarea_field' ],
             ],
         ]);
 
@@ -284,6 +285,7 @@ class Customers_API {
         $customer_name = $request->get_param('customer_name');
         $phone         = $request->get_param('phone');
         $email         = $request->get_param('email');
+        $remark        = $request->get_param('remark');
 
         $user = get_userdata( $customer_id );
         if ( ! $user ) {
@@ -293,6 +295,24 @@ class Customers_API {
         // Username uniqueness check (skip if unchanged)
         if ( $username !== $user->user_login && username_exists( $username ) ) {
             return new WP_REST_Response([ 'success' => false, 'message' => 'Username นี้มีอยู่ในระบบแล้ว' ], 400);
+        }
+
+        // Duplicate phone check (active or inactive), skip if unchanged
+        $phone_clean   = preg_replace( '/\D/', '', $phone );
+        $current_phone = get_user_meta( $customer_id, 'billing_phone', true );
+        if ( $phone_clean !== $current_phone ) {
+            $existing_phone = get_users([
+                'meta_key'   => 'billing_phone',
+                'meta_value' => $phone_clean,
+                'exclude'    => [ $customer_id ],
+                'number'     => 1,
+                'fields'     => 'ID',
+            ]);
+            if ( ! empty( $existing_phone ) ) {
+                $existing_status = get_user_meta( $existing_phone[0], 'jnc_account_status', true ) ?: 'active';
+                $label = $existing_status === 'inactive' ? ' (ระงับการใช้งาน)' : '';
+                return new WP_REST_Response([ 'success' => false, 'message' => "เบอร์โทรนี้มีอยู่ในระบบแล้ว{$label}" ], 400);
+            }
         }
 
         if ( ! empty( $email ) ) {
@@ -325,11 +345,11 @@ class Customers_API {
             clean_user_cache( $customer_id );
         }
 
-        $phone_clean = preg_replace( '/\D/', '', $phone );
         update_user_meta( $customer_id, 'billing_phone', $phone_clean );
         if ( ! empty( $email ) ) {
             update_user_meta( $customer_id, 'billing_email', $email );
         }
+        update_user_meta( $customer_id, 'jnc_remark', $remark ?? '' );
 
         return new WP_REST_Response([ 'success' => true, 'message' => 'อัปเดตข้อมูลลูกค้าสำเร็จ' ], 200);
     }
@@ -505,6 +525,7 @@ class Customers_API {
         $role  = ! empty( $roles ) ? reset( $roles ) : '';
 
         $status = get_user_meta( $user_id, 'jnc_account_status', true ) ?: 'active';
+        $remark = get_user_meta( $user_id, 'jnc_remark', true ) ?: '';
 
         return [
             'id'              => $user_id,
@@ -514,6 +535,7 @@ class Customers_API {
             'phone'           => $phone,
             'role'            => $role,
             'status'          => $status,
+            'remark'          => $remark,
             'order_count'     => $order_count,
             'total_spend'     => $total_spend,
             'member_date'     => $user->user_registered,

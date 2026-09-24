@@ -1304,9 +1304,15 @@ function billTabs() {
         }
       } catch (error) {
         console.error('Error occurred while paying bill 1:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ส่งสลิปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือติดต่อแอดมิน',
+          confirmButtonColor: '#111827',
+        });
       } finally {
         this.loading = false;
-      } 
+      }
     },
     async payBill2() {
       if (!this.preview2) return;
@@ -1403,6 +1409,12 @@ function billTabs() {
         }
       } catch (error) {
         console.error('Error occurred while paying bill 2:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ส่งสลิปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือติดต่อแอดมิน',
+          confirmButtonColor: '#111827',
+        });
       } finally {
         this.loading = false;
       }
