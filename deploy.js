@@ -22,6 +22,12 @@ const SKIP = new Set([
   'readme.md',
   'CLAUDE.md',
   'composer.lock',
+
+  // dev-only; these must not be reachable over HTTP on production.
+  // 'scripts' / 'tools' exist only at the repo root - no nested dirs share those names.
+  'cleanup-bill2-meta.php',
+  'scripts',
+  'tools',
 ]);
 
 const {
