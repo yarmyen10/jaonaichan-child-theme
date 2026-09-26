@@ -227,7 +227,7 @@ aside.widget-area { display: none !important; }
             <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;" x-text="item.name"></p>
 
             <template x-for="line in item.meta_lines" :key="line">
-              <p style="font-size:0.75rem; color:#9ca3af; margin:0;" x-text="line"></p>
+              <p style="font-size:0.75rem; color:#6b7280; margin:0;" x-text="line"></p>
             </template>
 
             <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.375rem;">
@@ -240,7 +240,7 @@ aside.widget-area { display: none !important; }
                 title="<?= esc_attr__( 'ลบสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
                 :disabled="updatingKey !== null"
                 @click="removeItem(item.key)"
-                style="margin-left:0.5rem; color:#d1d5db; background:none; border:none; cursor:pointer; padding:4px; transition:color .15s;" onmouseover="this.style.color='#FB5FAB'" onmouseout="this.style.color='#d1d5db'"
+                style="margin-left:0.5rem; color:#6b7280; background:none; border:none; cursor:pointer; padding:4px; transition:color .15s;" onmouseover="this.style.color='#FB5FAB'" onmouseout="this.style.color='#6b7280'"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
@@ -283,6 +283,7 @@ aside.widget-area { display: none !important; }
             <button type="button" class="jn-qty-btn" :disabled="updatingKey !== null" @click="changeQty(item.key, 1)">+</button>
             <button
               type="button"
+              title="<?= esc_attr__( 'ลบสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?>"
               :disabled="updatingKey !== null"
               @click="removeItem(item.key)"
               style="color:#FB5FAB; background:none; border:none; cursor:pointer; padding:4px; transition:color .15s;" onmouseover="this.style.color='#e8439a'" onmouseout="this.style.color='#FB5FAB'"
