@@ -4,12 +4,13 @@
  */
 add_action( 'woocommerce_new_order', function ( $order_id, $order ) {
     // Snapshot QR config ตอนสร้าง order — ป้องกัน mode switch กระทบ order เก่า
-    $qr_mode   = get_option( 'promptpay_qr_mode', 'phone' );
-    $qr_target = $qr_mode === 'biller'
-        ? get_option( 'promptpay_biller_id', '' )
-        : get_option( 'promptpay_phone', '' );
-    $order->update_meta_data( '_qr_mode',   $qr_mode );
-    $order->update_meta_data( '_qr_target', $qr_target );
+    // ให้ JaiPay เป็นคนตัดสินช่องทาง เพื่อให้ค่าที่ snapshot ตรงกับ QR ที่ลูกค้าจะเห็นจริง
+    // ถ้าปลั๊กอินถูกปิดอยู่ ปล่อยว่างไว้ ดีกว่าให้ checkout ล้มทั้งเส้น
+    $qr = function_exists( 'jaipay_resolve' )
+        ? jaipay_resolve()
+        : [ 'mode' => 'phone', 'target' => '' ];
+    $order->update_meta_data( '_qr_mode',   $qr['mode'] );
+    $order->update_meta_data( '_qr_target', $qr['target'] );
 }, 10, 2 );
 
 add_action( 'woocommerce_new_order', function ( $order_id, $order ) {

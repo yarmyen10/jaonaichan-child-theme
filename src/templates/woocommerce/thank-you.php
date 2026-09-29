@@ -496,23 +496,21 @@ get_header();
             <div class="flex flex-col items-center gap-3">
               <div class="relative w-full max-w-[240px]">
                 <?php
-                    $gateway      = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
-                    $amount       = $order ? $order->get_total() : 0;
-                    $qr_mode_snap = $order ? (string) $order->get_meta('_qr_mode',   true) : '';
-                    $qr_target    = $order ? (string) $order->get_meta('_qr_target', true) : '';
-                    if ( ! $qr_mode_snap ) $qr_mode_snap = get_option('promptpay_qr_mode', 'phone');
-                    if ( ! $qr_target ) {
-                        $qr_target = $qr_mode_snap === 'biller'
-                            ? get_option('promptpay_biller_id', '')
-                            : ( $gateway ? $gateway->phone : get_option('promptpay_phone') );
-                        if ( ! $qr_target ) {
-                            $qr_target    = $gateway ? $gateway->phone : get_option('promptpay_phone');
-                            $qr_mode_snap = 'phone';
-                        }
+                    $amount = $order ? $order->get_total() : 0;
+
+                    // ส่ง snapshot ที่เก็บไว้กับออเดอร์เข้าไปด้วย เพื่อให้ QR ของออเดอร์เก่า
+                    // ยังตรงกับตอนที่ลูกค้าสั่ง แม้ร้านจะเปลี่ยนช่องทางรับเงินไปแล้ว
+                    $qr = [ 'mode' => 'phone', 'target' => '', 'url' => '' ];
+                    if ( function_exists( 'jaipay_qr' ) ) {
+                        $qr = jaipay_qr( $amount, [
+                            'mode'     => $order ? (string) $order->get_meta('_qr_mode',   true) : '',
+                            'target'   => $order ? (string) $order->get_meta('_qr_target', true) : '',
+                            'order_id' => (string) ( $order ? $order->get_id() : '' ),
+                        ] );
                     }
-                    $qr_url = $qr_mode_snap === 'biller'
-                        ? KShop_QR_Generator::generate( $qr_target, $amount, (string) ( $order ? $order->get_id() : '' ) )
-                        : PromptPay_QR_Generator::generate( $qr_target, $amount );
+                    $qr_url       = $qr['url'];
+                    $qr_mode_snap = $qr['mode'];
+                    $qr_target    = $qr['target'];
                 ?>
                 <div class="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
                     <!-- Thai QR logo header -->
@@ -838,23 +836,20 @@ get_header();
               <div class="flex flex-col items-center gap-3">
                 <div class="relative w-full max-w-[240px]">
                   <?php
-                      $gateway      = WC()->payment_gateways->payment_gateways()['promptpay_qr'] ?? null;
-                      $amount       = $bill2_amount;
-                      $qr_mode_snap = $order ? (string) $order->get_meta('_qr_mode',   true) : '';
-                      $qr_target    = $order ? (string) $order->get_meta('_qr_target', true) : '';
-                      if ( ! $qr_mode_snap ) $qr_mode_snap = get_option('promptpay_qr_mode', 'phone');
-                      if ( ! $qr_target ) {
-                          $qr_target = $qr_mode_snap === 'biller'
-                              ? get_option('promptpay_biller_id', '')
-                              : ( $gateway ? $gateway->phone : get_option('promptpay_phone') );
-                          if ( ! $qr_target ) {
-                              $qr_target    = $gateway ? $gateway->phone : get_option('promptpay_phone');
-                              $qr_mode_snap = 'phone';
-                          }
+                      $amount = $bill2_amount;
+
+                      // เหมือนบิล 1 — ส่ง snapshot ของออเดอร์เข้าไป ไม่คำนวณเอง
+                      $qr = [ 'mode' => 'phone', 'target' => '', 'url' => '' ];
+                      if ( function_exists( 'jaipay_qr' ) ) {
+                          $qr = jaipay_qr( $amount, [
+                              'mode'     => $order ? (string) $order->get_meta('_qr_mode',   true) : '',
+                              'target'   => $order ? (string) $order->get_meta('_qr_target', true) : '',
+                              'order_id' => (string) ( $order ? $order->get_id() : '' ),
+                          ] );
                       }
-                      $qr_url = $qr_mode_snap === 'biller'
-                          ? KShop_QR_Generator::generate( $qr_target, $amount, (string) ( $order ? $order->get_id() : '' ) )
-                          : PromptPay_QR_Generator::generate( $qr_target, $amount );
+                      $qr_url       = $qr['url'];
+                      $qr_mode_snap = $qr['mode'];
+                      $qr_target    = $qr['target'];
                   ?>
                   <div class="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
                       <!-- Thai QR logo header -->
