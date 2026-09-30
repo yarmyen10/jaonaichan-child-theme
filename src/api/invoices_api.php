@@ -247,7 +247,7 @@ class Invoices_API {
     }
 
     public static function check_permission(): bool {
-        return is_user_logged_in();
+        return Auth_API::is_admin();
     }
 }
 

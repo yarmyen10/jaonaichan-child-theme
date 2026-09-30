@@ -211,7 +211,7 @@ class Orders_API {
         register_rest_route( 'jaonaichan/v1', '/orders/(?P<id>\d+)/bill/(?P<bill_number>[12])', [
             'methods'             => 'PATCH',
             'callback'            => [ self::class, 'update_order_bill' ],
-            'permission_callback' => [ self::class, 'check_bill_permission' ],
+            'permission_callback' => [ self::class, 'check_owner_or_admin' ],
             'args'                => [
                 'status'  => [
                     'required'          => false,
@@ -1426,11 +1426,11 @@ class Orders_API {
     }
 
     public static function check_permission(): bool {
-        return is_user_logged_in();
+        return Auth_API::is_admin();
     }
 
-    /** PATCH bill — admin หรือเจ้าของ order เท่านั้น */
-    public static function check_bill_permission( WP_REST_Request $req ): bool {
+    /** PATCH bill / shipping — admin หรือเจ้าของ order เท่านั้น */
+    public static function check_owner_or_admin( WP_REST_Request $req ): bool {
         if ( ! is_user_logged_in() ) return false;
         if ( current_user_can( 'manage_options' ) ) return true;
 

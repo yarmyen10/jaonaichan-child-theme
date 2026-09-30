@@ -73,6 +73,15 @@ class Auth_API {
         return ! str_contains( $route, '/bigboss-auth/v1/my-' ) && ! str_contains( $uri, '/wp-json/bigboss-auth/v1/my-' );
     }
 
+    /**
+     * The one permission check for every admin/bigboss REST route. is_user_logged_in() alone is NOT
+     * enough: the jwt-auth plugin issues tokens to any user, and every logged-in customer already
+     * holds a wp_rest nonce, so "logged in" includes all customers.
+     */
+    public static function is_admin(): bool {
+        return is_user_logged_in() && current_user_can( 'manage_options' );
+    }
+
     public static function register_routes(): void {
         register_rest_route('bigboss-auth/v1', '/ping', [
             'methods'             => 'GET',

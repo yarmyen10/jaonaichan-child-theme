@@ -15,7 +15,7 @@ class Shipping_API {
             [
                 'methods'             => 'PATCH',
                 'callback'            => [ self::class, 'update_shipping' ],
-                'permission_callback' => '__return_true', // Open for customer checkout page (or add specific nonce/permission check if needed)
+                'permission_callback' => [ 'Orders_API', 'check_owner_or_admin' ], // customer thank-you page (owner) + bigboss (admin)
                 'args'                => [
                     'shipping_name'    => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
                     'shipping_phone'   => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],

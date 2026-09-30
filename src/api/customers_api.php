@@ -387,6 +387,11 @@ class Customers_API {
             return new WP_REST_Response([ 'success' => false, 'message' => 'ไม่พบลูกค้า' ], 404);
         }
 
+        // same roles GET /customers lists — this endpoint must never reset an admin/staff password
+        if ( ! array_intersect( [ 'customer', 'subscriber' ], (array) $user->roles ) ) {
+            return new WP_REST_Response([ 'success' => false, 'message' => 'รีเซ็ตรหัสผ่านได้เฉพาะบัญชีลูกค้า' ], 403);
+        }
+
         if ( $mode === 'phone' ) {
             $phone = get_user_meta( $customer_id, 'billing_phone', true );
             if ( empty( $phone ) ) {
@@ -555,7 +560,7 @@ class Customers_API {
     }
 
     public static function check_permission(): bool {
-        return is_user_logged_in();
+        return Auth_API::is_admin();
     }
 }
 

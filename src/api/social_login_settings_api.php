@@ -75,7 +75,7 @@ class Social_Login_Settings_API {
     }
 
     public static function check_admin(): bool {
-        return is_user_logged_in() && current_user_can( 'manage_options' );
+        return Auth_API::is_admin();
     }
 }
 
