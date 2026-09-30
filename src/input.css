@@ -61,3 +61,29 @@
     background-image: none !important;
   }
 }
+
+/* Space under the Astra header. #masthead is position:absolute, so page content has to clear it itself (.jn-page-top).
+   Heights measured on 2026-09-30: 111px (<545px), 148px (545-921px), 146px (>=922px).
+   The two breakpoints are ASTRA's (small screen 544, desktop header 922), NOT Tailwind's — if they are changed in
+   Appearance > Customize, change them here too. Values are px on purpose: on this site 1rem is 14.59px below ~922px
+   (Astra shrinks <html>) and 16px above, so rem would make the gap drift. Rules: vault Decisions/2026-09-30-ui-layout-rules.md (#12) */
+:root {
+  --jn-header-h: 111px;
+  --jn-page-gap: 24px;
+}
+@media (min-width: 545px) {
+  :root {
+    --jn-header-h: 148px;
+    --jn-page-gap: 32px;
+  }
+}
+@media (min-width: 922px) {
+  :root {
+    --jn-header-h: 146px;
+  }
+}
+@layer utilities {
+  .jn-page-top {
+    padding-top: calc(var(--jn-header-h) + var(--jn-page-gap));
+  }
+}

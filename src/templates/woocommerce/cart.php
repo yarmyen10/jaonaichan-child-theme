@@ -197,7 +197,7 @@ aside.widget-area { display: none !important; }
 .jn-btn-outline:hover { background-color: #fdf2f8; }
 </style>
 
-<div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] pt-[150px] pb-8 md:pt-[220px] lg:pt-[280px] px-0 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
+<div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] jn-page-top pb-8 px-0 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
 
   <!-- Full Width Background Container -->
   <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[100vw] -z-10 overflow-hidden bg-gradient-to-br from-pink-50 via-white to-purple-50">

@@ -1380,12 +1380,6 @@
   .pt-3 {
     padding-top: calc(var(--spacing) * 3);
   }
-  .pt-\[120px\] {
-    padding-top: 120px;
-  }
-  .pt-\[150px\] {
-    padding-top: 150px;
-  }
   .pt-\[180px\] {
     padding-top: 180px;
   }
@@ -2189,11 +2183,6 @@
       padding-block: calc(var(--spacing) * 12);
     }
   }
-  .md\:pt-\[160px\] {
-    @media (width >= 48rem) {
-      padding-top: 160px;
-    }
-  }
   .md\:pt-\[220px\] {
     @media (width >= 48rem) {
       padding-top: 220px;
@@ -2297,11 +2286,6 @@
   .lg\:px-8 {
     @media (width >= 64rem) {
       padding-inline: calc(var(--spacing) * 8);
-    }
-  }
-  .lg\:pt-\[220px\] {
-    @media (width >= 64rem) {
-      padding-top: 220px;
     }
   }
   .lg\:pt-\[280px\] {
@@ -2530,6 +2514,26 @@
   .ast-theme-transparent-header .site-header, .ast-theme-transparent-header .ast-builder-grid-row, .ast-theme-transparent-header .site-primary-header-wrap {
     background-color: transparent !important;
     background-image: none !important;
+  }
+}
+:root {
+  --jn-header-h: 111px;
+  --jn-page-gap: 24px;
+}
+@media (min-width: 545px) {
+  :root {
+    --jn-header-h: 148px;
+    --jn-page-gap: 32px;
+  }
+}
+@media (min-width: 922px) {
+  :root {
+    --jn-header-h: 146px;
+  }
+}
+@layer utilities {
+  .jn-page-top {
+    padding-top: calc(var(--jn-header-h) + var(--jn-page-gap));
   }
 }
 @property --tw-translate-x {
