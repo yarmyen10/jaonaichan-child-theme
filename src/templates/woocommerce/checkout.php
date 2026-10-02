@@ -77,7 +77,11 @@ $is_mixed_cart = $has_rts && $has_normal;
 <style>
 /* ── Typography / buttons ── */
 .jn-checkout-heading { font-size: 1rem; }
-.jn-confirm-btn { font-size: 0.95rem; padding: 0.75rem; }
+.jn-confirm-btn { font-size: 15px; padding: 0.75rem; }
+/* Order-summary body text. px, not rem: Astra shrinks <html> to 14.59px below 922px, so 0.875rem rendered 12.77px on phones.
+   Muted = #6b7280 (4.8:1 on white); the old #9ca3af was 2.5:1. */
+.jn-co-text  { font-size: 14px; }
+.jn-co-muted { color: #6b7280; }
 @media (min-width: 922px) {
   .jn-checkout-heading { font-size: 1.125rem; }
   .jn-confirm-btn { font-size: 1rem; padding: 0.875rem; }
@@ -222,24 +226,24 @@ aside.widget-area { display: none !important; }
                 style="width:80px; height:80px; object-fit:cover; border-radius:8px; flex-shrink:0;"
               />
               <div style="flex:1; min-width:0;">
-                <p style="font-size:0.875rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;">
+                <p class="jn-co-text" style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0;">
                   <?php if ( $it['sku'] ) : ?>
-                    <span style="color:#9ca3af; font-weight:400;"><?= esc_html( $it['sku'] ) ?></span> ·
+                    <span class="jn-co-muted" style="font-weight:400;"><?= esc_html( $it['sku'] ) ?></span> ·
                   <?php endif; ?>
                   <?= esc_html( $it['name'] ) ?>
                 </p>
                 <?php if ( $it['meta_lines'] ) : ?>
                   <?php foreach ( $it['meta_lines'] as $meta_line ) : ?>
-                    <p style="font-size:0.875rem; color:#9ca3af; margin:0;"><?= wp_strip_all_tags( $meta_line ) ?></p>
+                    <p class="jn-co-text jn-co-muted" style="margin:0;"><?= wp_strip_all_tags( $meta_line ) ?></p>
                   <?php endforeach; ?>
                 <?php else : ?>
-                  <p style="font-size:0.875rem; color:#9ca3af; margin:0;">&nbsp;</p>
+                  <p class="jn-co-text jn-co-muted" style="margin:0;">&nbsp;</p>
                 <?php endif; ?>
-                <p style="font-size:0.875rem; color:#6b7280; margin:0;">
+                <p class="jn-co-text jn-co-muted" style="margin:0;">
                   x<?= $it['qty'] ?> · <?= wc_price( $it['unit_price'] ) ?>/ชิ้น
                 </p>
               </div>
-              <span style="font-size:0.875rem; font-weight:600; white-space:nowrap;">
+              <span class="jn-co-text" style="font-weight:600; white-space:nowrap;">
                 <?= wc_price( $it['line_total'] ) ?>
               </span>
             </div>
@@ -248,7 +252,7 @@ aside.widget-area { display: none !important; }
 
         <!-- Table — Desktop (grid style matching thank-you.php's bill2 item list) -->
         <div class="hidden lg:block">
-          <div class="grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide">
+          <div class="grid grid-cols-[1fr_3rem_6rem_6rem] gap-2 pb-1.5 border-b border-gray-100 text-sm text-gray-500 uppercase tracking-wide">
             <span><?= __( 'สินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
             <span class="text-center"><?= __( 'จำนวน', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
             <span class="text-right"><?= __( 'ราคา/ชิ้น', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
@@ -265,12 +269,12 @@ aside.widget-area { display: none !important; }
                 <div class="min-w-0">
                   <p class="text-sm font-medium text-gray-900 !mb-0 leading-snug">
                     <?php if ( $it['sku'] ) : ?>
-                      <span class="text-gray-400 font-normal"><?= esc_html( $it['sku'] ) ?></span> ·
+                      <span class="text-gray-500 font-normal"><?= esc_html( $it['sku'] ) ?></span> ·
                     <?php endif; ?>
                     <?= esc_html( $it['name'] ) ?>
                   </p>
                   <?php foreach ( $it['meta_lines'] as $meta_line ) : ?>
-                    <p class="text-sm text-gray-400 !mb-0"><?= wp_strip_all_tags( $meta_line ) ?></p>
+                    <p class="text-sm text-gray-500 !mb-0"><?= wp_strip_all_tags( $meta_line ) ?></p>
                   <?php endforeach; ?>
                 </div>
               </div>
@@ -283,20 +287,20 @@ aside.widget-area { display: none !important; }
 
         <div style="border-top:1px solid #f3f4f6; margin-top:0.5rem; padding-top:0.75rem; display:flex; flex-direction:column; gap:0.375rem;">
 
-          <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#6b7280;">
+          <div class="jn-co-text jn-co-muted" style="display:flex; justify-content:space-between;">
             <span><?= __( 'ยอดรวมสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
             <span><?= wc_price( $cart->get_subtotal() ) ?></span>
           </div>
 
           <?php if ( $cart->get_shipping_total() > 0 ) : ?>
-          <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#6b7280;">
+          <div class="jn-co-text jn-co-muted" style="display:flex; justify-content:space-between;">
             <span><?= __( 'ค่าจัดส่ง', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
             <span><?= wc_price( $cart->get_shipping_total() ) ?></span>
           </div>
           <?php endif; ?>
 
           <?php if ( $cart->get_discount_total() > 0 ) : ?>
-          <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#e53e3e;">
+          <div class="jn-co-text" style="display:flex; justify-content:space-between; color:#e53e3e;">
             <span><?= __( 'ส่วนลด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
             <span>-<?= wc_price( $cart->get_discount_total() ) ?></span>
           </div>
@@ -379,7 +383,7 @@ aside.widget-area { display: none !important; }
 
     <!-- Submit + Privacy -->
     <div class="jn-checkout-card">
-      <p class="text-xs text-gray-400 mb-4">
+      <p class="jn-co-text jn-co-muted mb-4">
         <?= sprintf(
           __( 'เมื่อกดยืนยันออเดอร์ จะไม่สามารถแก้ไขรายการสินค้า/จำนวนสินค้าได้ รบกวนตรวจสอบรายการสั่งซื้อก่อนกดยืนยัน', $_ENV['TEXTDOMAIN_NAME'] ),
           '<a href="' . esc_url( wc_get_page_permalink( 'privacy' ) ) . '" class="text-primary underline">' . __( 'นโยบายความเป็นส่วนตัว', $_ENV['TEXTDOMAIN_NAME'] ) . '</a>'
