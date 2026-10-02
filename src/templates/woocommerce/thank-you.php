@@ -75,30 +75,50 @@ get_header();
       animation: none;
     }
   }
-  /* Bill 2 — 7-col table */
-  .jn-bill2-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .jn-bill2-table { width: 100%; border-collapse: collapse; min-width: 720px; border: none; }
-  .jn-bill2-table thead, .jn-bill2-table tbody, .jn-bill2-table tfoot,
-  .jn-bill2-table tr, .jn-bill2-table th, .jn-bill2-table td { border: none; }
-  .jn-bill2-table thead th {
-    background: linear-gradient(180deg,#FFF5F5 0%,#FFFBFB 100%);
-    font-size: 13px; font-weight: 700; color: #27272A;
-    padding: 12px 10px; text-align: right;
-    border-bottom: 2px solid #FFD1D6 !important;
-    white-space: nowrap;
-  }
-  .jn-bill2-table thead th:first-child { text-align: left; min-width: 180px; }
-  .jn-bill2-table thead th.jn-center { text-align: center; }
+  /* Bill 2 item list — mobile first: one card per item, each cell labelled by its data-label.
+     The 7-column table comes back at lg (1024px). Cards, not a sideways-scrolling table: the customer pays from this page. */
+  .jn-bill2-table { width: 100%; border-collapse: collapse; border: none; }
+  .jn-bill2-table, .jn-bill2-table tbody, .jn-bill2-table tr { display: block; }
+  .jn-bill2-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* header text stays for screen readers */
+  .jn-bill2-table tbody tr { padding: 14px 0; border-bottom: 1px solid #F4F4F5; }
+  .jn-bill2-table tbody tr:last-child { border-bottom: none; }
   .jn-bill2-table tbody td {
-    padding: 14px 10px; font-size: 13px; text-align: right;
-    border-bottom: 1px solid #F4F4F5 !important;
-    vertical-align: middle; color: #3F3F46;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 4px 0; font-size: 14px; text-align: right; color: #3F3F46;
+    border: none !important;
   }
-  .jn-bill2-table tbody td:first-child { text-align: left; }
-  .jn-bill2-table tbody td.jn-center { text-align: center; }
-  .jn-bill2-table tbody tr:last-child td { border-bottom: none !important; }
-  .jn-bill2-table tbody tr:hover td { background: #FAFAFA; }
+  .jn-bill2-table tbody td::before { content: attr(data-label); text-align: left; color: #52525B; }
+  .jn-bill2-table tbody td:first-child { display: block; padding: 0 0 8px; text-align: left; }
+  .jn-bill2-table tbody td:first-child::before { content: none; }
   .jn-money-zero { color: #A1A1AA; }
+  @media (min-width: 1024px) { /* jn-bill2: table from lg */
+    .jn-bill2-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .jn-bill2-table { display: table; min-width: 720px; }
+    .jn-bill2-table thead { position: static; display: table-header-group; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+    .jn-bill2-table tbody { display: table-row-group; }
+    .jn-bill2-table tr, .jn-bill2-table tbody tr { display: table-row; padding: 0; border-bottom: none; }
+    .jn-bill2-table thead, .jn-bill2-table tbody, .jn-bill2-table tfoot,
+    .jn-bill2-table tr, .jn-bill2-table th, .jn-bill2-table td { border: none; }
+    .jn-bill2-table thead th {
+      background: linear-gradient(180deg,#FFF5F5 0%,#FFFBFB 100%);
+      font-size: 13px; font-weight: 700; color: #27272A;
+      padding: 12px 10px; text-align: right;
+      border-bottom: 2px solid #FFD1D6 !important;
+      white-space: nowrap;
+    }
+    .jn-bill2-table thead th:first-child { text-align: left; min-width: 180px; }
+    .jn-bill2-table thead th.jn-center { text-align: center; }
+    .jn-bill2-table tbody td {
+      display: table-cell; padding: 14px 10px; font-size: 13px; text-align: right;
+      border-bottom: 1px solid #F4F4F5 !important;
+      vertical-align: middle;
+    }
+    .jn-bill2-table tbody td::before { content: none; }
+    .jn-bill2-table tbody td:first-child { display: table-cell; padding: 14px 10px; text-align: left; }
+    .jn-bill2-table tbody td.jn-center { text-align: center; }
+    .jn-bill2-table tbody tr:last-child td { border-bottom: none !important; }
+    .jn-bill2-table tbody tr:hover td { background: #FAFAFA; }
+  }
   /* Summary rows + total bar */
   .jn-summary-row { display: flex; justify-content: space-between; padding: 9px 0; font-size: 13px; color: #52525B; border-bottom: 1px dashed #E4E4E7; }
   .jn-summary-row .jn-val { font-weight: 500; color: #27272A; font-variant-numeric: tabular-nums; }
@@ -765,12 +785,12 @@ get_header();
                             </div>
                           </div>
                         </td>
-                        <td class="jn-center">×<?= $item->get_quantity() ?></td>
-                        <td class="<?= $wc_total2 == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($wc_total2, 2) ?></td>
-                        <td class="<?= ($extra_items2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($extra_items2 ?? 0, 2) ?></td>
-                        <td class="<?= ($extra_ship2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($extra_ship2 ?? 0, 2) ?></td>
-                        <td class="<?= ($china_ship2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($china_ship2 ?? 0, 2) ?></td>
-                        <td class="<?= ($import_fee2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($import_fee2 ?? 0, 2) ?></td>
+                        <td class="jn-center" data-label="จำนวน">×<?= $item->get_quantity() ?></td>
+                        <td data-label="ราคาสินค้า" class="<?= $wc_total2 == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($wc_total2, 2) ?></td>
+                        <td data-label="Extra Items" class="<?= ($extra_items2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($extra_items2 ?? 0, 2) ?></td>
+                        <td data-label="Extra Shipping Fee" class="<?= ($extra_ship2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($extra_ship2 ?? 0, 2) ?></td>
+                        <td data-label="ค่าส่งจีน" class="<?= ($china_ship2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($china_ship2 ?? 0, 2) ?></td>
+                        <td data-label="ค่านำเข้า" class="<?= ($import_fee2 ?? 0) == 0 ? 'jn-money-zero' : '' ?>">฿<?= number_format($import_fee2 ?? 0, 2) ?></td>
                       </tr>
                     <?php endforeach; ?>
                     </tbody>
