@@ -98,9 +98,38 @@ class Barcode_Pack_API {
             return new WP_Error( 'plugin_missing', 'Barcode Pack plugin is not active.', [ 'status' => 503 ] );
         }
 
+        // One confirm per order at a time: two parallel requests (double click, two tablets) would both pass the
+        // quantity check below and both pack, and the later one would overwrite _packed_barcodes.
+        // GET_LOCK returns '0' on timeout and NULL when the function is unavailable — in that case carry on unlocked
+        // rather than block packing entirely.
+        global $wpdb;
+        $lock = 'jn_pack_' . $order_id;
+        $got  = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 10)', $lock ) );
+        if ( $got === '0' ) {
+            return new WP_Error( 'pack_busy', 'Another pack request for this order is still running. Try again.', [ 'status' => 503 ] );
+        }
+
+        try {
+            return self::confirm_pack_locked( $order_id, $lot_id, $scanned );
+        } finally {
+            if ( $got !== null ) {
+                $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
+            }
+        }
+    }
+
+    private static function confirm_pack_locked( int $order_id, int $lot_id, array $scanned ) {
         $order = wc_get_order( $order_id );
         if ( ! $order ) {
             return new WP_Error( 'order_not_found', 'Order not found.', [ 'status' => 404 ] );
+        }
+
+        // Same orders the bigboss pack queue offers (BarcodePack.tsx isQueueable): paid-1 only counts for RTS orders.
+        $status   = $order->get_status();
+        $packable = in_array( $status, [ 'paid-2', 'packed', 'wait-tracking' ], true )
+            || ( $status === 'paid-1' && $order->get_meta( '_is_rts_order', true ) === '1' );
+        if ( ! $packable ) {
+            return new WP_Error( 'order_not_packable', sprintf( 'Order #%d is "%s" and cannot be packed.', $order_id, $status ), [ 'status' => 409 ] );
         }
 
         // Build product_id → order_item_id map — variation_id ?: parent_id, same as get_order_items
@@ -113,6 +142,8 @@ class Barcode_Pack_API {
         $user_id     = get_current_user_id();
         $order_items = $order->get_items();
 
+        // Phase 1 — validate everything, write nothing: a refused request must not consume a single barcode.
+        $plan = [];
         foreach ( $scanned as $product_id => $barcodes ) {
             $product_id    = (int) $product_id;
             $order_item_id = $product_to_item[ $product_id ] ?? null;
@@ -122,12 +153,39 @@ class Barcode_Pack_API {
             }
 
             $item   = $order_items[ $order_item_id ];
-            $packed = $item->get_meta( '_packed_barcodes' ) ?: [];
+            $packed = array_values( (array) ( $item->get_meta( '_packed_barcodes' ) ?: [] ) );
+            $fresh  = [];
 
             foreach ( (array) $barcodes as $barcode ) {
                 $barcode = sanitize_text_field( $barcode );
-                if ( $barcode === '' ) continue;
+                // empty, already packed on this line (a retry), or repeated in this request
+                if ( $barcode === '' || in_array( $barcode, $packed, true ) || in_array( $barcode, $fresh, true ) ) continue;
 
+                $row = Barcode_Pack_DB::get_available( $barcode );
+                if ( ! $row ) {
+                    return new WP_Error( 'barcode_not_found', sprintf( 'Barcode %s not found or already packed.', $barcode ), [ 'status' => 404 ] );
+                }
+                // pack() only checks status='available' — a barcode of another product would otherwise count for this line
+                if ( (int) $row->product_id !== $product_id ) {
+                    return new WP_Error( 'barcode_wrong_product', sprintf( 'Barcode %s belongs to another product.', $barcode ), [ 'status' => 422 ] );
+                }
+                $fresh[] = $barcode;
+            }
+
+            if ( count( $packed ) + count( $fresh ) > $item->get_quantity() ) {
+                return new WP_Error(
+                    'pack_over_quantity',
+                    sprintf( '%s: %d already packed + %d new exceeds the ordered quantity %d.', $item->get_name(), count( $packed ), count( $fresh ), $item->get_quantity() ),
+                    [ 'status' => 409 ]
+                );
+            }
+
+            $plan[ $order_item_id ] = [ $item, $packed, $fresh ];
+        }
+
+        // Phase 2 — commit
+        foreach ( $plan as $order_item_id => [ $item, $packed, $fresh ] ) {
+            foreach ( $fresh as $barcode ) {
                 if ( Barcode_Pack_DB::pack( $barcode, $order_id, $order_item_id, $user_id ) ) {
                     $packed[] = $barcode;
                 }
