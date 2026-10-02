@@ -53,7 +53,8 @@ if ( $action === 'login' ) {
             $redirect_to = $referer;
         }
     }
-    $redirect_to = wp_validate_redirect( $redirect_to, $default_redirect );
+    // wp_validate_redirect() returns '' for '' — its fallback only applies to URLs that fail validation — so pass the default in ourselves
+    $redirect_to = wp_validate_redirect( $redirect_to ?: $default_redirect, $default_redirect );
 
     // Final guard: ถ้า redirect_to ลงเอยที่ตัว login page เอง → fallback ไปที่ '/' (path ดิบๆ ไม่ผ่าน home_url)
     // เพื่อกัน redirect loop กรณี home_url() ถูก config ผิด

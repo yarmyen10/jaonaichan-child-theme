@@ -32,7 +32,9 @@ function jaonaichan_login_redirect( $redirect_to, $requested_redirect_to, $user 
         }
     }
 
-    return wp_validate_redirect( $candidate, home_url( JN_LOGIN_FALLBACK_PATH ) );
+    // wp_validate_redirect() returns '' for '' (fallback only covers invalid URLs) → an empty target would make wp_redirect() send nothing
+    $fallback = home_url( JN_LOGIN_FALLBACK_PATH );
+    return wp_validate_redirect( $candidate ?: $fallback, $fallback );
 }
 add_filter( 'login_redirect', 'jaonaichan_login_redirect', 10, 3 );
 
