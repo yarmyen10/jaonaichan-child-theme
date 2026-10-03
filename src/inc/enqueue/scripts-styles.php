@@ -10,6 +10,13 @@ function child_enqueue_styles() {
         ['astra-theme-css'],
         filemtime( get_stylesheet_directory() . '/assets/css/tailwind.css' )
     );
+    // header + floating cart in the mock's look (loaded after the plugin's own css so its variables / rules can be overridden)
+    wp_enqueue_style(
+        'jn-cart-buttons',
+        get_stylesheet_directory_uri() . '/assets/css/cart-buttons.css',
+        ['astra-theme-css'],
+        filemtime( get_stylesheet_directory() . '/assets/css/cart-buttons.css' )
+    );
     wp_enqueue_script('alpinejs', 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js', [], '3.14.1', false);
 }
 add_action('wp_enqueue_scripts', 'child_enqueue_styles', 15);

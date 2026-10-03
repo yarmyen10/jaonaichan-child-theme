@@ -1,0 +1,167 @@
+/* Cart buttons — the header cart (Astra header builder) and the floating cart (ModernCart plugin) styled like the designer's shop mock
+   (package jaonaichan-shop, styles.css: .cart / .cart-icon-wrap / .cart-badge / .float-cart). CSS only: both widgets keep their own markup, ids and behaviour.
+   Colours, radii, shadows and icon drawing are the mock's; every padding / margin / gap / offset is on the 4px scale (e2e/cart-buttons.test.js checks both).
+   After a press the button must not show a stray line: no outline on mouse press, a clean ring only for keyboard focus. */
+
+:root {
+  --jn-cart-pink: #f26593;
+  --jn-cart-mint: #a9e1b4;
+  --jn-cart-ink: #3d2530;
+  --jn-cart-focus: #a379e0;
+  /* the mock's cart drawing (24×24, stroke) used as a mask, so it can take any colour */
+  --jn-cart-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='21' r='1.5'/%3E%3Ccircle cx='19' cy='21' r='1.5'/%3E%3Cpath d='M2.05 3.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E");
+}
+
+/* ---- header cart: "฿90.00 [cart]" ----------------------------------------------------------------------- */
+html body .ast-header-woo-cart .ast-site-header-cart a.cart-container {
+  display: block;
+  color: var(--jn-cart-ink);
+  text-decoration: none;
+  border-radius: 16px;
+  outline: 0;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html body .ast-header-woo-cart .ast-site-header-cart a.cart-container:hover,
+html body .ast-header-woo-cart .ast-site-header-cart a.cart-container:focus,
+html body .ast-header-woo-cart .ast-site-header-cart a.cart-container:active {
+  color: var(--jn-cart-ink);
+  text-decoration: none;
+  outline: 0;
+  box-shadow: none;
+}
+html body .ast-header-woo-cart .ast-site-header-cart a.cart-container:focus-visible {
+  outline: 3px solid var(--jn-cart-focus);
+  outline-offset: 2px;
+}
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+}
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap .ast-woo-header-cart-info-wrap {
+  margin: 0;
+  padding: 0;
+  color: var(--jn-cart-ink);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap .ast-woo-header-cart-total { color: inherit; }
+
+/* the icon box: 44px pink rounded square with the mock's white cart */
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap i.astra-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--jn-cart-pink);
+  box-shadow: 0 6px 14px -4px rgba(242, 101, 147, .5);
+  color: #fff;
+  font-size: 0;
+  line-height: 0;
+}
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap i.astra-icon .ast-icon { display: block; width: 22px; height: 22px; margin: 0; }
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap i.astra-icon .ast-icon svg { display: none; }       /* Astra's own cart drawing */
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap i.astra-icon .ast-icon::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  -webkit-mask: var(--jn-cart-icon) center / contain no-repeat;
+  mask: var(--jn-cart-icon) center / contain no-repeat;
+}
+/* count: white pill with a pink border on the box's top-right corner (Astra writes the number through data-cart-total) */
+html body .ast-header-woo-cart .ast-site-header-cart .ast-addon-cart-wrap i.astra-icon::after {
+  content: attr(data-cart-total);
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0 4px;
+  border: 2px solid var(--jn-cart-pink);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--jn-cart-pink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---- floating cart (ModernCart): mint circle, white badge on its top-right corner ----------------------------- */
+body #moderncart-floating-cart {
+  --moderncart-floating-icon-bg-color: var(--jn-cart-mint);
+  --moderncart-floating-icon-color: #fff;
+  --moderncart-floating-count-bg-color: #fff;
+  --moderncart-floating-count-text-color: var(--jn-cart-ink);
+  right: 24px;
+  bottom: 24px;
+  left: auto;
+  gap: 8px;                                /* between the "added to cart" bubble and the button (plugin: 5px) */
+}
+body #moderncart-floating-cart .moderncart-floating-cart-button-notification {
+  padding: 4px 12px;                       /* plugin: 5px 10px */
+  border-color: var(--jn-cart-mint);
+  color: var(--jn-cart-ink);
+}
+body #moderncart-floating-cart button.moderncart-floating-cart-button,
+body #moderncart-floating-cart button.moderncart-floating-cart-button:hover,
+body #moderncart-floating-cart button.moderncart-floating-cart-button:focus,
+body #moderncart-floating-cart button.moderncart-floating-cart-button:active {
+  border: 0;
+  outline: 0;
+  background-color: var(--jn-cart-mint);
+  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, .2);
+  -webkit-tap-highlight-color: transparent;
+}
+body #moderncart-floating-cart button.moderncart-floating-cart-button:focus-visible {
+  outline: 3px solid var(--jn-cart-focus);
+  outline-offset: 4px;
+}
+body #moderncart-floating-cart .moderncart-floating-cart-icon svg { display: none; }              /* the plugin's drawing */
+body #moderncart-floating-cart .moderncart-floating-cart-icon::before {
+  content: "";
+  display: block;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  background: #fff;
+  -webkit-mask: var(--jn-cart-icon) center / contain no-repeat;
+  mask: var(--jn-cart-icon) center / contain no-repeat;
+}
+body #moderncart-floating-cart .moderncart-floating-cart-count {
+  top: -4px;
+  right: -4px;
+  left: auto;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--jn-cart-mint);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body #moderncart-floating-cart button.moderncart-floating-cart-button { transition: none; }
+}
