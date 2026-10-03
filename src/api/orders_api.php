@@ -1236,6 +1236,23 @@ class Orders_API {
 
         $image_id = $product->get_image_id();
 
+        // Categories (and the name shown as "the product") live on the PARENT: a variation has no terms of its own, so
+        // `categories` was [] for every variable product. category_terms adds ids + the parent term, which the Bill 2
+        // page needs to tell the pre-order rounds (children of a "pre-order" category) from ordinary categories.
+        $parent_id    = $product->get_parent_id() ?: $product->get_id();
+        $parent       = $parent_id === $product->get_id() ? $product : wc_get_product( $parent_id );
+        $cat_terms    = wp_get_post_terms( $parent_id, 'product_cat' );
+        $cat_terms    = is_wp_error( $cat_terms ) ? [] : $cat_terms;
+        $category_terms = array_map( static function ( $t ) {
+            $up = $t->parent ? get_term( $t->parent, 'product_cat' ) : null;
+            return [
+                'id'          => (int) $t->term_id,
+                'name'        => $t->name,
+                'parent_id'   => (int) $t->parent,
+                'parent_name' => $up instanceof WP_Term ? $up->name : '',
+            ];
+        }, $cat_terms );
+
         return [
             'item_id'    => $item->get_id(),
             'name'       => $item->get_name(),
@@ -1255,7 +1272,10 @@ class Orders_API {
                 'sale_price'    => (float) $product->get_sale_price(),
                 'stock'         => $product->get_stock_quantity(),
                 'stock_status'  => $product->get_stock_status(),
-                'categories'    => wp_get_post_terms( $product->get_id(), 'product_cat', ['fields' => 'names'] ),
+                'parent_id'      => $parent_id,
+                'parent_name'    => $parent ? $parent->get_name() : $product->get_name(),
+                'categories'     => wp_list_pluck( $cat_terms, 'name' ),
+                'category_terms' => $category_terms,
                 'tags'          => wp_get_post_terms( $product->get_id(), 'product_tag', ['fields' => 'names'] ),
                 'attributes'    => self::get_product_attributes( $product ),
                 'permalink'     => get_permalink( $product->get_id() ),
