@@ -195,6 +195,9 @@ aside.widget-area { display: none !important; }
 .jn-btn-primary:hover { background-color: #e8439a; color: #fff !important; }
 .jn-btn-outline { border: 1px solid #fce7f3; color: #FB5FAB; background: transparent; }
 .jn-btn-outline:hover { background-color: #fdf2f8; }
+/* Totals rows. display must live in a class, never in style="": Alpine's x-show removes the inline display when it shows
+   the element, which turned the "ค่าจัดส่ง"/"ส่วนลด" rows into display:block and pulled the amount next to the label. */
+.jn-cart-row { display: flex; justify-content: space-between; }
 </style>
 
 <div class="jn-checkout-wrap w-full min-h-[calc(100vh-80px)] jn-page-top pb-8 px-0 sm:px-6 lg:px-8 font-sans relative z-10 breakout-desktop">
@@ -303,17 +306,17 @@ aside.widget-area { display: none !important; }
     <!-- totals -->
     <div style="border-top:1px solid #f3f4f6; margin-top:0.5rem; padding-top:0.75rem; display:flex; flex-direction:column; gap:0.375rem;">
 
-      <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#6b7280;">
+      <div class="jn-cart-row" style="font-size:0.875rem; color:#6b7280;">
         <span><?= __( 'ยอดรวมสินค้า', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
         <span x-html="totals.subtotal"></span>
       </div>
 
-      <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#6b7280;" x-show="totals.shipping">
+      <div class="jn-cart-row" style="font-size:0.875rem; color:#6b7280;" x-show="totals.shipping">
         <span><?= __( 'ค่าจัดส่ง', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
         <span x-html="totals.shipping"></span>
       </div>
 
-      <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:#e53e3e;" x-show="totals.discount">
+      <div class="jn-cart-row" style="font-size:0.875rem; color:#e53e3e;" x-show="totals.discount">
         <span><?= __( 'ส่วนลด', $_ENV['TEXTDOMAIN_NAME'] ) ?></span>
         <span x-html="totals.discount"></span>
       </div>
