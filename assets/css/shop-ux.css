@@ -63,8 +63,12 @@
   cursor: pointer;
   transition: transform .2s ease, background .2s ease;
 }
-.jn-banner__nav:hover { background: #fff; transform: translateY(-50%) scale(1.08); }
+.jn-banner__nav:hover { transform: translateY(-50%) scale(1.08); }
 .jn-banner__nav svg { width: 18px; height: 18px; }
+/* Astra repaints every button on :hover / :focus / :active (near-black fill, white text); the mock has no such state — the arrow stays ink on white .85 and
+   goes white on hover only. Two classes beat Astra's `button:hover` for every state. */
+.jn-banner .jn-banner__nav { background: rgba(255, 255, 255, .85); color: var(--jn-ink); }
+.jn-banner .jn-banner__nav:hover { background: #fff; }
 .jn-banner__nav--prev { left: 16px; }
 .jn-banner__nav--next { right: 16px; }
 
@@ -103,6 +107,8 @@
   transition: width .3s ease, background .3s ease;
 }
 .jn-banner__dot[aria-current="true"]::before { width: 22px; background: #fff; }
+/* the button around the dot is only a hit area: no fill in any state (Astra paints a dark box on :hover / :focus / :active) */
+.jn-banner .jn-banner__dot { background: transparent; }
 
 /* ---- search + tabs panel ------------------------------------------------------------------------------ */
 .jn-shop-panel {
