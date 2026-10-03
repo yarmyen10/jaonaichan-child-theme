@@ -88,6 +88,7 @@ function jn_shop_banners(): array {
         $out[] = [
             'url'   => $url,
             'title' => sanitize_text_field( (string) ( $b['title'] ?? '' ) ),
+            'alt'   => sanitize_text_field( (string) ( $b['description'] ?? '' ) ) ?: sanitize_text_field( (string) ( $b['title'] ?? '' ) ),   // the page has no field for it: the description is what the banner says
             'link'  => esc_url_raw( (string) ( $b['link'] ?? '' ) ),
         ];
     }
@@ -115,7 +116,7 @@ function jn_shop_render_banner( array $banners ): void {
             <?php foreach ( $banners as $i => $b ) :
                 $img = sprintf(
                     '<img src="%s" alt="%s" %s>',
-                    esc_url( $b['url'] ), esc_attr( $b['title'] ),
+                    esc_url( $b['url'] ), esc_attr( $b['alt'] ),
                     $i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'
                 );
                 $external = $b['link'] !== '' && wp_parse_url( $b['link'], PHP_URL_HOST ) && wp_parse_url( $b['link'], PHP_URL_HOST ) !== $home; ?>
@@ -142,10 +143,11 @@ function jn_shop_render_banner( array $banners ): void {
 function jn_shop_render_panel(): void {
     $current = jn_shop_current_group();
     $query   = is_search() ? get_search_query( false ) : '';
+    // two-tone pastel icons in the designer's style (40×40, same pink / lilac / amber / green as the mock's category chips)
     $icons   = [
-        'all'      => '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
-        'preorder' => '<path d="M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM12 12v3l2 1.5"/>',
-        'ready'    => '<path d="M3 6h11v10H3zM14 9h4l3 3v4h-7M7.5 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>',
+        'all'      => '<rect x="4" y="4" width="14" height="14" rx="3" fill="#FFE7EF" stroke="#F26593" stroke-width="1.6"/><rect x="22" y="4" width="14" height="14" rx="3" fill="#F3E8FF" stroke="#A379E0" stroke-width="1.6"/><rect x="4" y="22" width="14" height="14" rx="3" fill="#FFF3C9" stroke="#E9A94C" stroke-width="1.6"/><rect x="22" y="22" width="14" height="14" rx="3" fill="#D6F5E0" stroke="#5EBB7C" stroke-width="1.6"/>',
+        'preorder' => '<rect x="6" y="9" width="28" height="25" rx="5" fill="#F3E8FF" stroke="#A379E0" stroke-width="1.4"/><path d="M6 14a5 5 0 0 1 5-5h18a5 5 0 0 1 5 5v3H6z" fill="#E4D0FF" stroke="#A379E0" stroke-width="1.4"/><path d="M13 6v6M27 6v6" stroke="#A379E0" stroke-width="1.6" stroke-linecap="round"/><circle cx="20" cy="26" r="6" fill="#fff" stroke="#F26593" stroke-width="1.4"/><path d="M20 22.8v3.4l2.4 1.5" fill="none" stroke="#F26593" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+        'ready'    => '<path d="M4 13h20v16H4z" fill="#FFF3C9" stroke="#E9A94C" stroke-width="1.4" stroke-linejoin="round"/><path d="M24 18h6.5l4.5 5.5V29H24z" fill="#FFE7EF" stroke="#F26593" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 18h10" stroke="#E9A94C" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="30" r="3.4" fill="#fff" stroke="#E9A94C" stroke-width="1.4"/><circle cx="29" cy="30" r="3.4" fill="#fff" stroke="#F26593" stroke-width="1.4"/>',
     ];
     ?>
     <div class="jn-shop-panel">
@@ -170,7 +172,7 @@ function jn_shop_render_panel(): void {
                         : esc_html( $label ); ?>
                     <li>
                         <a class="jn-shop-tab" href="<?= esc_url( $url ) ?>"<?= $current === $key ? ' aria-current="page"' : '' ?>>
-                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><?= $icons[ $key ] ?></svg>
+                            <svg viewBox="0 0 40 40" aria-hidden="true"><?= $icons[ $key ] ?></svg>
                             <span><?= $label_html ?></span>
                         </a>
                     </li>
