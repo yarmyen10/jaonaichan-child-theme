@@ -253,7 +253,7 @@ function ordersPage(apiUrl, nonce) {
         },
 
         canCancel(order) {
-            return this.bucketStatusMap.to_pay.split(',').includes(order.status);
+            return order.can_cancel === true;   // decided by the server (my_orders_api.php cancellable_statuses), same rule the cancel endpoint enforces
         },
 
         async cancelOrder(order) {

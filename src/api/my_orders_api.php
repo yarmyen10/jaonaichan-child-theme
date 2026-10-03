@@ -62,6 +62,14 @@ class My_Orders_API {
         ];
     }
 
+    // What the customer may cancel on their own: nothing paid yet. NOT the whole "to_pay" tab — it also holds
+    // pending-payment-2, i.e. bill 1 is already paid, and a paid order is never self-cancellable (card: "ชำระเงินแล้ว
+    // ไม่ว่าจะบิลใดๆ ไม่อนุญาตให้กดยกเลิก"). wait-verify-1/2 (slip sent, waiting for staff) need staff review too.
+    // Single source of truth: the list response carries can_cancel, the dashboard does not keep its own copy.
+    private static function cancellable_statuses(): array {
+        return [ 'pending', 'waiting-transfer', 'pending-payment-1' ];
+    }
+
     /**
      * Re-derive identity from the visitor's own native WordPress login cookie only —
      * bypasses get_current_user_id()/is_user_logged_in(), which resolve through the
@@ -219,9 +227,7 @@ class My_Orders_API {
     public static function cancel_order( WP_REST_Request $request ): WP_REST_Response {
         $order = wc_get_order( (int) $request['id'] );
 
-        // ponytail: cancellable only pre-payment (same set as the "to_pay" tab) — once a
-        // slip is submitted for verification, cancelling needs staff review, not self-serve.
-        if ( ! in_array( $order->get_status(), self::status_buckets()['to_pay'], true ) ) {
+        if ( ! in_array( $order->get_status(), self::cancellable_statuses(), true ) ) {
             return new WP_REST_Response([
                 'success' => false,
                 'message' => 'ไม่สามารถยกเลิกคำสั่งซื้อนี้ได้แล้ว',
@@ -251,6 +257,7 @@ class My_Orders_API {
             'id'             => $order->get_id(),
             'number'         => $order->get_order_number(),
             'status'         => $status,
+            'can_cancel'     => in_array( $status, self::cancellable_statuses(), true ),
             'total'          => (float) $order->get_total(),
             'currency'       => $order->get_currency(),
             'date'           => $order->get_date_created()?->date( 'Y-m-d H:i:s' ),
