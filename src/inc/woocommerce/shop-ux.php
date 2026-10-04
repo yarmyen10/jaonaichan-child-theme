@@ -85,11 +85,18 @@ function jn_shop_banners(): array {
         if ( ! is_array( $b ) || empty( $b['isActive'] ) ) continue;
         $url = esc_url_raw( (string) ( $b['image']['url'] ?? '' ) );
         if ( $url === '' ) continue;
+        $heading = Banners_API::text( 'heading', $b['heading'] ?? '' );
+        $sub     = Banners_API::text( 'subheading', $b['subheading'] ?? '' );
+        $link    = esc_url_raw( (string) ( $b['link'] ?? '' ) );
         $out[] = [
-            'url'   => $url,
-            'title' => sanitize_text_field( (string) ( $b['title'] ?? '' ) ),
-            'alt'   => sanitize_text_field( (string) ( $b['description'] ?? '' ) ) ?: sanitize_text_field( (string) ( $b['title'] ?? '' ) ),   // the page has no field for it: the description is what the banner says
-            'link'  => esc_url_raw( (string) ( $b['link'] ?? '' ) ),
+            'url'        => $url,
+            'title'      => sanitize_text_field( (string) ( $b['title'] ?? '' ) ),
+            // text over the picture is real text on the page, so the picture is decoration; otherwise the description is what the picture says
+            'alt'        => ( $heading !== '' || $sub !== '' ) ? '' : ( sanitize_text_field( (string) ( $b['description'] ?? '' ) ) ?: sanitize_text_field( (string) ( $b['title'] ?? '' ) ) ),
+            'link'       => $link,
+            'heading'    => $heading,
+            'subheading' => $sub,
+            'cta'        => $link !== '' ? Banners_API::text( 'cta', $b['ctaLabel'] ?? '' ) : '',   // a button with nowhere to go is not shown
         ];
     }
     return $out;
@@ -109,9 +116,10 @@ add_action( 'wp_enqueue_scripts', function () {
 function jn_shop_render_banner( array $banners ): void {
     $n    = count( $banners );
     $home = wp_parse_url( home_url(), PHP_URL_HOST );
+    $has_text = (bool) array_filter( $banners, fn( $b ) => $b['heading'] !== '' || $b['subheading'] !== '' || $b['cta'] !== '' );   // text over a picture needs more height than 1000:340 gives on a phone
     wp_enqueue_script( 'jn-shop-banner', get_stylesheet_directory_uri() . '/assets/js/shop-banner.js', [], filemtime( get_stylesheet_directory() . '/assets/js/shop-banner.js' ), true );
     ?>
-    <section class="jn-banner" data-jn-banner data-interval="<?= (int) Banners_API::interval() ?>" aria-roledescription="carousel" aria-label="<?= esc_attr__( 'โปรโมชั่น', 'jaonaichan' ) ?>">
+    <section class="jn-banner<?= $has_text ? ' jn-banner--text' : '' ?>" data-jn-banner data-interval="<?= (int) Banners_API::interval() ?>" aria-roledescription="carousel" aria-label="<?= esc_attr__( 'โปรโมชั่น', 'jaonaichan' ) ?>">
         <div class="jn-banner__track">
             <?php foreach ( $banners as $i => $b ) :
                 $img = sprintf(
@@ -119,11 +127,18 @@ function jn_shop_render_banner( array $banners ): void {
                     esc_url( $b['url'] ), esc_attr( $b['alt'] ),
                     $i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'
                 );
-                $external = $b['link'] !== '' && wp_parse_url( $b['link'], PHP_URL_HOST ) && wp_parse_url( $b['link'], PHP_URL_HOST ) !== $home; ?>
+                $external = $b['link'] !== '' && wp_parse_url( $b['link'], PHP_URL_HOST ) && wp_parse_url( $b['link'], PHP_URL_HOST ) !== $home;
+                $target   = $external ? ' target="_blank" rel="noopener noreferrer"' : '';
+                // the mock's .banner-content: heading / sub-heading / button over the picture. With a button, the button is the link (as in the mock); without one the whole slide is.
+                $text = '';
+                if ( $b['heading'] !== '' ) $text .= '<div class="jn-banner__title">' . nl2br( esc_html( $b['heading'] ) ) . '</div>';
+                if ( $b['subheading'] !== '' ) $text .= '<div class="jn-banner__subtitle">' . $b['subheading'] . '</div>';
+                if ( $b['cta'] !== '' ) $text .= '<a class="jn-banner__cta" href="' . esc_url( $b['link'] ) . '"' . $target . '>' . esc_html( $b['cta'] ) . '</a>';
+                $inner = $img . ( $text !== '' ? '<div class="jn-banner__content"><div class="jn-banner__copy">' . $text . '</div></div>' : '' ); ?>
                 <div class="jn-banner__slide" role="group" aria-roledescription="slide" aria-label="<?= esc_attr( ( $i + 1 ) . ' / ' . $n ) ?>">
-                    <?php if ( $b['link'] !== '' ) : ?>
-                        <a href="<?= esc_url( $b['link'] ) ?>"<?= $external ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= $img ?></a>
-                    <?php else : echo $img; endif; ?>
+                    <?php if ( $b['link'] !== '' && $b['cta'] === '' ) : ?>
+                        <a href="<?= esc_url( $b['link'] ) ?>"<?= $target ?>><?= $inner ?></a>
+                    <?php else : echo $inner; endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>

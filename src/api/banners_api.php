@@ -27,6 +27,11 @@ class Banners_API {
     const INTERVAL_MIN     = 2;
     const INTERVAL_MAX     = 60;
 
+    /** The text drawn over the picture on the Shop page (the mock's .banner-content): heading (up to 2 lines), sub-heading and a button that goes to `link`. */
+    const HEADING_MAX    = 60;
+    const SUBHEADING_MAX = 120;
+    const CTA_MAX        = 24;
+
     public static function init(): void {
         add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
     }
@@ -45,6 +50,16 @@ class Banners_API {
         return Auth_API::is_admin();
     }
 
+    /** Banner text: tags stripped; a heading keeps 2 lines at most (blank lines dropped), the sub-heading and the button label are one line. */
+    public static function text( string $kind, $v ): string {
+        $v = (string) $v;
+        if ( $kind === 'heading' ) {
+            $lines = array_values( array_filter( array_map( 'trim', explode( "\n", sanitize_textarea_field( $v ) ) ), 'strlen' ) );
+            return mb_substr( implode( "\n", array_slice( $lines, 0, 2 ) ), 0, self::HEADING_MAX );
+        }
+        return mb_substr( sanitize_text_field( $v ), 0, $kind === 'subheading' ? self::SUBHEADING_MAX : self::CTA_MAX );
+    }
+
     /** The stored list, cleaned (a hand-edited or old option cannot break the page). */
     public static function stored(): array {
         $raw = get_option( self::OPTION, [] );
@@ -60,6 +75,9 @@ class Banners_API {
                 'isActive'    => ! empty( $b['isActive'] ),
                 'image'       => ! empty( $b['image']['url'] ) ? [ 'url' => (string) $b['image']['url'], 'name' => (string) ( $b['image']['name'] ?? '' ) ] : null,
                 'link'        => (string) ( $b['link'] ?? '' ),
+                'heading'     => self::text( 'heading', $b['heading'] ?? '' ),
+                'subheading'  => self::text( 'subheading', $b['subheading'] ?? '' ),
+                'ctaLabel'    => self::text( 'cta', $b['ctaLabel'] ?? '' ),
                 'updatedAt'   => (string) ( $b['updatedAt'] ?? '' ),
             ];
         }
@@ -133,7 +151,11 @@ class Banners_API {
             $active = ! empty( $b['isActive'] );
             if ( $active && ! $image ) return self::fail( 'banner_active_needs_image', "แบนเนอร์ที่ {$n}: เปิดใช้งานได้เมื่อมีรูปเท่านั้น", $i );
 
-            $row = [ 'id' => $id, 'title' => $title !== '' ? $title : 'Banner ' . $n, 'description' => $desc, 'isActive' => $active, 'image' => $image, 'link' => $link ];
+            $cta = self::text( 'cta', $b['ctaLabel'] ?? '' );
+            if ( $cta !== '' && $link === '' ) return self::fail( 'banner_cta_needs_link', "แบนเนอร์ที่ {$n}: ข้อความปุ่มต้องมี Banner Link (ปุ่มพาไปลิงก์นั้น)", $i );
+
+            $row = [ 'id' => $id, 'title' => $title !== '' ? $title : 'Banner ' . $n, 'description' => $desc, 'isActive' => $active, 'image' => $image, 'link' => $link,
+                     'heading' => self::text( 'heading', $b['heading'] ?? '' ), 'subheading' => self::text( 'subheading', $b['subheading'] ?? '' ), 'ctaLabel' => $cta ];
             $prev = $old[ $id ] ?? null;
             $same = $prev && array_diff_key( $prev, [ 'updatedAt' => 1 ] ) === $row;
             $row['updatedAt'] = $same ? $prev['updatedAt'] : $now;
