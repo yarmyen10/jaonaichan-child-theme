@@ -46,8 +46,9 @@
 /* text over the picture — the mock's .banner-content: white with a soft shadow, left, centred vertically; sizes step down with the screen (mock: 960 / 520).
    Side padding keeps the text clear of the 42px arrows (16px in): the mock's 30px on tablets/phones would put the first words under the left arrow. */
 .jn-banner__content { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-start; padding: 24px 64px 48px; color: #fff; }   /* 48px at the bottom keeps a phone's button clear of the dots */
-/* On a phone the 1000:340 box is ~120px tall — a heading, sub-heading and button need ~224 (the mock clips them there). Only banners that carry text get the height; the picture crops at the sides. */
-.jn-banner--text { min-height: 224px; }
+/* On a phone the 1000:340 box is ~120px tall — a heading, sub-heading and button need ~224 (the mock clips them there). Only banners that carry text get the height; the picture crops at the sides.
+   An explicit height, not aspect-ratio + min-height: Safari/iOS resolves the track's and the picture's `height: 100%` against the ratio's ~120px and leaves the rest of the box empty. */
+.jn-banner--text { aspect-ratio: auto; height: 224px; }
 .jn-banner__copy { max-width: 80%; }
 .jn-banner__title { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.15; color: #fff; text-shadow: 0 2px 12px rgba(80, 40, 80, .35); }
 .jn-banner__subtitle { margin-top: 8px; font-size: 12px; line-height: 1.5; color: #fff; opacity: .95; text-shadow: 0 1px 6px rgba(80, 40, 80, .3); }
@@ -254,7 +255,7 @@
 
 @media (min-width: 521px) {
   .jn-shop-panel { padding: 24px; }
-  .jn-banner--text { min-height: 0; }
+  .jn-banner--text { aspect-ratio: 1000 / 340; height: auto; }
   .jn-banner__content { padding: 24px 64px; }
   .jn-banner__title { font-size: 24px; }
   .jn-banner__subtitle { font-size: 15px; }
