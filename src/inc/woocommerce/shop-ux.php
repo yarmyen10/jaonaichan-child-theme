@@ -132,7 +132,7 @@ function jn_shop_render_banner( array $banners ): void {
                 // the mock's .banner-content: heading / sub-heading / button over the picture. With a button, the button is the link (as in the mock); without one the whole slide is.
                 $text = '';
                 if ( $b['heading'] !== '' ) $text .= '<div class="jn-banner__title">' . nl2br( esc_html( $b['heading'] ) ) . '</div>';
-                if ( $b['subheading'] !== '' ) $text .= '<div class="jn-banner__subtitle">' . $b['subheading'] . '</div>';
+                if ( $b['subheading'] !== '' ) $text .= '<div class="jn-banner__subtitle">' . esc_html( $b['subheading'] ) . '</div>';
                 if ( $b['cta'] !== '' ) $text .= '<a class="jn-banner__cta" href="' . esc_url( $b['link'] ) . '"' . $target . '>' . esc_html( $b['cta'] ) . '</a>';
                 $inner = $img . ( $text !== '' ? '<div class="jn-banner__content"><div class="jn-banner__copy">' . $text . '</div></div>' : '' ); ?>
                 <div class="jn-banner__slide" role="group" aria-roledescription="slide" aria-label="<?= esc_attr( ( $i + 1 ) . ' / ' . $n ) ?>">
