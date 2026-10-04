@@ -21,6 +21,12 @@ class Banners_API {
     const MAX       = 20;
     const MAX_BYTES = 2 * 1024 * 1024;
 
+    /** Seconds between two slides on the Shop page; 0 = the slider does not move by itself. Saved with the list, read by shop-ux.php. */
+    const SETTINGS_OPTION = 'jn_shop_banner_settings';
+    const INTERVAL_DEFAULT = 5;
+    const INTERVAL_MIN     = 2;
+    const INTERVAL_MAX     = 60;
+
     public static function init(): void {
         add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
     }
@@ -60,8 +66,20 @@ class Banners_API {
         return $out;
     }
 
+    /** A JSON integer: 0, or INTERVAL_MIN–INTERVAL_MAX (no "5", no 2.5, no true). */
+    private static function interval_ok( $v ): bool {
+        return is_int( $v ) && ( $v === 0 || ( $v >= self::INTERVAL_MIN && $v <= self::INTERVAL_MAX ) );
+    }
+
+    /** What the Shop uses: the saved value, or the default when nothing valid is saved (a hand-edited option cannot break the slider). */
+    public static function interval(): int {
+        $s = get_option( self::SETTINGS_OPTION, [] );
+        $v = is_array( $s ) ? ( $s['intervalSeconds'] ?? null ) : null;
+        return self::interval_ok( $v ) ? $v : self::INTERVAL_DEFAULT;
+    }
+
     public static function get_banners(): array {
-        return [ 'success' => true, 'data' => self::stored() ];
+        return [ 'success' => true, 'data' => self::stored(), 'settings' => [ 'intervalSeconds' => self::interval() ] ];
     }
 
     private static function fail( string $code, string $message, int $index = -1 ): WP_Error {
@@ -74,7 +92,8 @@ class Banners_API {
     }
 
     public static function save_banners( WP_REST_Request $request ): array|WP_Error {
-        $in = $request->get_json_params()['banners'] ?? null;
+        $params = $request->get_json_params();
+        $in     = $params['banners'] ?? null;
         if ( ! is_array( $in ) ) return self::fail( 'banners_missing', 'ไม่พบรายการ banners' );
         if ( count( $in ) > self::MAX ) return self::fail( 'banners_too_many', 'มีแบนเนอร์ได้ไม่เกิน ' . self::MAX . ' อัน' );
 
@@ -121,8 +140,20 @@ class Banners_API {
             $out[] = $row;
         }
 
+        // `settings` is optional: left out = unchanged. Checked before anything is written, like the list.
+        $interval = self::interval();
+        if ( isset( $params['settings'] ) ) {
+            $set = $params['settings'];
+            if ( ! is_array( $set ) ) return self::fail( 'settings_invalid', 'ข้อมูลการตั้งค่าไม่ถูกต้อง' );
+            if ( array_key_exists( 'intervalSeconds', $set ) ) {
+                if ( ! self::interval_ok( $set['intervalSeconds'] ) ) return self::fail( 'banner_interval_invalid', 'เวลาเปลี่ยนสไลด์ต้องเป็น 0 (ไม่เลื่อนเอง) หรือจำนวนเต็ม ' . self::INTERVAL_MIN . '–' . self::INTERVAL_MAX . ' วินาที' );
+                $interval = $set['intervalSeconds'];
+            }
+            update_option( self::SETTINGS_OPTION, [ 'intervalSeconds' => $interval ], false );
+        }
+
         update_option( self::OPTION, $out, false );
-        return [ 'success' => true, 'data' => $out ];
+        return [ 'success' => true, 'data' => $out, 'settings' => [ 'intervalSeconds' => $interval ] ];
     }
 
     public static function upload_image( WP_REST_Request $request ): array|WP_Error {

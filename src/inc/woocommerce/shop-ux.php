@@ -111,7 +111,7 @@ function jn_shop_render_banner( array $banners ): void {
     $home = wp_parse_url( home_url(), PHP_URL_HOST );
     wp_enqueue_script( 'jn-shop-banner', get_stylesheet_directory_uri() . '/assets/js/shop-banner.js', [], filemtime( get_stylesheet_directory() . '/assets/js/shop-banner.js' ), true );
     ?>
-    <section class="jn-banner" data-jn-banner aria-roledescription="carousel" aria-label="<?= esc_attr__( 'โปรโมชั่น', 'jaonaichan' ) ?>">
+    <section class="jn-banner" data-jn-banner data-interval="<?= (int) Banners_API::interval() ?>" aria-roledescription="carousel" aria-label="<?= esc_attr__( 'โปรโมชั่น', 'jaonaichan' ) ?>">
         <div class="jn-banner__track">
             <?php foreach ( $banners as $i => $b ) :
                 $img = sprintf(

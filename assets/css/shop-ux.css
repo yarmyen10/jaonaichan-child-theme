@@ -72,12 +72,16 @@
 .jn-banner__nav--prev { left: 16px; }
 .jn-banner__nav--next { right: 16px; }
 
+/* dots: the mock's sizes — a 20px pill, 8px dots 8px apart, the current one a 22px bar (the pill is 20px tall, i.e. the mock's 6 + 8 + 6) */
 .jn-banner__dots {
   position: absolute;
   bottom: 16px;
   left: 50%;
   z-index: 3;
   display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 20px;
   padding: 0 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, .4);
@@ -85,30 +89,22 @@
   backdrop-filter: blur(6px);
   transform: translateX(-50%);
 }
-.jn-banner__dot {         /* 24 × 40px hit area; the visible dot is the pseudo-element */
+.jn-banner__dot {
   position: relative;
-  width: 24px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-.jn-banner__dot::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  flex: 0 0 auto;
   width: 8px;
   height: 8px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, .7);
-  transform: translate(-50%, -50%);
-  transition: width .3s ease, background .3s ease;
+  cursor: pointer;
+  transition: width .3s ease, background-color .3s ease;
 }
-.jn-banner__dot[aria-current="true"]::before { width: 22px; background: #fff; }
-/* the button around the dot is only a hit area: no fill in any state (Astra paints a dark box on :hover / :focus / :active) */
-.jn-banner .jn-banner__dot { background: transparent; }
+/* the real tap area is 16 × 40px: reaches half the gap to each side (so neighbours meet, never overlap) and 16px up and down */
+.jn-banner__dot::after { content: ""; position: absolute; inset: -16px -4px; }
+/* Astra repaints every button on :hover / :focus / :active (near-black fill) — two classes beat it in every state */
+.jn-banner .jn-banner__dot { background: rgba(255, 255, 255, .7); }
+.jn-banner .jn-banner__dot[aria-current="true"] { width: 22px; background: #fff; }
 
 /* ---- search + tabs panel ------------------------------------------------------------------------------ */
 .jn-shop-panel {
@@ -232,5 +228,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .jn-banner__track { scroll-behavior: auto; }
-  .jn-banner__nav, .jn-banner__dot::before, .jn-shop-panel .jn-shop-search, .jn-shop-panel .jn-shop-search button, .jn-shop-tabs a.jn-shop-tab { transition: none; }
 }
